@@ -17,6 +17,6 @@ setup(
     author_email='jtuck@ncsu.edu',
     url='https://github.ncsu.edu/jtuck/',
     license=license,
-    packages=find_packages(exclude=('tests', 'docs'))
+    packages=find_packages(exclude=('tests', 'docs', 'tools', 'other_software'))
 )
 
