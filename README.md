@@ -20,7 +20,7 @@ Linux computers have this software by default. Macs and Windows may not have the
       1. cd /full/path/to/some/directory
       2. git clone https://github.ncsu.edu/jtuck/dnastorage.git
 
-2. Run make to build nupack  
+2. Run make to install package dependencies and build nupack software
 
       - make init
 
