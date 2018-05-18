@@ -96,4 +96,4 @@ if __name__ == "__main__":
     for i in range(2**8):
         x = convertFromBase(2,convertBase(2,i,8))
         assert x == i
-        assert binary_unrotate(binary_rotate(convertBase(2,i,8)))==convertBase(2,i,8)
+        assert binary_unrotate_decode(binary_rotate_encode(convertBase(2,i,8)))==convertBase(2,i,8)

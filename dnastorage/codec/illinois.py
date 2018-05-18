@@ -29,62 +29,6 @@ def rangeWithExclusion(length, primer):
     return size
 
 
-def encodeWithExclusionHelper(dec,s,excluded):
-    if len(s) < len(excluded): 
-        b = len(excluded[len(s)])
-        m = dec % b
-        q = dec / b
-        s += excluded[len(s)][m]
-    else:
-        m = dec % 3
-        q = dec / 3
-        s += ibases[m]
-
-    if q > 0:
-        return encodeWithExclusionHelper(q,s,excluded)
-    else:
-        return s
-
-def encodeWithExclusion(dec,length,primer):
-    excluded = []
-    plist = [b for b in primer]
-    for i in range(len(primer)):
-        b = copy(ibases)
-        if plist[i] != 'G':
-            b.remove(plist[i])
-        excluded.append(b)
-    #print excluded
-    s = encodeWithExclusionHelper(dec,"",excluded)
-    if len(s) < len(primer):
-        for i in range(len(s),min(length,len(primer))):
-            s += excluded[i][0]
-    s = s.ljust(length,ibases[0])
-    return s
-
-
-def decodeWithExclusion(s,primer):
-    val = 0L
-    power = 1L
-    excluded = []
-    plist = [b for b in primer]
-    for i in range(len(primer)):
-        b = copy(ibases)
-        if plist[i]!='G':
-            b.remove(plist[i])
-        excluded.append( { b[i] : i for i in range(len(b)) }  )
-    #print excluded
-    base = 3
-    for i in range(len(s)):
-        if i < len(excluded):
-            base = len(excluded[i])
-            val += excluded[i][s[i]] * power
-        else:
-            base = 3
-            val += ivalues[s[i]] * power
-        power *= base
-    return val
-
-
 class IllinoisCodec(BaseCodec):
     def __init__(self,primer,numberBytes,CodecObj=None,keyWidth=20):
         BaseCodec.__init__(self,CodecObj)
