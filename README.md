@@ -13,7 +13,7 @@ To use this software, you need:
 
 Linux computers have this software by default. Macs and Windows may not have them. (There are a variety of ways to get Python, more details coming soon.)
 
-### 
+### Installation steps
 
 1. Clone or download the repository into a working directory
 
