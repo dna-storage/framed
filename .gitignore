@@ -1,0 +1,31 @@
+install
+build
+junk
+tmp
+
+# Emacs editing
+*~  
+
+# Compiled Object files
+*.slo
+*.lo
+*.o
+*.pyc
+
+# Compiled Dynamic libraries
+*.so
+*.dylib
+*.dySYM
+
+# Compiled Static libraries
+*.lai
+*.la
+*.a
+
+# Autoconf files
+config.status
+config.log
+
+
+# Mac files
+.DS_Store
