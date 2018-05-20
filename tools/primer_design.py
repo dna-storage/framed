@@ -1,160 +1,24 @@
 #!/usr/bin/python
-from Bio.SeqUtils import MeltingTemp as mt
-from Bio.Seq import Seq
-from Bio.SeqUtils import GC
-import random
 import string
-import subprocess
-import re
-import os
+import time
 import argparse
 
-from dnastorage.primer.nextera import *
-from nupack.mfe import *
-from nupack.complexes import *
 from dnastorage.primer.primer_util import *
 from dnastorage.primer.design import *
 
-def id_generator(size=6, chars=string.ascii_uppercase + string.digits):
-    return ''.join(random.choice(chars) for _ in range(size))
-
-def fast_generator(size=6, chars=string.ascii_uppercase + string.digits):
-    l = [random.choice(chars) for _ in range(size)]
-    l[-1] = 'G'
-    # force replication
-    for j in range(size/5+1):
-        i = random.randint(-2,3)
-        if i+j*5+1 < size and i+j*5 > 0:
-            l[i+j*5+1] = l[i+j*5]
-    #assert len(l)==20
-    return "".join(l)
-    
-
-def mutate_sequence(seq, d):
-    used = {}
-    for i in range(0,d):
-        while True:
-            r = random.randint(0,len(seq)-2)
-            if not used.has_key(r):
-                break
-        used[r] = 1
-        c = random.choice('ACGT')
-        seq[r] = c
-
-bases = ['A', 'C', 'G', 'T']
-
-nextBases = { 'A' : [ 'C', 'G', 'T' ],
-              'C' : [ 'A', 'G', 'T' ],
-              'G' : [ 'A', 'C', 'T' ],
-              'T' : [ 'A', 'C', 'G' ]
-}
-
-count = 0
-
-###
-### Deprecated function -- DO NOT USE 
-### Will be deleted soon 
-###
-def design_rules_met(s,L,nupack,nextera_binding):
-    #print s
-    if repetitionScore(s) < 0.99:
-        #print "reptition score", repetitionScore(s)
-        return False
-    if hasSingleRun(s) or hasDimerRun(s): # or hasDimer(seq,5):
-        #print "runs"
-        return False
-
-    # ending of primer should not have too much GC content
-    if not checkGC(s[-5:],(0,60)):
-        #print s[-5:],"GC short content",GC(s[-5:])
-        return False
-
-    for l in L:     
-        if correlation_distance(s,l)>4:
-            #print "correlation"
-            return False
-        if hamming_distance(s,l) < 10:
-            #print "hamming"
-            return False    
-        if nupack:
-            # repeat s to search for homo-dimers
-            c = checkComplexes([s,l])
-            if len(c) > 0:
-                print "*****Heterodimer: {} vs {} -- {}".format(l,s, c[0]['pattern'])
-                return False
-
-            c = checkComplexes([l,reverse_complement(s)])
-            if len(c) > 0:
-                print "*****False binding: {} vs {} -- {}".format(l,s, c[0]['pattern'])
-                return False
-
-            c = checkComplexes([s,reverse_complement(l)])
-            if len(c) > 0:
-                print "*****False binding: {} vs {} -- {}".format(l,s, c[0]['pattern'])
-                return False
-
-        #if reverse_correlation_distance(s,l)>3:
-        #    show_correlation(s,reverse(l))
-        #    return False
-
-    if not checkTm(s,(50.0,60.0)):
-        #print "TM"
-        return False
-
-    if not checkGC(s,(40.0,60.0)):
-        #print "GC full"
-        return False
-
-    if not nextera_strand_comparison(s,3):
-        #print "nextera"
-        return False
-
-    if nupack and nextera_binding:
-        nextera_primers = get_nextera_primers()
-        for l in nextera_primers:
-            # repeat s to search for homo-dimers
-            c = checkComplexes([s,l])
-            if len(c) > 0:
-                print "*****Nextera Heterodimer: {} vs {} -- {}".format(l,s, c[0]['pattern'])
-                return False
-
-            c = checkComplexes([l,reverse_complement(s)])
-            if len(c) > 0:
-                print "*****Nextera False binding: {} vs {} -- {}".format(l,s, c[0]['pattern'])
-                return False
-
-            c = checkComplexes([s,reverse_complement(l)])
-            if len(c) > 0:
-                print "*****Nextera Complement False binding: {} vs {} -- {}".format(l,s, c[0]['pattern'])
-                return False
-
-
-    if not check_old_strands(s):
-        #print "check old"
-        return False
-
-    if nupack:
-        # repeat s to search for homo-dimers
-        c = checkComplexes([s,s])
-        if len(c) > 0:
-            print "*****Homodimer: {} {}".format(s, c[0]['pattern'])
-            return False
-
-    return True
-
 def montecarlo(args):
-    N = args.simulations
     use_nupack = args.use_nupack
     distance = args.distance
     count = 0
-    timeout = args.timeout
-
+    length = args.primer_length
     L = [] # list of primers
-    D = {} # dictionary for tracking which primers we have
-
-    primers = []
 
     design_rules = build_standard_design_rules(L,use_nupack)
+
+    if args.fast:
+        pg = LikelyPrimerGenerator(chars="AGCT",length=length)
+    else:
+        pg = UniquePrimerGenerator(chars="AGCT",length=length)
 
     if args.primers != None:
         f = open(args.primers,"r")
@@ -165,95 +29,59 @@ def montecarlo(args):
             l = l.strip()
             if len(l) == 0:
                 continue
-            #if design_rules_met(l,L,use_nupack,args.check_nextera_binding):
-            if design_rules.check(l):
-                L.append(l)
-                if l[-1] != 'G':
-                    print "Input primer ({}) does not end in G!".format(l)
-                D[l] = 1
+            if not args.skip:
+                if design_rules.check(l):
+                    L.append(l)
+                    pg.append(l) # do not generate this strand as a possible one
+                    if l[-1] != 'G':
+                        print "Input primer ({}) does not end in G!".format(l)
+                else:
+                    #print "Removing {} from list.".format(l)
+                    kk = kk + 1
             else:
-                #print "Removing {} from list.".format(l)
-                kk = kk + 1
+                L.append(l)
+                pg.append(l)
         print "Removed {} primers from list.".format(kk)
 
-    i = 0 # number of attempts
-    while count < N and i < timeout:
-        if args.fast:
-            s = fast_generator(size=args.primer_length,chars="ATGC")
+    t = time.time();
+    i = 0
+    while count < args.n and (time.time() - t <= args.timeout):
+        s = pg.get()
+        i += 1
+        found = True
+        if len(L) and s[0] == L[0][-1]:
+            found = False
         else:
-            s = id_generator(size=args.primer_length,chars="ATGC")
-        if not D.has_key(s):
-            i = i+1
-            if s[-1] != 'G':
-                continue
-            found = True
-            if len(L) and s[0] == L[0][-1]:
-                found = False
-            else:
-                #found = design_rules_met(s,L,use_nupack,args.check_nextera_binding)
-                found = design_rules.check(s)
-
-            if found:
-                L.append(s)
-                D[s] = 1
-                count = count+1
+            found = design_rules.check(s)
+        if found:
+            L.append(s)
+            count = count+1
 
     print design_rules
-
     return (L,count,i)
-
-complement = { 'A' : 'T',
-               'C' : 'G',
-               'G' : 'C',
-               'T' : 'A' }
-
-def checkComplexes(seqs):
-    prefix = create_mfe_input(seqs,2)    
-    complexes(complexes_args(prefix))
-    c = read_mfe_output(prefix+".ocx-mfe")
-    problems = [cc for cc in c if cc['deltaG'] < -10.0]
-    return problems
-
-def checkFold(seq):
-    f = open(seq+".fasta","w")
-    f.write(seq);
-    f.close()
-    return checkFoldFile(seq)    
-
-def checkFoldFile(seq):
-    fnull = open(os.devnull, "w")
-    subprocess.call(['mfold','SEQ='+seq+'.fasta','NA=DNA'],stdout=fnull, stderr=fnull)
-    f = open(seq+".out","r")
-    s = f.read()
-    f.close()
-    rx = re.compile("dG =[ \t]*(-?\d+\.?\d+)")
-    g = rx.search(s)
-    if g!=None:
-        d = float(g.groups()[0])
-        if d < -3.0:
-            return False
-    return True
 
 
 parser = argparse.ArgumentParser(description="Select a method for computing number of primers.")
-parser.add_argument('--mc',help="Monte Carlo method", action='store_true')
-parser.add_argument('--s',type=int,dest="simulations",action="store",default=100, help="Number of MonteCarlo simulations")
+
 parser.add_argument('--distance',type=int,dest="distance",action="store",default=10, help="Hamming distance between primers")
-#parser.add_argument('--repetition',type=float,dest="repetition",action="store",default=0.80, help="Fraction of length-5 rolling window with repeating nucleotides")
-parser.add_argument('--use-nupack',dest="use_nupack",action="store_true",help="Perform analysis using nupack.")
-
-parser.add_argument('--fast',dest="fast",action="store_true",help="Use a faster search that doesn't generate primers randomly.")
-
-parser.add_argument('--check-nextera-binding',dest="check_nextera_binding",action="store_true",help="Use nupack to check the binding energies of nextera primer sequences.")
-
-parser.add_argument('--primers',dest="primers",action="store",default=None, help="Previously selected primers.")
 
 parser.add_argument('--primer-length',dest="primer_length",type=int,action="store",default=20, help="Primer length.")
 
-parser.add_argument('--timeout',type=int,dest="timeout",action="store",default=10000, help="If no primers are produced after timeout tries, give up.")
+parser.add_argument('--use-nupack',dest="use_nupack",action="store_true",help="Perform analysis using nupack.")
+
+parser.add_argument('--primers',dest="primers",action="store",default=None, help="Previously selected primers.")
+parser.add_argument('--skip-check', dest="skip", help="Skip checking of old primers", action="store_true", default=False)
+
+
+parser.add_argument('--mc',help="Monte Carlo method", action='store_true')
+
+parser.add_argument('--n',type=int,dest="n",action="store",default=100, help="Number of new primers sought")
+
+parser.add_argument('--fast',dest="fast",action="store_true",help="Use a faster search that doesn't generate primers randomly.")
+
+parser.add_argument('--timeout',type=int,dest="timeout",action="store",default=60, help="If no primers are produced after timeout tries, give up.")
 
 parser.add_argument('--o',dest="o",action="store",default=None, help="Output file.")
-
 
 args = parser.parse_args()
 

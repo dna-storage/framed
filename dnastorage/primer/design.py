@@ -2,6 +2,51 @@ from dnastorage.primer import primer_util
 import nupack
 from dnastorage.primer import nextera
 import time
+import random
+
+class RandomPrimerGenerator:
+    def __init__(self, chars="AGCT", length=20):
+        self.chars = chars
+        self.len = length
+
+    def get(self):
+        return ''.join(random.choice(self.chars) for _ in range(self.len))
+
+class UniquePrimerGenerator(RandomPrimerGenerator):
+    def __init__(self, chars="AGCT", length=20, library=[]):
+        RandomPrimerGenerator.__init__(self,chars,length)
+        self.avoid = library[:]
+
+    def append(self, l):
+        self.avoid.append(l)
+
+    def _get_helper(self):
+        return RandomPrimerGenerator.get(self)
+
+    def get(self):
+        while True:
+            s = self._get_helper()
+            if not (s in self.avoid):
+                self.avoid.append(s)
+                return s
+
+class LikelyPrimerGenerator(UniquePrimerGenerator):
+    def __init__(self, chars="AGCT", length=20, library=[], last='G', repl_factor=5):
+        UniquePrimerGenerator.__init__(self,chars,length,library)
+        self.last = last
+        self.repl_factor = repl_factor
+
+    def _get_helper(self):
+        l = [random.choice(self.chars) for _ in range(self.len)]
+        # force replication
+        for j in range(self.len/self.repl_factor+1):
+            i = random.randint(-2,3)
+            if i+j*self.repl_factor+1 < self.len and i+j*self.repl_factor > 0:
+                l[i+j*5+1] = l[i+j*5]
+
+        l[-1] = self.last
+        return "".join(l)
+
 
 class Rule:
     def __init__(self, r, name=""):
@@ -9,7 +54,7 @@ class Rule:
         self.name = name
         self.passed = 0
         self.total = 0
-        self.total_time = 0
+        self.total_time = 0 
 
     def run_rule(self, strand):
         return self.r(strand)
@@ -29,7 +74,7 @@ class Rule:
             return False
 
     def __str__(self):
-        return "{:50}{:>5} / {:<7} \t Time = {:<.2e} s".format(self.name,self.passed,self.total, self.total_time/self.total) 
+        return "{:50}{:>5} / {:<7} \t Time = {:<.2e} s".format(self.name,self.passed,self.total, self.total_time/(max(self.total,1))) 
 
 class LibraryRule(Rule):
     def __init__(self, r, name="", L=[]):
@@ -86,16 +131,15 @@ def build_hamming_distance_library_rule(distance,L):
 def build_nupack_nonspecific_bindings_library_rule(L):
     return LibraryRule(primer_util.nupack_check_complexes, "Avoid non-specific binding with libary", L)
 
-
 class DesignRules:
     def __init__(self, name=""):
         self.rules = []
         self.name = name
 
-    def getRules(self):
+    def get_rules(self):
         return self.rules[:]
 
-    def addRule(self, r):
+    def add_rule(self, r):
         self.rules.append(r)
 
     def check(self, strand):
@@ -109,21 +153,117 @@ class DesignRules:
 
 def build_standard_design_rules(Library, with_nupack=True):
     dr = DesignRules("Standard Design Rules")
-    dr.addRule(build_last_must_be_g_rule())
-    dr.addRule(build_singlerun_rule())
-    dr.addRule(build_dimerrun_rule())
-    dr.addRule(build_GC_rule(40,60))
-    dr.addRule(build_repetition_rule(0.99))
-    dr.addRule(build_GC_at_end_rule())
-    dr.addRule(build_Tm_rule(50,60))
-    dr.addRule(build_hamming_distance_library_rule(10,Library))
-    dr.addRule(build_check_old_strands_rule())
-    dr.addRule(build_nextera_comparison_rule())
-    dr.addRule(build_correlation_distance_library_rule(Library))
+    dr.add_rule(build_last_must_be_g_rule())
+    dr.add_rule(build_singlerun_rule())
+    dr.add_rule(build_dimerrun_rule())
+    dr.add_rule(build_GC_rule(40,60))
+    dr.add_rule(build_repetition_rule(0.99))
+    dr.add_rule(build_GC_at_end_rule())
+    dr.add_rule(build_Tm_rule(50,60))
+    dr.add_rule(build_hamming_distance_library_rule(10,Library))
+    dr.add_rule(build_check_old_strands_rule())
+    dr.add_rule(build_nextera_comparison_rule())
+    dr.add_rule(build_correlation_distance_library_rule(Library))
     if with_nupack:
-        dr.addRule(build_nupack_homodimer_rule())
-        dr.addRule(build_nupack_nonspecific_bindings_library_rule(Library))
+        dr.add_rule(build_nupack_homodimer_rule())
+        dr.add_rule(build_nupack_nonspecific_bindings_library_rule(Library))
     return dr
+
+
+
+###
+### Deprecated function -- DO NOT USE 
+### Will be deleted soon 
+###
+def design_rules_met(s,L,nupack,nextera_binding):
+    #print s
+    if primer_util.repetitionScore(s) < 0.99:
+        #print "reptition score", repetitionScore(s)
+        return False
+    if primer_util.hasSingleRun(s) or primer_util.hasDimerRun(s): # or hasDimer(seq,5):
+        #print "runs"
+        return False
+
+    # ending of primer should not have too much GC content
+    if not primer_util.checkGC(s[-5:],(0,60)):
+        #print s[-5:],"GC short content",GC(s[-5:])
+        return False
+
+    for l in L:     
+        if primer_util.correlation_distance(s,l)>4:
+            #print "correlation"
+            return False
+        if primer_util.hamming_distance(s,l) < 10:
+            #print "hamming"
+            return False    
+        if nupack:
+            # repeat s to search for homo-dimers
+            c = primer_util.checkComplexes([s,l])
+            if len(c) > 0:
+                print "*****Heterodimer: {} vs {} -- {}".format(l,s, c[0]['pattern'])
+                return False
+
+            c = primer_util.checkComplexes([l,primer_util.reverse_complement(s)])
+            if len(c) > 0:
+                print "*****False binding: {} vs {} -- {}".format(l,s, c[0]['pattern'])
+                return False
+
+            c = primer_util.checkComplexes([s,primer_util.reverse_complement(l)])
+            if len(c) > 0:
+                print "*****False binding: {} vs {} -- {}".format(l,s, c[0]['pattern'])
+                return False
+
+        #if reverse_correlation_distance(s,l)>3:
+        #    show_correlation(s,reverse(l))
+        #    return False
+
+    if not primer_util.checkTm(s,(50.0,60.0)):
+        #print "TM"
+        return False
+
+    if not primer_util.checkGC(s,(40.0,60.0)):
+        #print "GC full"
+        return False
+
+    if not primer_util.nextera_strand_comparison(s,3):
+        #print "nextera"
+        return False
+
+    if nupack and nextera_binding:
+        nextera_primers = nextera.get_nextera_primers()
+        for l in nextera_primers:
+            # repeat s to search for homo-dimers
+            c = primer_util.checkComplexes([s,l])
+            if len(c) > 0:
+                print "*****Nextera Heterodimer: {} vs {} -- {}".format(l,s, c[0]['pattern'])
+                return False
+
+            c = primer_util.checkComplexes([l,primer_util.reverse_complement(s)])
+            if len(c) > 0:
+                print "*****Nextera False binding: {} vs {} -- {}".format(l,s, c[0]['pattern'])
+                return False
+
+            c = primer_util.checkComplexes([s,primer_util.reverse_complement(l)])
+            if len(c) > 0:
+                print "*****Nextera Complement False binding: {} vs {} -- {}".format(l,s, c[0]['pattern'])
+                return False
+
+
+    if not primer_util.check_old_strands(s):
+        #print "check old"
+        return False
+
+    if nupack:
+        # repeat s to search for homo-dimers
+        c = primer_util.checkComplexes([s,s])
+        if len(c) > 0:
+            print "*****Homodimer: {} {}".format(s, c[0]['pattern'])
+            return False
+
+    return True
+
+
+
 
 if __name__ == "__main__":
     import string
@@ -142,6 +282,6 @@ if __name__ == "__main__":
     print str(r)
 
     dr = build_standard_design_rules([],True)
-    dr.addRule(r)
+    dr.add_rule(r)
     dr.check(s)
     print dr
