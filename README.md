@@ -7,6 +7,7 @@ Python module to support modeling and simulation of a DNA-based information stor
 ### Dependencies
 
 To use this software, you need:
+- git (optional but recommended)
 - Python
 - C++ compiler
 - pip, python package installer

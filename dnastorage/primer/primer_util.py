@@ -6,6 +6,9 @@ from dnastorage.env import *
 import random
 import csv
 import editdistance as ed
+from dnastorage.primer.nextera import *
+from nupack.complexes import *
+from nupack.mfe import *
 
 def getTm(seq):
     return mt.Tm_NN(seq)
@@ -256,6 +259,65 @@ def check_old_strands(s):
             return False
     return True
 
+# should go somewhere else!
+def checkComplexes(seqs):
+    prefix = create_mfe_input(seqs,2)    
+    complexes(complexes_args(prefix))
+    c = read_mfe_output(prefix+".ocx-mfe")
+    problems = [cc for cc in c if cc['deltaG'] < -10.0]
+    return problems
+
+def nupack_check_homodimer(s):
+    c = checkComplexes([s,s])
+    if len(c) > 0:
+        print "*****Homodimer: {} {}".format(s, c[0]['pattern'])
+        return False
+    else:
+        return True
+
+def nupack_check_complexes(s, l):
+    # repeat s to search for homo-dimers
+    c = checkComplexes([s,l])
+    if len(c) > 0:
+        print "*****Heterodimer: {} vs {} -- {}".format(l,s, c[0]['pattern'])
+        return False        
+    c = checkComplexes([l,reverse_complement(s)])
+    if len(c) > 0:
+        print "*****False binding: {} vs {} -- {}".format(l,s, c[0]['pattern'])
+        return False        
+    c = checkComplexes([s,reverse_complement(l)])
+    if len(c) > 0:
+        print "*****False binding: {} vs {} -- {}".format(l,s, c[0]['pattern'])
+        return False        
+    return True
+
+def nupack_check_nextera_bindings(s):
+    nextera_primers = get_nextera_primers()
+    for l in nextera_primers:
+        # repeat s to search for homo-dimers
+        c = checkComplexes([s,l])
+        if len(c) > 0:
+            print "*****Nextera Heterodimer: {} vs {} -- {}".format(l,s, c[0]['pattern'])
+            return False
+
+        c = checkComplexes([l,reverse_complement(s)])
+        if len(c) > 0:
+            print "*****Nextera False binding: {} vs {} -- {}".format(l,s, c[0]['pattern'])
+            return False
+
+        c = checkComplexes([s,reverse_complement(l)])
+        if len(c) > 0:
+            print "*****Nextera Complement False binding: {} vs {} -- {}".format(l,s, c[0]['pattern'])
+            return False
+    return True
+
+def nextera_strand_comparison(seq,distance):
+    for i in illumina_primers:
+        d = correlation_distance(seq,i)
+        if d > distance:
+            show_correlation(seq,i)
+            return False
+    return True
 
 if __name__ == "__main__":
     from Bio.SeqUtils import GC

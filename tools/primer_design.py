@@ -13,6 +13,7 @@ from dnastorage.primer.nextera import *
 from nupack.mfe import *
 from nupack.complexes import *
 from dnastorage.primer.primer_util import *
+from dnastorage.primer.design import *
 
 def id_generator(size=6, chars=string.ascii_uppercase + string.digits):
     return ''.join(random.choice(chars) for _ in range(size))
@@ -50,27 +51,10 @@ nextBases = { 'A' : [ 'C', 'G', 'T' ],
 
 count = 0
 
-def genPrimers(seq,n,l): 
-    global count
-
-    if len(seq)>=4 and seq[-1] == seq[-2] and seq[-2] == seq[-3] and seq[-3] == seq[-4]:
-        B = nextBases[ seq[-1] ]
-    else:
-        B = bases[:]
-        
-    for b in B:
-        s = seq + b
-        if len(s) == l:
-            if hasSingleRun(seq) or hasDimerRun(seq):
-                continue
-            r = Seq.reverse_complement(Seq(seq))
-            if check(seq) and check(r):
-                count = count + 1
-                print seq
-        else:
-            genPrimers(s,n+1,l)
-
-
+###
+### Deprecated function -- DO NOT USE 
+### Will be deleted soon 
+###
 def design_rules_met(s,L,nupack,nextera_binding):
     #print s
     if repetitionScore(s) < 0.99:
@@ -169,6 +153,9 @@ def montecarlo(args):
     D = {} # dictionary for tracking which primers we have
 
     primers = []
+
+    design_rules = build_standard_design_rules(L,use_nupack)
+
     if args.primers != None:
         f = open(args.primers,"r")
         tmp = f.readlines()
@@ -178,7 +165,8 @@ def montecarlo(args):
             l = l.strip()
             if len(l) == 0:
                 continue
-            if design_rules_met(l,L,use_nupack,args.check_nextera_binding):
+            #if design_rules_met(l,L,use_nupack,args.check_nextera_binding):
+            if design_rules.check(l):
                 L.append(l)
                 if l[-1] != 'G':
                     print "Input primer ({}) does not end in G!".format(l)
@@ -202,25 +190,17 @@ def montecarlo(args):
             if len(L) and s[0] == L[0][-1]:
                 found = False
             else:
-                found = design_rules_met(s,L,use_nupack,args.check_nextera_binding)
+                #found = design_rules_met(s,L,use_nupack,args.check_nextera_binding)
+                found = design_rules.check(s)
 
             if found:
                 L.append(s)
                 D[s] = 1
                 count = count+1
 
+    print design_rules
+
     return (L,count,i)
-
-
-def check(seq):
-    s = seq
-    gc = GC(s)
-    if gc >= 40 and gc <= 60:            
-        t = mt.Tm_NN(s)
-        if t >= 50 and t <= 60:
-            return True        
-    return False
-
 
 complement = { 'A' : 'T',
                'C' : 'G',
@@ -253,12 +233,6 @@ def checkFoldFile(seq):
         if d < -3.0:
             return False
     return True
-
-def runAll():
-    global count
-    genPrimers("",0,20)
-    print "Found: ",count, " out of ", 4**20
-    print "{}%".format(float(count)/(4**20)*100)
 
 
 parser = argparse.ArgumentParser(description="Select a method for computing number of primers.")

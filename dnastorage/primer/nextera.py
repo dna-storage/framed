@@ -8,7 +8,6 @@ import subprocess
 import re
 import os
 import argparse
-from primer_util import *
 
 #illumina_primers = [ 
 #    'CAAGCAGAAGACGGCATACGAGAT',
@@ -27,14 +26,6 @@ def nextera_chunks(size):
         for i in range(0,len(p)-size+1):
             l[ p[i:i+size] ] = 1
     return l.keys()
-
-def nextera_strand_comparison(seq,distance):
-    for i in illumina_primers:
-        d = correlation_distance(seq,i)
-        if d > distance:
-            show_correlation(seq,i)
-            return False
-    return True
 
 def get_nextera_primers():
     return illumina_primers[:]
