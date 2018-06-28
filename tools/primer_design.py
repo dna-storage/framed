@@ -48,12 +48,7 @@ def montecarlo(args):
     while count < args.n and (time.time() - t <= args.timeout):
         s = pg.get()
         i += 1
-        found = True
-        if len(L) and s[0] == L[0][-1]:
-            found = False
-        else:
-            found = design_rules.check(s)
-        if found:
+        if design_rules.check(s):
             L.append(s)
             count = count+1
 
@@ -91,6 +86,7 @@ if args.mc:
     if args.o != None:
         f = open(args.o,"w")
         for l in L:
+            # create verbose command line option?
             #print l,"  Tm=",mt.Tm_NN(l)
             f.write(l+"\n")
         f.close()

@@ -32,11 +32,16 @@ def read_mfe_output(filename):
                 i+=1
             else:
                 name = "unknown"
-            order = int(l[i].strip())
-            deltaG = float(l[i+1].strip())
-            pattern = l[i+2].strip()
+            try:
+                order = int(l[i].strip())
+                deltaG = float(l[i+1].strip())
+                pattern = l[i+2].strip()
+                i += 3
+            except:
+                order = 0
+                deltaG = -100
+                pattern = ""
             pairs = []
-            i += 3
             while not("% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% %" in l[i]):
                 p = [ int(x) for x in l[i].split() ]
                 pairs.append(p)

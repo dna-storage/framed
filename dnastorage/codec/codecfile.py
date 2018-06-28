@@ -4,9 +4,8 @@ from dnastorage.codec import base_conversion
 from dnastorage.codec import dense
 
 class EncodePacketizedFile:
-    def __init__(self,filename,packetSize,CodecObj=None):
-        self._packetizedFile = ReadPacketizedFile(filename)
-        self._packetizedFile.packetSize = packetSize
+    def __init__(self,packetizedFile,CodecObj=None):
+        self._packetizedFile = packetizedFile
         self._iterating = False
         if CodecObj == None:
             self._Codec = dense.DenseCodec()
@@ -14,8 +13,8 @@ class EncodePacketizedFile:
             self._Codec = CodecObj
 
     @property
-    def fileSize(self):
-        return self._packetizedFile.size
+    def bytes_encoded(self):
+        return self._packetizedFile.bytes_read
          
     # Derived classes should override only this method, unless other
     # functionality also needs to be altered
@@ -53,8 +52,8 @@ class EncodePacketizedFile:
             raise StopIteration()        
 
 class DecodePacketizedFile:
-    def __init__(self,filename,size,packetSize,CodecObj=None):
-        self._packetizedFile = WritePacketizedFile(filename,size,packetSize)
+    def __init__(self,packetizedFile,CodecObj=None):
+        self._packetizedFile = packetizedFile
         self._data = {}
         if CodecObj == None:
             self._Codec = dense.DenseCodec()
