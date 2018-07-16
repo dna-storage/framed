@@ -15,6 +15,7 @@ complement_table={'A':'T',
                   'C':'G',
                   'T':'A'}
 
+background_strand=''
 
 def compute_complement(strand):
     return_strand=[]
@@ -64,11 +65,20 @@ def read_library(dna_library):
 #the requirement that our background strand does not repeat this
 nucleotide_set={}
 
+#no_repeat_table={'A':['G','C','T'],
+  #               'G':['A','C','T'],
+ #                'C':['A','G','T'],
+   #              'T':['A','G','C']
+    #             }
+
+
+
 no_repeat_table={'A':['G','C','T'],
                  'G':['A','C','T'],
                  'C':['A','G','T'],
                  'T':['A','G','C']
                  }
+
 nucs=['A','G','C','T']
 
 #recursively add on to end of strand
@@ -100,18 +110,29 @@ def find_clear(input_set):
     return output_set
 
 
-#list to hold candidate background strands
-candidate_list=[]
+
 #recursively build all combinations of the good strands
-def search_strands(set_of_strands,strand):
+def search_strands(set_of_strands,strand,max_run):
+    global background_strand
     if len(set_of_strands)==1:
-        candidate_list.append(strand+set_of_strands[0])
+        _strand=strand+set_of_strands[0]
+        if'AA' not in _strand and 'GG' not in _strand and 'CC' not in _strand and 'TT' not in _strand and search_candidates(_strand,max_run):
+            print ' Full strand '
+            background_strand=strand+set_of_strands[0]
+            return True
+        else:
+            return False
+        
     else:
         for n,  s in enumerate(set_of_strands):
             _strand=strand+s
             _set_of_strands=set_of_strands[:]
             del _set_of_strands[n]
-            search_strands(_set_of_strands,_strand)
+            if 'AA' not in _strand and 'GG' not in _strand and 'CC' not in _strand and 'TT' not in _strand:
+                if(search_candidates(_strand,max_run)):
+                    if(search_strands(_set_of_strands,_strand,max_run)):
+                        return True
+    return False
             
     
 
@@ -122,31 +143,25 @@ def find_background(good_strands,max_run):
     start=0
     while start+num_subs<=len(good_strands):
         strand_set=good_strands[start:start+num_subs]
-        search_strands(strand_set,'')
+        if(search_strands(strand_set,'',max_run)):
+            break
         start=start+1
+   
 
 
 #search for candidates that give us what we need
-def search_candidates(max_len):
-    return_strand=''
-    for strand in candidate_list:
-        #check for repeat
-        if 'AA' in strand or 'GG' in strand or 'CC' in strand or 'TT' in strand:
-            continue
+def search_candidates(candidate,max_len):
+    strand=candidate
+    #print strand
+    #search the strand to make sure its ok
+    start=0
+    while start+max_len<=len(strand):
+        if nucleotide_set[strand[start:start+max_len]] != 'clear':
+            return False
         else:
-            assert(len(strand)==160)
-            #search the strand to make sure its ok
-            start=0
-            while start+max_len<=160:
-                if nucleotide_set[strand[start:start+max_len]] != 'clear':
-                    break
-                else:
-                    start=start+1
-                    if start+max_len==160:
-                        return_strand=strand
-        if strand != '':
-            break
-    return return_strand
+            start=start+1
+            
+    return True
         
 
         
@@ -181,14 +196,12 @@ if __name__ == "__main__":
     
     good_strands=find_clear(nucleotide_set)
 
-    print len(good_strands)
 
-    #try to find background candidates
-    find_background(good_strands[0:20],args.max_run)
+    #try to find background strand
+    find_background(good_strands,args.max_run)
 
-    
 
-    #find a background candidate that meets the requirements
-    background_strand=search_candidates(args.max_run)
-
-    print 'Background Strand: {}'.format(background_strand)
+   
+    out_results=open(args.o,'w')
+    out_results.write("Background Strand {}\n".format(background_strand))
+ 
