@@ -92,8 +92,9 @@ class ReadPacketizedFile:
 
     def read(self):
         b = self.__fd.read(self.packetSize)
+        print(self.packetSize)
         if b and len(b) != self.packetSize:
-            b = b.ljust(self.packetSize,'\x00')
+            b = b.ljust(self.packetSize,'\x00')           
         return b
 
     # packet property

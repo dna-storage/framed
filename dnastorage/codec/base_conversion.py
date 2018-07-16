@@ -1,4 +1,4 @@
-#!/usr/bin/python
+ #!/usr/bin/python
 from copy import copy
 import random
 
@@ -43,7 +43,9 @@ def convertQuarnary(dec,length):
 def convertBaseHelper(base,dec,s):
     m = dec % base
     q = dec / base
+    print(s)
     s = s + bases[m]
+    print(s)
     if q > 0:
         return convertBaseHelper(base,q,s)
     else:

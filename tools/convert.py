@@ -154,7 +154,7 @@ if __name__ == "__main__":
             for x,y in t:
                 entries = [ str(e) for e in y ]
                 entries = ",".join(entries)
-                tablefile.write("{},{}\n".format(x,entries))
+                tablefile.wriemate("{},{}\n".format(x,entries))
             tablefile.close()
                             
     elif args.decode:
@@ -201,6 +201,3 @@ if __name__ == "__main__":
             Decoder.decode(s)
         Decoder.write()
             
-        
-
-

@@ -46,6 +46,7 @@ def binary_rotate_encode(strand,prev='A'):
         else:
             counts[l[i]] += 1
             prev = l[i]
+    print("".join(l))
     return "".join(l)
 
 def binary_unrotate_decode(strand):
