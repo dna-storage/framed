@@ -61,9 +61,7 @@ def read_library(dna_library):
     lib.close()
     return return_library
 
-#dictionary to keep track of what non repeating strands are used in the library, will be used to meet
-#the requirement that our background strand does not repeat this
-nucleotide_set={}
+
 
 #no_repeat_table={'A':['G','C','T'],
   #               'G':['A','C','T'],
@@ -82,22 +80,22 @@ no_repeat_table={'A':['G','C','T'],
 nucs=['A','G','C','T']
 
 #recursively add on to end of strand
-def recursive_strand(strand,max_len):
+def recursive_strand(strand,max_len,nuc_set):
     if(len(strand)+1==max_len):
         for n in no_repeat_table[strand[len(strand)-1]]:
             #save all of the found strands
-            nucleotide_set[strand+n]='clear'
+            nuc_set[strand+n]='clear'
     else:
         for n in no_repeat_table[strand[len(strand)-1]]:
-            recursive_strand(strand+n,max_len)
+            recursive_strand(strand+n,max_len,nuc_set)
         
 
     
-def create_set(max_run):
+def create_set(max_run,nuc_set):
     return_set={}
     for n in nucs:
         #send the beginning 
-        recursive_strand(n,max_run)
+        recursive_strand(n,max_run,nuc_set)
 
 
 
@@ -164,10 +162,32 @@ def search_candidates(candidate,max_len):
     return True
         
 
+def pad_background(max_run):
+    global background_strand
+    pad_length=160-len(background_strand)
+    pad_set={}
+    create_set(pad_length,pad_set)
+    for pad_seq in pad_set:
+        strand=background_strand+pad_seq
+        if 'AA' in strand or 'GG' in strand or 'CC' in strand or 'TT' in strand:
+            continue
+        else:
+            if search_candidates(strand,max_run):
+                background_strand=strand
+                break
+            else:
+                continue
+
+
+
         
 if __name__ == "__main__":
     import argparse
-    
+    #dictionary to keep track of what non repeating strands are used in the library, will be used to meet
+    #the requirement that our background strand does not repeat this
+    nucleotide_set={}
+
+
     parser = argparse.ArgumentParser(description="Design a 160 bp background strand")
     parser.add_argument('--o',dest="o",action="store",default="background.out", help="Output file.")     
     parser.add_argument('input_library', nargs=1, help='library to be searched')
@@ -183,17 +203,14 @@ if __name__ == "__main__":
     dna_library=[]
     #read the DNA library with all of the strands 
     dna_library=read_library(args.input_library[0])
-    create_set(args.max_run)
-
-    
+    create_set(args.max_run,nucleotide_set)
 
 
     #scan through every 5 lenth strand in the library, fill in the sub strand table as it goes
     scan_strands(dna_library,args.max_run)
 
 
-    #find the strings that do not repeat
-    
+    #find the strings that do not repeat    
     good_strands=find_clear(nucleotide_set)
 
 
@@ -201,7 +218,14 @@ if __name__ == "__main__":
     find_background(good_strands,args.max_run)
 
 
-   
+    #pad out background strand if it is less than 160 bp
+    if background_strand == '':
+        background_strand='No available background strand'
+    elif len(background_strand)<160:
+        if not pad_background(args.max_run):
+            background_strand='No available background strand'
+        
+
     out_results=open(args.o,'w')
-    out_results.write("Background Strand {}\n".format(background_strand))
+    out_results.write("Background Strand ---- {}\n".format(background_strand))
  
