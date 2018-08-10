@@ -174,9 +174,11 @@ def pad_background(max_run):
         else:
             if search_candidates(strand,max_run):
                 background_strand=strand
-                break
+                print 'padded'
+                return True
             else:
                 continue
+    return False
 
 
 
