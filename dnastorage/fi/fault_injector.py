@@ -1,6 +1,7 @@
 #Classes for each of the fault models
 import os
 import random
+import csv
 
 #substitution dictionary used for substitution errors
 sub_dict={'A':['G','C','T'],'G':['C','A','T'], 'T':['G','C','A'], 'C':['G','T','A']}
@@ -31,7 +32,10 @@ class BaseModel:
         for strand in faulty_strands:
             out_file.write("{}\n".format(strand))
         out_file.close()
-
+    def read_csv(self,file_name):
+        _file=open(file_name,'r')
+        csv_parsed=csv.reader(_file,delimiter=',')
+        return csv_parsed
 
 #class that contains functionality for missing strands fault model
 class miss_strand(BaseModel):
@@ -66,17 +70,97 @@ class miss_strand(BaseModel):
 
 
         
-#class that contains fucntionality for injecting faults into strands 
+#class that contains fucntionality for injecting faults into strands, only injects faults into the data fields, not the primers
 class strand_fault(BaseModel):
     def __init__(self,args):
         BaseModel.__init__(self,args)
         self.read_file()
+        #read csv file if it is available
+        if self._args.fault_file is not None:
+            self._csv_data=self.read_csv(self._args.fault_file)
     def Run(self):
         self._injection={}
         self._error_strands=[]
-        self._injection=self.injection_sites(self._input_library)
-        self._error_strands=self.inject_errors(self._injection,self._input_library)
+        #if there is no csv file, chose random spots and errors
+        if self._args.fault_file is None:
+            self._injection=self.injection_sites(self._input_library)
+            self._error_strands=self.inject_errors(self._injection,self._input_library)
+        #if there is a csv file, inject errors based off the data
+        elif self._args.fault_file is not None:
+            self._error_strands=self.inject_distribution(self._input_library,self._csv_data)
         self.write_out(self._error_strands)
+
+
+
+    #function to insert errors based on the distribution data in the csv files 
+    def inject_distribution(self,input_strands,prob_data):
+        out_list=input_strands[:]
+        #inject faults throughout the input strands, no subset is chosen, unlike the other fault model, maybe add that in later if wanted?
+        overall_error=[]
+        del_giv_error=[]
+        inser_giv_error=[]
+        sub_giv_error=[]
+        strand_index_start=self._args.p1
+        
+        #go through the prob_data data structure and grab relevant data and condition to make it easier for random number generate
+        for row_of_data in prob_data:
+            #each row is a row from the input spreadsheet
+            if row_of_data[0] == "Overall Error":
+                overall_error=[int(float(prob)*10000) for prob in row_of_data[1+strand_index_start:len(row_of_data[1:])-self._args.p2+1]]
+            elif row_of_data[0] == "Del/Error":
+                del_giv_error=[int(float(prob)*1000) for prob in row_of_data[1+strand_index_start:len(row_of_data[1:])-self._args.p2+1]]
+            elif row_of_data[0] == "Ins/Error":
+                inser_giv_error=[int(float(prob)*1000) for prob in row_of_data[1+strand_index_start:len(row_of_data[1:])-self._args.p2+1]]
+            elif row_of_data[0] == "Sub/Error":
+                sub_giv_error=[int(float(prob)*1000) for prob in row_of_data[1+strand_index_start:len(row_of_data[1:])-self._args.p2+1]]
+        assert(len(overall_error)>0 and len(del_giv_error)>0 and len(inser_giv_error)>0 and len(sub_giv_error)>0)
+        assert(len(overall_error)==(len(out_list[0])-self._args.p1-self._args.p2))
+        #go through each strand and nucleotide and inject errors
+        for strand_index, strand in enumerate(out_list):
+            for nuc_index, nucleotide in enumerate(strand[strand_index_start:len(strand)-self._args.p2]):
+                #generate random numbers and apply a appropriate error if error has occured
+                inject_error=random.randint(1,10000)
+                #should inject error 
+                if inject_error <= overall_error[nuc_index]:
+                    print "error"
+                    del_boundary_lower=1
+                    del_boundary_upper=del_giv_error[nuc_index]
+                    inser_boundary_lower=del_boundary_upper+1
+                    inser_boundary_upper=del_boundary_upper+inser_giv_error[nuc_index]
+                    sub_boundary_lower=inser_boundary_upper+1
+                    sub_boundary_upper=inser_boundary_upper+sub_giv_error[nuc_index]
+                    #random value to select amongst the error type
+                    error_type=random.randint(1,sub_boundary_upper)
+                    
+                    #inject deletion error
+                    if error_type >= del_boundary_lower and error_type <= del_boundary_upper:
+                        print "deletion"
+                        out_list[strand_index]=out_list[strand_index][0:nuc_index]+out_list[strand_index][nuc_index+1:len(out_list[strand_index])]
+                    #inject insertion error
+                    elif error_type >= inser_boundary_lower and error_type <= inser_boundary_upper:
+                        print "insertion" 
+                        insert_nucleotide=random.choice(nuc_list)
+                        out_list[strand_index]=out_list[strand_index][0:nuc_index]+insert_nucleotide+out_list[strand_index][nuc_index:len(out_list[strand_index])]
+                    #substitution error
+                    elif error_type >= sub_boundary_lower and error_type <= sub_boundary_upper:
+                        print "sub"
+                        sub_nucleotide=random.choice(sub_dict[out_list[strand_index][nuc_index]])
+                        out_list[strand_index]= out_list[strand_index][0:nuc_index]+sub_nucleotide+out_list[strand_index][nuc_index+1:len(out_list[strand_index])]
+                    else:
+                        print del_boundary_upper
+                        print inser_boundary_lower
+                        print inser_boundary_upper
+                        print sub_boundary_lower
+                        print sub_boundary_upper
+                        print error_type
+                        #should not come here
+                        assert(0)
+        return out_list
+
+
+
+
+        
     #get strands to inject faults at and nucleotides within the strand
     def injection_sites(self,input_library):
         #list of strand indexes to chose from 
@@ -108,6 +192,9 @@ class strand_fault(BaseModel):
         print fault_list
         return fault_list
 
+     
+
+        
     #inject the errors into the selected strands and nucleotides
     def inject_errors(self,inject_sites,input_library):
         out_list=input_library[:]
@@ -117,7 +204,7 @@ class strand_fault(BaseModel):
                 if inject_sites[strand_indexes][fault_indexes] == 0:
                     #chose a random nucleotide that is different from the current one
                     sub_nucleotide=random.choice(sub_dict[out_list[strand_indexes][fault_indexes]])
-                    out_list[strand_indexes]=out_list[strand_indexes][0:fault_indexes]+sub_nucleotide+out_list[strand_indexes][fault_indexes+1:len(out_list[strand_indexes])]
+                    out_list[strand_indexes]= out_list[strand_indexes][0:fault_indexes]+sub_nucleotide+out_list[strand_indexes][fault_indexes+1:len(out_list[strand_indexes])]
                 #deletion error
                 elif inject_sites[strand_indexes][fault_indexes] == 1:
                     out_list[strand_indexes]=out_list[strand_indexes][0:fault_indexes]+out_list[strand_indexes][fault_indexes+1:len(out_list[strand_indexes])]
@@ -136,6 +223,9 @@ class combo(BaseModel):
         self.strand_faults=strand_fault(args)
         self.missing_strands=miss_strand(args)
         self.read_file()
+         #read csv file if it is available
+        if self._args.fault_file is not None:
+            self._csv_data=self.read_csv(self._args.fault_file)
     def Run(self):
         strands_after_missing=[]
         missing_sites=[]
@@ -143,8 +233,11 @@ class combo(BaseModel):
         error_sites={}
         self.missing_strands.remove_sites(missing_sites,self._input_library)
         strands_after_missing=self.missing_strands.remove_strands(missing_sites,self._input_library)
-        error_sites=self.strand_faults.injection_sites(strands_after_missing)
-        missing_strands_with_errors=self.strand_faults.inject_errors(error_sites,strands_after_missing)
+        if self._args.fault_file is None:
+            error_sites=self.strand_faults.injection_sites(strands_after_missing)
+            missing_strands_with_errors=self.strand_faults.inject_errors(error_sites,strands_after_missing)
+        elif self._args.fault_file is not None:
+            missing_strands_with_errors=self.strand_faults.inject_distribution(strands_after_missing,self._csv_data)
         self.write_out(missing_strands_with_errors)
 
 

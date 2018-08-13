@@ -19,7 +19,7 @@ if __name__ == "__main__":
 
     parser.add_argument('--o',dest="o",action="store",default="fi.dna", help="Output file.")    
     parser.add_argument('input_file', nargs=1, help='file to have injections inserted')
-    parser.add_argument('--fault_rate_file', dest="fault_file",action="store", default="none", help='file to have fault rate per nucleotide')
+    parser.add_argument('--fault_rate_file', dest="fault_file",action="store", default=None, help='file to have fault rate per nucleotide')
 
     parser.add_argument('--fault_model',required=True,choices=['miss_strand','strand_fault','combo'])
 
