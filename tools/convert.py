@@ -10,73 +10,83 @@ from dnastorage.primer.primer_util import *
 import sys
 import os
 
-
-def build_encode_architecture(arch, filename, primer5, primer3):    
+def build_encode_architecture(arch, pf, primer5, primer3):    
     if arch == "UW+MSv1":
         h = huffman.HuffmanRotateCodec(huffman.HuffmanCodec(21,Checksum()))
         p = StrandPrimers(primer5, primer3, h)
-        enc = EncodeXORStrand(filename,20,p)
+        ## build packetized file encode
+        pf.packetSize = 20
+        enc = EncodeXORStrand(pf,p)
         return enc
 
     elif arch == "Illinois":
         illini = illinois.IllinoisCodec(primer5,150,Checksum())
         p = StrandPrimers(primer5, primer3, illini)
-        enc = EncodeNaiveStrand(filename,149,p)
+        pf.packetSize = 149
+        enc = EncodeNaiveStrand(pf,p)
         return enc
 
     elif arch == 'Goldman':
         h = huffman.HuffmanRotateCodec(huffman.HuffmanCodec(21,Checksum()))
         p = StrandPrimers(primer5, primer3, h)
-        enc = EncodeGoldmanStrand(filename,5,4,p)
+        pf.packetSize = 5
+        enc = EncodeGoldmanStrand(pf,4,p)
         return enc
 
     elif arch == 'Fountain':
         #assert False and "Not fully implemented"
         h = huffman.HuffmanRotateCodec(huffman.HuffmanCodec(23,Checksum()))
         p = StrandPrimers(primer5, primer3, h)
-        enc = EncodeFountainStrand(filename,22,1.5,p)    
+        pf.packetSize = 22
+        enc = EncodeFountainStrand(pf,1.5,p)    
         return enc
 
     elif arch == 'Binary':
         b = binary.BinaryRotateCodec(binary.BinaryCodec(Checksum()))
         p = StrandPrimers(primer5, primer3, b)
-        enc = EncodeNaiveStrand(filename,17,p)
+        pf.packetSize = 17
+        enc = EncodeNaiveStrand(pf,p)
         return enc
 
     elif arch == 'NCState':
         assert False and "Not fully implemented"
         return None
 
-def build_decode_architecture(arch, filename, filesize, primer5, primer3, fountain_table=None):
+def build_decode_architecture(arch, pf, primer5, primer3, fountain_table=None):
     if arch == "UW+MSv1":
         h = huffman.HuffmanRotateCodec(huffman.HuffmanCodec(21,Checksum()))
         p = StrandPrimers(primer5, primer3, h)
-        dec = DecodeXORStrand(filename,filesize,20,p)
+        pf.packetSize = 20
+        dec = DecodeXORStrand(pf,p)
         return dec
 
     elif arch == "Illinois":
         illini = illinois.IllinoisCodec(primer5,150,Checksum())
         p = StrandPrimers(primer5, primer3, illini)
-        enc = DecodeNaiveStrand(filename,filesize,149,p)
+        pf.packetSize = 149
+        enc = DecodeNaiveStrand(pf,p)
         return enc
 
     elif arch == 'Goldman':
         h = huffman.HuffmanRotateCodec(huffman.HuffmanCodec(21,Checksum()))
         p = StrandPrimers(primer5, primer3, h)
-        dec = DecodeGoldmanStrand(filename,filesize,5,4,p)
+        pf.packetSize = 5
+        dec = DecodeGoldmanStrand(pf,4,p)
         return dec
 
     elif arch == 'Binary':
         b = binary.BinaryRotateCodec(binary.BinaryCodec(Checksum()))
         p = StrandPrimers(primer5, primer3, b)
-        enc = DecodeNaiveStrand(filename,filesize,17,p)
+        pf.packetSize = 17
+        enc = DecodeNaiveStrand(pf,p)
         return enc
 
     elif arch == 'Fountain':
         #assert False and "Not fully implemented"
         h = huffman.HuffmanRotateCodec(huffman.HuffmanCodec(23,Checksum()))
         p = StrandPrimers(primer5, primer3, h)
-        enc = DecodeFountainStrand(filename,filesize,22,fountain_table,p)    
+        pf.packetSize = 22
+        enc = DecodeFountainStrand(pf,fountain_table,p)    
         return enc
 
     elif arch == 'NCState':
@@ -84,11 +94,11 @@ def build_decode_architecture(arch, filename, filesize, primer5, primer3, founta
         return None
 
 def read_header(dec_file):
-    f = open(dec_file,"r")
+    f = dec_file
     header = {}
     while True:
         l = f.readline()
-        if l.startswith('%') and 'file size' in l:
+        if l.startswith('%') and 'bytes encoded' in l:
             words = l[1:].split(' ')
             try:
                 size = int(words[0])
@@ -103,7 +113,7 @@ def read_header(dec_file):
             header['primer3'] = words[0]
         elif not l.startswith('%'):
             break
-    f.close()
+
     return header
 
 
@@ -112,16 +122,16 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description="Create primers with high likelihood of false binding.")
 
-    parser.add_argument('--o',dest="o",action="store",default="a.out", help="Output file.")    
+    parser.add_argument('--o',nargs='?', type=argparse.FileType('w'), default=sys.stdout, help="Output file.")    
     parser.add_argument('--encode',dest="encode",action="store_true",default=False,help="Encode input file into DNA.")    
     parser.add_argument('--decode',dest="decode",action="store_true",default=False,help="Decode input file from DNA into original binary form.")    
 
     parser.add_argument('--arch',required=True,choices=['UW+MSv1','Illinois','Binary','Goldman','Fountain','NCState'])
     parser.add_argument('--filesize',type=int,dest="filesize",action="store",default=0, help="Size of file to decode.")
 
-    parser.add_argument('--primer5',dest="primer5",action="store",default=None, help="Beginning primer.")
-    parser.add_argument('--primer3',dest="primer3",action="store",default=None, help="Ending primer.")
-    parser.add_argument('input_file', nargs=1, help='file to be converted')
+    parser.add_argument('--primer5',dest="primer5",action="store",default="", help="Beginning primer.")
+    parser.add_argument('--primer3',dest="primer3",action="store",default="", help="Ending primer.")
+    parser.add_argument('input_file', nargs='?', type=argparse.FileType('r'), default=sys.stdin, help='file to be converted')
     args = parser.parse_args()
     
     # Debbuging: did I get the args?
@@ -133,24 +143,34 @@ if __name__ == "__main__":
         print "Can't encode and decode at the same time."
         print "Assuming encode and continuing."
     
-    if len(args.input_file) < 1:
-        print "No input file specified."
-        sys.exit(-1)
-
     if args.encode:
-        enc = build_encode_architecture(args.arch, args.input_file[0], args.primer5, args.primer3)
-        ofile = open(args.o,"w")
-        ofile.write("%{}\n".format(args.input_file[0]))
-        ofile.write("%{} - file size\n".format(enc.fileSize))
+        packetizedFile = ReadPacketizedFilestream(args.input_file)
+        enc = build_encode_architecture(args.arch, packetizedFile, args.primer5, args.primer3)
+        strands = []
+        try:
+            for e in enc:
+                strands.append(e)
+        except:
+            pass
+
+        ofile = args.o
+        ofile.write("%{}\n".format(args.input_file.name))
+        if args.input_file == sys.stdin:
+            ofile.write("%{} - bytes encoded\n".format(enc.bytes_encoded))
+        else:
+            ofile.write("%{} - bytes encoded\n".format(packetizedFile.size))
         ofile.write("%{} - primer 5' end\n".format(args.primer5))
         ofile.write("%{} - primer 3' end\n".format(args.primer3))        
-        for e in enc:
-            ofile.write("{}\n".format(e))
+        for s in strands:
+            ofile.write("{}\n".format(s))
         ofile.close()
 
         if args.arch == 'Fountain':
             t = enc.getTable()
-            tablefile = open(args.o+".table","w")
+            if args.o == sys.stdout:
+                tablefile = open("default.table","w")
+            else:
+                tablefile = open(args.o+".table","w")
             for x,y in t:
                 entries = [ str(e) for e in y ]
                 entries = ",".join(entries)
@@ -158,7 +178,9 @@ if __name__ == "__main__":
             tablefile.close()
                             
     elif args.decode:
-        h = read_header(args.input_file[0]) 
+        if args.input_file != sys.stdin:
+            h = read_header(args.input_file)
+ 
         if args.filesize == 0:
             if h.has_key('size'):
                 args.filesize = h['size']
@@ -182,7 +204,10 @@ if __name__ == "__main__":
 
         table = []        
         if args.arch == 'Fountain':
-            tfile = open(args.input_file[0]+".table","r")
+            if args.input_file == sys.stdin:
+                tfile = open("default.table","r")
+            else:
+                tfile = open(args.input_file.name+".table","r")
             if tfile == None:
                 print "Please fountain table."
                 sys.exit(-1)                                            
@@ -195,9 +220,28 @@ if __name__ == "__main__":
             tfile.close()
             #print table
 
-        Decoder = build_decode_architecture(args.arch, args.o, args.filesize, args.primer5, args.primer3,table)
-        strands = read_primers(args.input_file[0])
-        for s in strands:
-            Decoder.decode(s)
+        packetizedFile = WritePacketizedFilestream(args.o,args.filesize,20)
+
+        Decoder = build_decode_architecture(args.arch, packetizedFile, args.primer5, args.primer3,table)
+
+        try:
+            while not Decoder.complete:
+                s = args.input_file.readline()
+                s = s.strip()
+                if s.startswith('%'):
+                    continue
+                if len(s) == 0:
+                    break
+                Decoder.decode(s)  
+        except:
+            pass
+
+        if args.o == sys.stdout:
+            print "".join([ '-' for _ in range(0,80) ])
         Decoder.write()
-            
+
+        if args.o == sys.stdout:
+            print ""
+        
+
+

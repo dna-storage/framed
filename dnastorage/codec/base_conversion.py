@@ -84,7 +84,7 @@ def encodeWithExclusionHelper(dec,s,excluded):
         q = dec / 3
         s += ibases[m]
 
-    if q > 0:
+    if q > 0 or len(s) < len(excluded):
         return encodeWithExclusionHelper(q,s,excluded)
     else:
         return s

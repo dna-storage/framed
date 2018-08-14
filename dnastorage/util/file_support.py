@@ -1,9 +1,10 @@
 #!/usr/bin/python
 import os
+import sys
 
-class WritePacketizedFile:
-    def __init__(self,filename,size,packetSize):
-        self.__filename = filename
+class WritePacketizedFilestream:
+    def __init__(self,fd,size,packetSize):
+        self.__fd = fd
         self.size = size
         self.__set_packetSize(packetSize)
         self.__data = {}
@@ -33,7 +34,9 @@ class WritePacketizedFile:
 
     @property
     def lastPacketSize(self):
-        return self.size - (self.numberOfPackets)*self.packetSize
+        # this function should never return 0, not the same as modulo
+        # should return a number >= 1 and <= self.packetSize
+        return self.size - (self.numberOfPackets-1)*self.packetSize
 
     @property
     def complete(self):
@@ -62,7 +65,6 @@ class WritePacketizedFile:
 
     ## Warning: requires buffering the whole file!
     def write(self):
-        f = open(self.__filename,"wb")
         items = self.__data.items()
         items.sort(cmp=lambda x,y: cmp(x[0],y[0]))
         i = 0
@@ -70,29 +72,31 @@ class WritePacketizedFile:
         for key,value in items:
             if i < key:
                 while i < key:                    
-                    f.write(emptyString)
+                    self.__fd.write(emptyString)
                     i+=1
             if i == self.numberOfPackets-1:
-                f.write(value[0:self.lastPacketSize])
+                self.__fd.write(value[0:self.lastPacketSize])
             else:
-                f.write(value)
+                self.__fd.write(value)
             i+=1
-        f.close()
+        if self.__fd != sys.stdout:
+            self.__fd.close()
         
-
-class ReadPacketizedFile:    
-    def __init__(self,filename):
+class WritePacketizedFile(WritePacketizedFilestream):
+    def __init__(self,filename,size,packetSize):
+        WritePacketizedFilestream.__init__(self,open(filename,"wb"),size,packetSize)
         self.__filename = filename
-        self.__fd = open(self.__filename,"rb")
-        self.__set_packetSize(120)
 
-    @property
-    def filename(self):
-        return self.__filename
+
+class ReadPacketizedFilestream:    
+    def __init__(self,fd):
+        self.__fd = fd
+        self.__set_packetSize(120)
+        self.__read_size = 0
 
     def read(self):
         b = self.__fd.read(self.packetSize)
-        print(self.packetSize)
+        self.__read_size += len(b)
         if b and len(b) != self.packetSize:
             b = b.ljust(self.packetSize,'\x00')           
         return b
@@ -125,12 +129,26 @@ class ReadPacketizedFile:
     def size(self):
         return os.fstat(self.__fd.fileno()).st_size
     @property
+    def bytes_read(self):
+        return self.__read_size
+        
+    @property
     def numberOfPackets(self):
         if (self.size % self.packetSize)==0:
             return self.size / self.packetSize
         else:
             return self.size / self.packetSize + 1
             
+
+class ReadPacketizedFile(ReadPacketizedFilestream):    
+    def __init__(self,filename):
+        ReadPacketizedFilestream.__init__(self,open(filename,"rb"))
+        self.__filename = filename
+    @property
+    def filename(self):
+        return self.__filename
+
+
 if __name__ == "__main__":
     import os
     import sys

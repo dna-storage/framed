@@ -158,6 +158,17 @@ def hasSingleRun(seq):
         return True
     return False
 
+def hasLongRun(seq):
+    if seq.find("AAAA") >= 0:
+        return True
+    if seq.find("TTTT") >= 0:
+        return True
+    if seq.find("GGGG") >= 0:
+        return True
+    if seq.find("CCCC") >= 0:
+        return True
+    return False
+
 def hasRepeat(seq):
     if seq.find("AA") >= 0:
         return True
@@ -196,6 +207,28 @@ def hasDimerRun(seq):
         return True
     return False
 
+
+def hamming_difference(s1, s2):
+    value = {'A':0, 'C':1, 'G':2, 'T':3}
+    diff = []
+    for ch1, ch2 in zip(s1,s2):
+        if ch1 == ch2:
+            continue
+        diff.append( str(ch1 + "->" + ch2) )
+    return ",".join(diff)
+
+def hamming_difference_indexes(s1, s2):
+    value = {'A':0, 'C':1, 'G':2, 'T':3}
+    diff = []
+    i = 0
+    for ch1, ch2 in zip(s1,s2):
+        if ch1 == ch2:
+            i += 1
+            continue
+        else:
+            diff.append( i )
+        i += 1
+    return diff
 
 def hamming_distance(s1, s2):
     #Return the Hamming distance between equal-length sequences
@@ -260,9 +293,12 @@ def check_old_strands(s):
     return True
 
 # should go somewhere else!
-def checkComplexes(seqs):
-    prefix = create_mfe_input(seqs,2)    
-    complexes(complexes_args(prefix))
+def checkComplexes(seqs,Tm=50):
+    prefix = create_mfe_input(seqs,2)
+    args = complexes_args(prefix)
+    args.append("-T")
+    args.append(str(Tm))
+    complexes(args)
     c = read_mfe_output(prefix+".ocx-mfe")
     problems = [cc for cc in c if cc['deltaG'] < -10.0]
     return problems
@@ -270,24 +306,27 @@ def checkComplexes(seqs):
 def nupack_check_homodimer(s):
     c = checkComplexes([s,s])
     if len(c) > 0:
-        print "*****Homodimer: {} {}".format(s, c[0]['pattern'])
+        #print "*****Homodimer: {} {}".format(s, c[0]['pattern'])
         return False
     else:
         return True
 
-def nupack_check_complexes(s, l):
+def nupack_check_heterodimer_complexes(s, l, Tm=50):
     # repeat s to search for homo-dimers
-    c = checkComplexes([s,l])
+    c = checkComplexes([s,l],Tm)
     if len(c) > 0:
-        print "*****Heterodimer: {} vs {} -- {}".format(l,s, c[0]['pattern'])
+        #print "*****Heterodimer: {} vs {} -- {}".format(l,s, c[0]['pattern'])
         return False        
-    c = checkComplexes([l,reverse_complement(s)])
+    return True
+
+def nupack_check_complexes(s, l, Tm=50):
+    c = checkComplexes([l,reverse_complement(s)],Tm)
     if len(c) > 0:
-        print "*****False binding: {} vs {} -- {}".format(l,s, c[0]['pattern'])
+        #print "*****(1) False binding ({}): {} vs {} -- {} {}".format(Tm,l,s, c[0]['pattern'], c[0]['deltaG'])
         return False        
-    c = checkComplexes([s,reverse_complement(l)])
+    c = checkComplexes([s,reverse_complement(l)],Tm)
     if len(c) > 0:
-        print "*****False binding: {} vs {} -- {}".format(l,s, c[0]['pattern'])
+        #print "*****(2) False binding ({}): {} vs {} -- {} {}".format(Tm,l,s, c[0]['pattern'],c[0]['deltaG'])
         return False        
     return True
 
@@ -297,17 +336,17 @@ def nupack_check_nextera_bindings(s):
         # repeat s to search for homo-dimers
         c = checkComplexes([s,l])
         if len(c) > 0:
-            print "*****Nextera Heterodimer: {} vs {} -- {}".format(l,s, c[0]['pattern'])
+            #print "*****Nextera Heterodimer: {} vs {} -- {}".format(l,s, c[0]['pattern'])
             return False
 
         c = checkComplexes([l,reverse_complement(s)])
         if len(c) > 0:
-            print "*****Nextera False binding: {} vs {} -- {}".format(l,s, c[0]['pattern'])
+            #print "*****Nextera False binding: {} vs {} -- {}".format(l,s, c[0]['pattern'])
             return False
 
         c = checkComplexes([s,reverse_complement(l)])
         if len(c) > 0:
-            print "*****Nextera Complement False binding: {} vs {} -- {}".format(l,s, c[0]['pattern'])
+            #print "*****Nextera Complement False binding: {} vs {} -- {}".format(l,s, c[0]['pattern'])
             return False
     return True
 
@@ -315,7 +354,7 @@ def nextera_strand_comparison(seq,distance):
     for i in illumina_primers:
         d = correlation_distance(seq,i)
         if d > distance:
-            show_correlation(seq,i)
+            #show_correlation(seq,i)
             return False
     return True
 

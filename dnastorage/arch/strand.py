@@ -50,9 +50,9 @@ class StrandPrimers(BaseCodec):
         return strand[len(self.begin_primer):-len(self.end_primer)]
 
 class EncodeNaiveStrand(EncodePacketizedFile):
-    def __init__(self,filename,packetSize,CodecObj):
+    def __init__(self,packetizedFile,CodecObj):
         assert CodecObj!=None
-        EncodePacketizedFile.__init__(self,filename,packetSize,CodecObj)
+        EncodePacketizedFile.__init__(self,packetizedFile,CodecObj)
         self.index = 0
         
     def __iter__(self):
@@ -70,19 +70,18 @@ class EncodeNaiveStrand(EncodePacketizedFile):
         return (key,value)
 
 class DecodeNaiveStrand(DecodePacketizedFile):
-    def __init__(self,filename,size,packetSize,CodecObj):
+    def __init__(self,packetizedFile,CodecObj):
         assert CodecObj!=None
-        DecodePacketizedFile.__init__(self,filename,size,packetSize,CodecObj)    
+        DecodePacketizedFile.__init__(self,packetizedFile,CodecObj)    
 
     def _decode(self, key, value):
         # pass key,value to file writer
         DecodePacketizedFile.writeToFile(self,key,value)
 
 class EncodeGoldmanStrand(EncodePacketizedFile):
-    def __init__(self,filename,packetSize,overlap,CodecObj):
-        EncodePacketizedFile.__init__(self,filename,packetSize,CodecObj)
+    def __init__(self,packetizedFile,overlap,CodecObj):
+        EncodePacketizedFile.__init__(self,packetizedFile,CodecObj)
         self.index = 0
-        self._packetSize = packetSize
         self._overlap = overlap
         
     def __iter__(self):
@@ -105,17 +104,18 @@ class EncodeGoldmanStrand(EncodePacketizedFile):
         return (key,s)
 
 class DecodeGoldmanStrand(DecodePacketizedFile):
-    def __init__(self,filename,size,packetSize,overlap,CodecObj):
-        DecodePacketizedFile.__init__(self,filename,size,packetSize,CodecObj)
+    def __init__(self,packetizedFile,overlap,CodecObj):
+        DecodePacketizedFile.__init__(self,packetizedFile,CodecObj)
         self._overlap = overlap
-        self._packetSize = packetSize
+        
 
     def _decode(self, key, value):
         self._data[key] = value
+        packetSize = self._packetizedFile.packetSize
         mod = self._packetizedFile.numberOfPackets
         for i in range (self._overlap):            
             if not self._packetizedFile.has_key((key+i)%mod):
-                self._packetizedFile[(key+i)%mod] = value[i*self._packetSize:(i+1)*self._packetSize]
+                self._packetizedFile[(key+i)%mod] = value[i*packetSize:(i+1)*packetSize]
 
     def write(self):
         assert self._packetizedFile.complete
@@ -123,8 +123,8 @@ class DecodeGoldmanStrand(DecodePacketizedFile):
 
 
 class EncodeXORStrand(EncodePacketizedFile):
-    def __init__(self,filename,packetSize,CodecObj):
-        EncodePacketizedFile.__init__(self,filename,packetSize,CodecObj)
+    def __init__(self,packetizedFile,CodecObj):
+        EncodePacketizedFile.__init__(self,packetizedFile,CodecObj)
         self.index = 0
         
     def __iter__(self):
@@ -154,8 +154,8 @@ class EncodeXORStrand(EncodePacketizedFile):
         return (key,str(bytearray(l)))
 
 class DecodeXORStrand(DecodePacketizedFile):
-    def __init__(self,filename,size,packetSize,CodecObj):
-        DecodePacketizedFile.__init__(self,filename,size,packetSize,CodecObj)
+    def __init__(self,packetizedFile,CodecObj):
+        DecodePacketizedFile.__init__(self,packetizedFile,CodecObj)
     
     def _decode(self, key, value):
         if key % 2 == 0:        
@@ -194,8 +194,8 @@ class DecodeXORStrand(DecodePacketizedFile):
 
 
 class EncodeFountainStrand(EncodePacketizedFile):
-    def __init__(self,filename,packetSize,factor,CodecObj):
-        EncodePacketizedFile.__init__(self,filename,packetSize,CodecObj)
+    def __init__(self,packetizedFile,factor,CodecObj):
+        EncodePacketizedFile.__init__(self,packetizedFile,CodecObj)
         self.index = 0
         self.fountain = fountain.UnlimitedFountain(self._packetizedFile.numberOfPackets)
         self.maxStrands = int(factor*self._packetizedFile.numberOfPackets)
@@ -234,7 +234,7 @@ class EncodeFountainStrand(EncodePacketizedFile):
                 fails+=1
                 continue
 
-            if not nextera.nextera_strand_comparison(enc,5):
+            if not nextera_strand_comparison(enc,5):
                 #print "Discarded strand..."
                 self.index += 1
                 fails += 1
@@ -266,8 +266,8 @@ class EncodeFountainStrand(EncodePacketizedFile):
         return (self.index,str(bytearray(l))),strands
 
 class DecodeFountainStrand(DecodePacketizedFile):
-    def __init__(self,filename,size,packetSize,table,CodecObj):
-        DecodePacketizedFile.__init__(self,filename,size,packetSize,CodecObj)
+    def __init__(self,packetizedFile,table,CodecObj):
+        DecodePacketizedFile.__init__(self,packetizedFile,CodecObj)
         self._lookup = { x[0] : copy(x[1]) for x in table}
     
     def _updateAllData(self):

@@ -193,7 +193,7 @@ def checkComplexes(seqs):
 
 def checkFold(seq):
     f = open(seq+".fasta","w")
-    f.write(seq);
+    f.write(seq)
     f.close()
     return checkFoldFile(seq)    
 

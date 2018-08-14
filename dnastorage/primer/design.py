@@ -98,6 +98,9 @@ def build_repetition_rule(fraction):
 def build_singlerun_rule():
     return Rule(lambda s: not primer_util.hasSingleRun(s), "Has no run")
 
+def build_longrun_rule():
+    return Rule(lambda s: not primer_util.hasLongRun(s), "Has no run of 4 or longer")
+
 def build_dimerrun_rule():
     return Rule(lambda s: not primer_util.hasDimerRun(s), "Has no dimer run")
 
@@ -128,8 +131,17 @@ def build_correlation_distance_library_rule(L):
 def build_hamming_distance_library_rule(distance,L):
     return LibraryRule(lambda s,l: not (primer_util.hamming_distance(s,l) < distance), "Hamming distance > {}".format(distance), L)
 
-def build_nupack_nonspecific_bindings_library_rule(L):
-    return LibraryRule(primer_util.nupack_check_complexes, "Avoid non-specific binding with libary", L)
+def build_nupack_nonspecific_bindings_library_rule(L, Tm=50):
+    return LibraryRule(lambda s,l: primer_util.nupack_check_complexes(s,l,Tm), "Avoid non-specific binding with libary (Tm={})".format(Tm), L)
+
+def build_nupack_heterodimer_bindings_library_rule(L, Tm=50):
+    return LibraryRule(lambda s,l: primer_util.nupack_check_heterodimer_complexes(s,l,Tm), "Avoid dimer-dimer binding with libary (Tm={})".format(Tm), L)
+
+def build_nupack_allow_nonspecific_bindings_library_rule(L, Tm=50):
+    return LibraryRule(lambda s,l: not primer_util.nupack_check_complexes(s, l, Tm), "Allow non-specific binding with library (Tm={})".format(Tm), L)
+
+def build_nupack_allow_heterodimer_bindings_library_rule(L, Tm=50):
+    return LibraryRule(lambda s,l: not primer_util.nupack_check_heterodimer_complexes(s, l, Tm), "Allow dimer-dimer binding with library (Tm={})".format(Tm), L)
 
 class DesignRules:
     def __init__(self, name=""):
@@ -167,6 +179,7 @@ def build_standard_design_rules(Library, with_nupack=True):
     if with_nupack:
         dr.add_rule(build_nupack_homodimer_rule())
         dr.add_rule(build_nupack_nonspecific_bindings_library_rule(Library))
+        dr.add_rule(build_nupack_heterodimer_bindings_library_rule(Library))
     return dr
 
 
