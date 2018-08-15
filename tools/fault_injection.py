@@ -1,6 +1,9 @@
 from dnastorage.fi import fault_injector
 
 
+
+
+
 '''
 Main file for injecting faults into an input DNA file, 3 available options are available
 
@@ -37,6 +40,20 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     model_name= args.fault_model
+
+    injector_args=fault_injector.fault_injector_arguments()
+    injector_args.o=args.o
+    injector_args.input_file=args.input_file[0]
+    injector_args.fault_file=args.fault_file
+    injector_args.fault_model=args.fault_model
+    injector_args.run=args.run
+    injector_args.missing=args.missing
+    injector_args.faulty=args.faulty
+    injector_args.fails=args.fails
+    injector_args.p1=args.p1
+    injector_args.p2=args.p2
+
+    
     # check if the selected fault model class exists
     if not hasattr(fault_injector, model_name):
         print "Couldn't run fault model '%s'. Class '%s' doesn't exist in fault_injector.py" % \
@@ -44,7 +61,7 @@ if __name__ == "__main__":
         sys.exit(1)
 
     # instantiate a fault model object
-    fault_model = eval('fault_injector.'+model_name+'(args)')
+    fault_model = eval('fault_injector.'+model_name+'(injector_args)')
 
     #run the fault model
     fault_model.Run()
