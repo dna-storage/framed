@@ -12,7 +12,7 @@ import os
 
 def build_encode_architecture(arch, pf, primer5, primer3):    
     if arch == "UW+MSv1":
-        h = huffman.HuffmanRotateCodec(huffman.HuffmanCodec(21,Checksum()))
+        h = huffman.RotateCodec(huffman.HuffmanCodec(21,Checksum()))
         p = StrandPrimers(primer5, primer3, h)
         ## build packetized file encode
         pf.packetSize = 20
@@ -27,7 +27,7 @@ def build_encode_architecture(arch, pf, primer5, primer3):
         return enc
 
     elif arch == 'Goldman':
-        h = huffman.HuffmanRotateCodec(huffman.HuffmanCodec(21,Checksum()))
+        h = huffman.RotateCodec(huffman.HuffmanCodec(21,Checksum()))
         p = StrandPrimers(primer5, primer3, h)
         pf.packetSize = 5
         enc = EncodeGoldmanStrand(pf,4,p)
@@ -35,7 +35,7 @@ def build_encode_architecture(arch, pf, primer5, primer3):
 
     elif arch == 'Fountain':
         #assert False and "Not fully implemented"
-        h = huffman.HuffmanRotateCodec(huffman.HuffmanCodec(23,Checksum()))
+        h = huffman.RotateCodec(huffman.HuffmanCodec(23,Checksum()))
         p = StrandPrimers(primer5, primer3, h)
         pf.packetSize = 22
         enc = EncodeFountainStrand(pf,1.5,p)    
@@ -54,7 +54,7 @@ def build_encode_architecture(arch, pf, primer5, primer3):
 
 def build_decode_architecture(arch, pf, primer5, primer3, fountain_table=None):
     if arch == "UW+MSv1":
-        h = huffman.HuffmanRotateCodec(huffman.HuffmanCodec(21,Checksum()))
+        h = huffman.RotateCodec(huffman.HuffmanCodec(21,Checksum()))
         p = StrandPrimers(primer5, primer3, h)
         pf.packetSize = 20
         dec = DecodeXORStrand(pf,p)
@@ -68,7 +68,7 @@ def build_decode_architecture(arch, pf, primer5, primer3, fountain_table=None):
         return enc
 
     elif arch == 'Goldman':
-        h = huffman.HuffmanRotateCodec(huffman.HuffmanCodec(21,Checksum()))
+        h = huffman.RotateCodec(huffman.HuffmanCodec(21,Checksum()))
         p = StrandPrimers(primer5, primer3, h)
         pf.packetSize = 5
         dec = DecodeGoldmanStrand(pf,4,p)
@@ -83,7 +83,7 @@ def build_decode_architecture(arch, pf, primer5, primer3, fountain_table=None):
 
     elif arch == 'Fountain':
         #assert False and "Not fully implemented"
-        h = huffman.HuffmanRotateCodec(huffman.HuffmanCodec(23,Checksum()))
+        h = huffman.RotateCodec(huffman.HuffmanCodec(23,Checksum()))
         p = StrandPrimers(primer5, primer3, h)
         pf.packetSize = 22
         enc = DecodeFountainStrand(pf,fountain_table,p)    
@@ -224,17 +224,15 @@ if __name__ == "__main__":
 
         Decoder = build_decode_architecture(args.arch, packetizedFile, args.primer5, args.primer3,table)
 
-        try:
-            while not Decoder.complete:
-                s = args.input_file.readline()
-                s = s.strip()
-                if s.startswith('%'):
-                    continue
-                if len(s) == 0:
-                    break
-                Decoder.decode(s)  
-        except:
-            pass
+        while not Decoder.complete:
+            s = args.input_file.readline()
+            if len(s) == 0:
+                break
+            s = s.strip()
+            print s
+            if s.startswith('%'):
+                continue
+            Decoder.decode(s)  
 
         if args.o == sys.stdout:
             print "".join([ '-' for _ in range(0,80) ])

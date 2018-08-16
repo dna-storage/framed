@@ -16,7 +16,7 @@ def get_home_directory():
 
 def get_data_directory():
     d = get_home_directory()
-    return os.sep.join([d,"data"])
+    return os.sep.join([d,"oligos"])
 
 def get_oligo_csv():
     oligo = get_data_directory() + os.sep + "oligos.csv"

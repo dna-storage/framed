@@ -2,13 +2,28 @@
 from dnastorage.util.file_support import *
 from dnastorage.codec import base_conversion
 from dnastorage.codec import dense
+from dnastorage.codec.base import BaseCodec
 
 class EncodePacketizedFile:
+    """
+    Partition the file into key,value packets for encoding. This is an iterable
+    object for convenient encoding. If a CodecObj is provided, the iterator
+    returns the packets after they pass through the CodecObj. 
+
+    For simple encoders and decoders that operate on one strand at a time, you can simply
+    override the _encode function to alter how encoding is done before the CodecObj is invoked.
+
+    For customized keys, you need to override the class and alter how keys are
+    generated. 
+
+    """
+
     def __init__(self,packetizedFile,CodecObj=None):
+        self._index = 0
         self._packetizedFile = packetizedFile
         self._iterating = False
         if CodecObj == None:
-            self._Codec = dense.DenseCodec()
+            self._Codec = BaseCodec()
         else:
             self._Codec = CodecObj
 
@@ -20,7 +35,7 @@ class EncodePacketizedFile:
     # functionality also needs to be altered
     # returns key, value
     def _encode(self):
-        return self._packetizedFile.next()
+        return self._index,self._packetizedFile.next()
 
     # Ideally, this would not be overriden, but if a subclass wants to
     # fully control all steps of encoding, it must be overriden
@@ -38,6 +53,7 @@ class EncodePacketizedFile:
 
     # iterator
     def __iter__(self):
+        self._index = 0
         self._iterating = True
         self._packetizedFile.__iter__()
         # reset to begnning of file
@@ -46,6 +62,7 @@ class EncodePacketizedFile:
     def next(self):
         packet = self.encode()
         if packet:
+            self._index += 1
             return packet
         else:
             self._iterating = False
@@ -56,7 +73,7 @@ class DecodePacketizedFile:
         self._packetizedFile = packetizedFile
         self._data = {}
         if CodecObj == None:
-            self._Codec = dense.DenseCodec()
+            self._Codec = BaseCodec()
         else:
             self._Codec = CodecObj
         
@@ -69,7 +86,11 @@ class DecodePacketizedFile:
     #    return self._data[key]
         
     def writeToFile(self,key,value):
-        self._packetizedFile[key] = value
+        # make sure value is a string
+        if (type(value) is list) and (type(value[0]) is int or type(value[0]) is long):
+            value = "".join([chr(x) for x in value])        
+        assert type(value) is str
+        self._packetizedFile[key] = value    
 
     # Ideally, derived classes will only override this implementation
     def _decode(self,key,value):
@@ -85,6 +106,8 @@ class DecodePacketizedFile:
     
     def write(self):
         self._packetizedFile.write()
+
+
 
 if __name__ == "__main__":
     import os
@@ -103,3 +126,5 @@ if __name__ == "__main__":
     
     assert out.complete==True
     out.write()
+
+
