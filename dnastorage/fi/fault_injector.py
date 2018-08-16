@@ -110,10 +110,37 @@ class strand_fault(BaseModel):
             self._error_strands=self.inject_distribution(self._input_library,self._csv_data)
         self.write_out(self._error_strands)
 
-
-
+    #These functions are used for testing code
+    def get_fault_spread(self):
+        return self._fault_spread
+    def get_del_spread(self):
+        return self._del_spread
+    def get_ins_spread(self):
+        return self._ins_spread
+    def get_sub_spread(self):
+        return self._sub_spread
+    def get_fault_rate(self):
+        return self._fault_rate
+    def get_del_rate(self):
+        return self._del_rate
+    def get_ins_rate(self):
+        return self._ins_rate
+    def get_sub_rate(self):
+        return self._sub_rate
+    
     #function to insert errors based on the distribution data in the csv files 
     def inject_distribution(self,input_strands,prob_data):
+        #variables for collecting data for testing 
+        self._fault_spread={}
+        self._del_spread={}
+        self._ins_spread={}
+        self._sub_spread={}
+        self._fault_rate=[]
+        self._del_rate=[]
+        self._ins_rate=[]
+        self._sub_rate=[]
+        
+        
         out_list=input_strands[:]
         #inject faults throughout the input strands, no subset is chosen, unlike the other fault model, maybe add that in later if wanted?
         overall_error=[]
@@ -122,17 +149,25 @@ class strand_fault(BaseModel):
         sub_giv_error=[]
         strand_index_start=self._args.p1
         
-        #go through the prob_data data structure and grab relevant data and condition to make it easier for random number generate
+        #go through the prob_data data structure and grab relevant data and scale to make it easier for random number generate
         for row_of_data in prob_data:
             #each row is a row from the input spreadsheet
             if row_of_data[0] == "Overall Error":
                 overall_error=[int(float(prob)*10000) for prob in row_of_data[1+strand_index_start:len(row_of_data[1:])-self._args.p2+1]]
+                self._fault_rate=overall_error
+                
             elif row_of_data[0] == "Del/Error":
                 del_giv_error=[int(float(prob)*1000) for prob in row_of_data[1+strand_index_start:len(row_of_data[1:])-self._args.p2+1]]
+                self._del_rate=del_giv_error
+
             elif row_of_data[0] == "Ins/Error":
                 inser_giv_error=[int(float(prob)*1000) for prob in row_of_data[1+strand_index_start:len(row_of_data[1:])-self._args.p2+1]]
+                self._ins_rate = inser_giv_error
+
             elif row_of_data[0] == "Sub/Error":
                 sub_giv_error=[int(float(prob)*1000) for prob in row_of_data[1+strand_index_start:len(row_of_data[1:])-self._args.p2+1]]
+                self._sub_rate = sub_giv_error
+                
         assert(len(overall_error)>0 and len(del_giv_error)>0 and len(inser_giv_error)>0 and len(sub_giv_error)>0)
         assert(len(overall_error)==(len(out_list[0])-self._args.p1-self._args.p2))
         #go through each strand and nucleotide and inject errors
@@ -142,38 +177,61 @@ class strand_fault(BaseModel):
                 inject_error=random.randint(1,10000)
                 #should inject error 
                 if inject_error <= overall_error[nuc_index]:
-                    print "error"
+
+                    #collect the amount of errors injected 
+                    if nuc_index not in self._fault_spread:
+                        self._fault_spread[nuc_index]=0
+                    else:
+                         self._fault_spread[nuc_index]=self._fault_spread[nuc_index]+1
+
                     del_boundary_lower=1
                     del_boundary_upper=del_giv_error[nuc_index]
                     inser_boundary_lower=del_boundary_upper+1
                     inser_boundary_upper=del_boundary_upper+inser_giv_error[nuc_index]
                     sub_boundary_lower=inser_boundary_upper+1
                     sub_boundary_upper=inser_boundary_upper+sub_giv_error[nuc_index]
+                    
                     #random value to select amongst the error type
                     error_type=random.randint(1,sub_boundary_upper)
                     
                     #inject deletion error
                     if error_type >= del_boundary_lower and error_type <= del_boundary_upper:
-                        print "deletion"
+                        #collect the amount of deletion errors injected 
+                        if nuc_index not in self._del_spread:
+                            self._del_spread[nuc_index]=0
+                        else:
+                            self._del_spread[nuc_index]=self._del_spread[nuc_index]+1
+
                         out_list[strand_index]=out_list[strand_index][0:nuc_index]+out_list[strand_index][nuc_index+1:len(out_list[strand_index])]
+
+                        
                     #inject insertion error
                     elif error_type >= inser_boundary_lower and error_type <= inser_boundary_upper:
-                        print "insertion" 
+
+                        #collect the amount of insertion errors injected 
+                        if nuc_index not in self._ins_spread:
+                            self._ins_spread[nuc_index]=0
+                        else:
+                            self._ins_spread[nuc_index]=self._ins_spread[nuc_index]+1
+                        
                         insert_nucleotide=random.choice(nuc_list)
                         out_list[strand_index]=out_list[strand_index][0:nuc_index]+insert_nucleotide+out_list[strand_index][nuc_index:len(out_list[strand_index])]
+
+
                     #substitution error
                     elif error_type >= sub_boundary_lower and error_type <= sub_boundary_upper:
-                        print "sub"
+
+                        #collect the amount of substitution errors injected 
+                        if nuc_index not in self._sub_spread:
+                            self._sub_spread[nuc_index]=0
+                        else:
+                            self._sub_spread[nuc_index]=self._sub_spread[nuc_index]+1
+
                         sub_nucleotide=random.choice(sub_dict[out_list[strand_index][nuc_index]])
                         out_list[strand_index]= out_list[strand_index][0:nuc_index]+sub_nucleotide+out_list[strand_index][nuc_index+1:len(out_list[strand_index])]
+
+
                     else:
-                        print del_boundary_upper
-                        print inser_boundary_lower
-                        print inser_boundary_upper
-                        print sub_boundary_lower
-                        print sub_boundary_upper
-                        print error_type
-                        #should not come here
                         assert(0)
         return out_list
 

@@ -2,3 +2,4 @@ nose
 sphinx
 biopython
 editdistance
+statistics

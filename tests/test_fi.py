@@ -4,10 +4,8 @@
 from .context import dnastorage
 
 import unittest
-
+import statistics
 from dnastorage.fi import fault_injector
-
-
 
 def check_strand_errors(injection_sites,clean_strands,final_strands):
     #check to make sure that the injected errors are correct
@@ -40,11 +38,37 @@ def check_strand_errors(injection_sites,clean_strands,final_strands):
                 assert clean_selected_strand[nuc_index] == fault_nuc
 
 
+#Calculates percent difference for the generated rates and the spread sheet retes
+#overall rate is used for computing the ins/del/sub given an error rate
+#multiplier is used to match the input data
 
+def calc_percent_difference(raw_value,num_strands,real_rate,multiplier, overall_rate=None):
+    #analyze overall results
+    if overall_rate is not None:
+        measured_rate=int(float((float(raw_value)/float(overall_rate*(num_strands)))*multiplier))
+    else:
+        measured_rate=int(float((float(raw_value)/float((num_strands)))*multiplier))
+    difference = measured_rate-real_rate
+    percent_difference=abs(100*(float(difference)/float(real_rate)))
+    return percent_difference
 
+    
 def allUnique(x):
     seen = set()
     return not any(i in seen or seen.add(i) for i in x)
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 class FiTestSuite(unittest.TestCase):
@@ -58,8 +82,6 @@ class FiTestSuite(unittest.TestCase):
         arguments.missing=10
         arguments.p1=20
         arguments.p2=20
-
-
 
         #instantiate class that will remove strands 
         missing_strands=fault_injector.miss_strand(arguments)
@@ -122,18 +144,14 @@ class FiTestSuite(unittest.TestCase):
         arguments.p1=20
         arguments.p2=20
         arguments.run=True
-
-
         model=fault_injector.strand_fault(arguments)
         model.read_file()
+        
         clean_strands=model._input_library
         injection_sites=model.injection_sites(clean_strands)
         final_strands=model.inject_errors(injection_sites,clean_strands)
-
         print injection_sites
-
-
-
+        
         #check some properties of the injection sites  
         strand_indexes=[]
         for strand_index in injection_sites:
@@ -150,8 +168,86 @@ class FiTestSuite(unittest.TestCase):
 
         #check the errors inserted into strands
         check_strand_errors(injection_sites,clean_strands,final_strands)
-        
 
+        
+    def test_error_distribution(self):
+        arguments=fault_injector.fault_injector_arguments()
+        arguments.input_file="tests/test_dna.txt"
+        arguments.p1=20
+        arguments.p2=20
+        arguments.fault_file="tests/test_rate.csv"
+        model=fault_injector.strand_fault(arguments)
+        model.read_file()
+        csv_data=model.read_csv(arguments.fault_file)
+        clean_strands=model._input_library
+        temp=clean_strands[:]
+
+        #generate a large strand pool to test the probabilistic nature of this code
+        #if testing is too long, change number of strands from 100000 to something less
+        while len(clean_strands)<100000:
+            for strand in temp:
+                clean_strands.append(strand)
+            
+        final_strands=model.inject_distribution(clean_strands,csv_data)
+
+        fault_spread=model.get_fault_spread()
+        del_spread = model.get_del_spread()
+        ins_spread = model.get_ins_spread()
+        sub_spread = model.get_sub_spread()
+
+
+
+        real_fault_rate=model.get_fault_rate()
+        real_del_rate = model.get_del_rate()
+        real_ins_rate = model.get_ins_rate()
+        real_sub_rate = model.get_sub_rate()
+        
+        #make sure the spread is only over the inner data 
+        assert len(real_fault_rate) ==  (len(clean_strands[0])-arguments.p1-arguments.p2)
+
+        print "Error rate results"
+        percent_difference_array=[]
+        del_difference_array=[]
+        ins_difference_array=[]
+        sub_difference_array=[]
+
+        
+        for index, nuc in enumerate(sorted(fault_spread)):
+            #avoid key errors if a certain nucleotide never reached an error 
+            if nuc not in del_spread:
+                del_spread[nuc]=0
+            if nuc not in ins_spread:
+                ins_spread[nuc]=0
+            if nuc not in sub_spread:
+                sub_spread=0
+
+
+            overall_rate=(float(fault_spread[nuc])/float(len(final_strands)))
+            percent_difference_array.append(calc_percent_difference(fault_spread[nuc],len(final_strands),real_fault_rate[index],10000))
+            del_difference_array.append(calc_percent_difference(del_spread[nuc],len(final_strands),real_del_rate[index],1000,overall_rate))
+            ins_difference_array.append(calc_percent_difference(ins_spread[nuc],len(final_strands),real_ins_rate[index],1000,overall_rate))
+            sub_difference_array.append(calc_percent_difference(sub_spread[nuc],len(final_strands),real_sub_rate[index],1000,overall_rate))
+            
+            print "index: {} Overall: {}  Del: {} Ins: {} Sub: {}".format(nuc,percent_difference_array[index],del_difference_array[index], ins_difference_array[index], sub_difference_array[index])
+
+        print ""
+        print ""
+        print "Average percent difference Overall: {}".format(statistics.mean(percent_difference_array))
+        print "Average percent difference Del: {}".format(statistics.mean(del_difference_array))
+        print "Average percent difference Ins: {}".format(statistics.mean(ins_difference_array))
+        print "Average percent difference Sub: {}".format(statistics.mean(sub_difference_array))
+
+        #make sure that the percent difference is less that 20 percent for each component 
+        #if assertion is thrown, increase the number of strands tested to see if the percent difference decreases
+        assert statistics.mean(percent_difference_array)<20 
+        assert statistics.mean(del_difference_array)<20 
+        assert statistics.mean(ins_difference_array)<20 
+        assert statistics.mean(sub_difference_array)<20 
+       
+            
+            
+
+        
 if __name__ == '__main__':
     unittest.main()
 
