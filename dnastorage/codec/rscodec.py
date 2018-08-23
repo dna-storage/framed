@@ -60,8 +60,6 @@ class ReedSolomonInnerCodec(BaseCodec):
         l = base_conversion.convertIntToBytes(packet[0],3)
         a = bytearray(packet[1])
 
-        print len(packet[1])
-
         # construct message
         message = l + [x for x in a]
 
@@ -85,7 +83,6 @@ class ReedSolomonInnerCodec(BaseCodec):
         l = base_conversion.convertIntToBytes(packet[0],3)
         a = [x for x in bytearray(packet[1])]
         message = l + a
-        print "{} {}".format(len(message),message)
         # find the -1s in the list
         erasures = [ i for i in range(len(message)) if message[i]==-1 ]
         # correct the message
@@ -147,9 +144,7 @@ class ReedSolomonInnerOuterEncoder(EncodePacketizedFile):
         return None
 
     def _pop_strand(self):
-        p = self.strands.pop(0)
-        i = base_conversion.convertBytesToInt(p[0:self._k_index])
-        return i,"".join([ chr(_) for _ in p[self._k_index:]])
+        return self.strands.pop(0)
 
     def encode(self):
         if len(self.strands):
@@ -168,7 +163,7 @@ class ReedSolomonInnerOuterEncoder(EncodePacketizedFile):
         # compute inner code
         for x in range(0,self._k_outer*self._k_strand,self._k_strand):
             r = raw[x:x+self._k_strand]
-            ind = base_conversion.convertIntToBytes(x/15 + self.index,self._k_index)
+            ind = base_conversion.convertIntToBytes(x/self._k_strand + self.index,self._k_index)
             message = ind + [x for x in bytearray(r)]
             mesecc = rs.rs_encode_msg(message, self._e_inner);                    
             matrix.append(mesecc)
@@ -189,7 +184,7 @@ class ReedSolomonInnerOuterEncoder(EncodePacketizedFile):
             error_codes += mesecc[-self._e_outer:]
             #print "{}".format(mesecc[-self._e_outer:])
 
-        print "encode: {} {} {}".format(len(error_codes),error_codes,n_error_strands)
+        #print "encode: {} {} {}".format(len(error_codes),error_codes,n_error_strands)
 
         # pad with zeros
         if len(error_codes) % self._k_strand != 0:
@@ -206,7 +201,9 @@ class ReedSolomonInnerOuterEncoder(EncodePacketizedFile):
             self.index += 1
         
         for m in matrix:
-            self.strands.append(self._Codec.encode(m))
+            tup = (base_conversion.convertBytesToInt(m[:self._k_index]),m[self._k_index:])
+            #codecs expect a (index,value) tuple
+            self.strands.append(self._Codec.encode(tup))
 
         return self._pop_strand()
 
@@ -303,7 +300,6 @@ class ReedSolomonInnerOuterDecoder(DecodePacketizedFile):
 
         rearranged = [ es[i:i+self._e_outer] for i in range(0,self.strand_length*self._e_outer,self._e_outer) ] 
 
-        print "decoder: {} - {}".format(len(es),es)
         #print collect
         #print rearranged
         return rearranged
@@ -341,16 +337,20 @@ class ReedSolomonInnerOuterDecoder(DecodePacketizedFile):
         # check for outer errors on the block
         #   - note: this could modify an index 
         error_codes = self._collect_error_codes(error_strands)
-        print error_codes
+        #print error_codes
 
         # compute outer code over all bytes, including index
         for x in range(self.strand_length):
             message = [ matrix[_][x] for _ in range(len(matrix)) ]
             message += error_codes[x]
+
+            #print "before messsage = {}".format(message)
+
             erasures = self._find_erasures(message)
             # correct the message
+            #print "messsage = {} {}".format(message,erasures)
             corrected_message, corrected_ecc = rs.rs_correct_msg(message,self._e_outer,erase_pos=erasures)
-            print corrected_message
+            #print corrected_message
             for i in range(len(corrected_message)):
                 # correct the matrix
                 matrix[i][x] = corrected_message[i]
@@ -372,7 +372,9 @@ class ReedSolomonInnerOuterDecoder(DecodePacketizedFile):
         value2 = base_conversion.convertIntToBytes(key,self._k_index)
         # expand string into bytes
         value2 += [ ord(x) for x in value ]
+        #print value2
         self._rsMap[key] = value2
+        #print "rsMap[{}] = {}".format(key,value2)
         if self._is_block_ready_to_decode(key) and not self._is_block_decoded(key):
             self._decode_block(key)
         return

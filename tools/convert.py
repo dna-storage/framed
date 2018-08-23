@@ -1,10 +1,12 @@
 #!/usr/bin/python
 
 from dnastorage.codec import dense
+from dnastorage.codec import commafreecodec
 from dnastorage.codec import illinois
 from dnastorage.codec import binary
 from dnastorage.codec import huffman
 from dnastorage.codec import fountain
+from dnastorage.codec.rscodec import *
 from dnastorage.arch.strand import *
 from dnastorage.primer.primer_util import *
 import sys
@@ -48,9 +50,11 @@ def build_encode_architecture(arch, pf, primer5, primer3):
         enc = EncodeNaiveStrand(pf,p)
         return enc
 
-    elif arch == 'NCState':
-        assert False and "Not fully implemented"
-        return None
+    elif arch == 'RS+CFC8':
+        b = commafreecodec.CommaFreeCodec(13,None,2)
+        p = StrandPrimers(primer5, primer3, b)
+        enc = ReedSolomonInnerOuterEncoder(pf,p,k_datastrand=9,e_inner=2,k_index=2)
+        return enc
 
 def build_decode_architecture(arch, pf, primer5, primer3, fountain_table=None):
     if arch == "UW+MSv1":
@@ -93,6 +97,13 @@ def build_decode_architecture(arch, pf, primer5, primer3, fountain_table=None):
         assert False and "Not fully implemented"
         return None
 
+    elif arch == 'RS+CFC8':
+        b = commafreecodec.CommaFreeCodec(13,None,2)
+        p = StrandPrimers(primer5, primer3, b)
+        dec = ReedSolomonInnerOuterDecoder(pf,p,k_datastrand=9,e_inner=2,k_index=2)
+        return dec
+
+
 def read_header(dec_file):
     f = dec_file
     header = {}
@@ -126,7 +137,7 @@ if __name__ == "__main__":
     parser.add_argument('--encode',dest="encode",action="store_true",default=False,help="Encode input file into DNA.")    
     parser.add_argument('--decode',dest="decode",action="store_true",default=False,help="Decode input file from DNA into original binary form.")    
 
-    parser.add_argument('--arch',required=True,choices=['UW+MSv1','Illinois','Binary','Goldman','Fountain','NCState'])
+    parser.add_argument('--arch',required=True,choices=['UW+MSv1','Illinois','Binary','Goldman','Fountain','RS+CFC8'])
     parser.add_argument('--filesize',type=int,dest="filesize",action="store",default=0, help="Size of file to decode.")
 
     parser.add_argument('--primer5',dest="primer5",action="store",default="", help="Beginning primer.")
@@ -147,11 +158,11 @@ if __name__ == "__main__":
         packetizedFile = ReadPacketizedFilestream(args.input_file)
         enc = build_encode_architecture(args.arch, packetizedFile, args.primer5, args.primer3)
         strands = []
-        try:
-            for e in enc:
-                strands.append(e)
-        except:
-            pass
+        #try:
+        for e in enc:
+            strands.append(e)
+        #except:
+        #    pass
 
         ofile = args.o
         ofile.write("%{}\n".format(args.input_file.name))
@@ -224,18 +235,23 @@ if __name__ == "__main__":
 
         Decoder = build_decode_architecture(args.arch, packetizedFile, args.primer5, args.primer3,table)
 
+        ii = 0
         while not Decoder.complete:
             s = args.input_file.readline()
+            ii += 1
             if len(s) == 0:
                 break
             s = s.strip()
-            print s
             if s.startswith('%'):
                 continue
             Decoder.decode(s)  
 
+        if args.arch == 'RS+CFC8':
+            Decoder.attempt_final_decoding()
+
         if args.o == sys.stdout:
             print "".join([ '-' for _ in range(0,80) ])
+
         Decoder.write()
 
         if args.o == sys.stdout:
