@@ -3,3 +3,6 @@ sphinx
 biopython
 editdistance
 statistics
+matplotlib
+numpy
+scipy
