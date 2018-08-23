@@ -64,7 +64,15 @@ def convertFromBase(base,s):
         power *= base
     return val
 
+def convertIntToBytes(val,num_bytes):
+    l = [(val & (0xff << pos*8)) >> pos*8 for pos in range(num_bytes)]
+    return l
 
+def convertBytesToInt(l):
+    sum = 0
+    for i,val in enumerate(l):
+        sum += val * (256**i)
+    return sum
 
 ibases = ['A', 'C', 'T']
 

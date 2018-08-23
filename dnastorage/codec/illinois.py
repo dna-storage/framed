@@ -1,8 +1,7 @@
 #!/usr/bin/python
 from copy import copy
 import random
-from dnastorage.codec.base_conversion import *
-from dnastorage.primer.primer_util import *
+from dnastorage.codec.base_conversion import encodeWithExclusion,decodeWithExclusion
 from dnastorage.codec.base import *
 
 ibases = ['A', 'T', 'C']
@@ -77,6 +76,7 @@ class IllinoisCodec(BaseCodec):
 if __name__ == "__main__":
     import math
     import sys
+    from dnastorage.primer.primer_util import *
     primer = "AGGTCGGACAACGCCTTAAG"
     N = rangeWithExclusion(26,primer)
     print N, math.log(N,2)

@@ -242,7 +242,7 @@ class HuffmanCodec(BaseCodec):
         value = huffman_decode_limited(s[self._keyWidth:],self._numberBytes)
         return key,value
 
-class HuffmanRotateCodec(BaseCodec):
+class RotateCodec(BaseCodec):
     def __init__(self,CodecObj=None,prev='A'):
         BaseCodec.__init__(self,CodecObj)
         self._prev = prev

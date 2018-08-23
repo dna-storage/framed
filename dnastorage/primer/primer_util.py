@@ -207,6 +207,33 @@ def hasDimerRun(seq):
         return True
     return False
 
+def hasShortDimerRun(seq):
+    if seq.find("ATATAT") >= 0:
+        return True
+    if seq.find("TATATA") >= 0:
+        return True
+    if seq.find("GCGCGC") >= 0:
+        return True
+    if seq.find("CGCGCG") >= 0:
+        return True
+    if seq.find("AGAGAG") >= 0:
+        return True
+    if seq.find("GAGAGA") >= 0:
+        return True
+    if seq.find("CACACA") >= 0:
+        return True
+    if seq.find("ACACAC") >= 0:
+        return True
+    if seq.find("TGTGTG") >= 0:
+        return True
+    if seq.find("GTGTGT") >= 0:
+        return True
+    if seq.find("CTCTCT") >= 0:
+        return True
+    if seq.find("TCTCTC") >= 0:
+        return True
+    return False
+
 
 def hamming_difference(s1, s2):
     value = {'A':0, 'C':1, 'G':2, 'T':3}

@@ -2,6 +2,13 @@
 import os
 import sys
 
+"""
+Write a file by receiving (index,value) packets of data of a specific size at a given index. Value
+is of packetSize length.  index specifies where in the file to write the data.  Packets can be
+received in any order. But, the file cannot be written until the file is complete, in other words,
+it has received all size/packetSize packets.  The indices are assumed to be densely numbered from 0
+to size/packetSize by 1.  Pythonically: range(0,size/packetSize+(size-size/packetSize*packetSize),1).
+"""
 class WritePacketizedFilestream:
     def __init__(self,fd,size,packetSize):
         self.__fd = fd
@@ -88,6 +95,17 @@ class WritePacketizedFile(WritePacketizedFilestream):
         self.__filename = filename
 
 
+
+"""
+Read a file by breaking it up into packetSize pieces. If the last piece is smaller
+than packetSize, it's padded with zeros. Clients are guaranteed all packets are uniform
+size.
+
+This is an iterable object. Packets can be read using the iterator or by requesting
+a specific index between 0 and size/packetSize. 
+
+This class expects a file descriptor. There is a derived class that accepts a filename.
+"""
 class ReadPacketizedFilestream:    
     def __init__(self,fd):
         self.__fd = fd

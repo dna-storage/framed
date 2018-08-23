@@ -42,5 +42,10 @@ class BasicTestSuite(unittest.TestCase):
         assert s == dense_decode(dense_encode(s))
 
 
+    def test_reedsolomon(self):
+        pass
+
+
+
 if __name__ == '__main__':
     unittest.main()
