@@ -246,9 +246,6 @@ if __name__ == "__main__":
                 continue
             Decoder.decode(s)  
 
-        if args.arch == 'RS+CFC8':
-            Decoder.attempt_final_decoding()
-
         if args.o == sys.stdout:
             print "".join([ '-' for _ in range(0,80) ])
 

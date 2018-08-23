@@ -399,9 +399,13 @@ class ReedSolomonInnerOuterDecoder(DecodePacketizedFile):
                         erased = [-1 for _ in range(self.strand_length) ]
                         self._rsMap[x] = erased
                         found += 1
-                assert self._is_block_ready_to_decode(block)==True
+                assert self._is_block_ready_to_decode(block)==True            
             # try to decode block in either case
             self._decode_block(block)
+
+    def write(self):
+        self.attempt_final_decoding()
+        DecodePacketizedFile.write(self)
 
 if __name__ == "__main__":
     import sys
