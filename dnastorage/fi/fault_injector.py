@@ -257,46 +257,19 @@ class strand_fault(BaseModel):
         strand_indexes=range(len(input_library))
         fault_list={} 
         strand_index_start=self._args.p1
-        strand_locations=random.sample(range(len(input_library)),self.args._faulty)
+        strand_locations=random.sample(range(len(input_library)),self._args.faulty)
         for strand_index in strand_locations:
             fault_list[strand_index]={}
             if self._args.run is True:
-                start_point=random.randint(strand_index_start,len(strand)-self._args.p2-self._args.fails)
+                start_point=random.randint(strand_index_start,len(input_library[strand_index])-self._args.p2-self._args.fails)
                 nucleotide_indexes=range(start_point,start_point+self._args.fails)
             else:
-                nucletoide_indexes=random.sample(range(strand_index_start,len(strand)-self._args.p2),self._args.fails)
+                nucleotide_indexes=random.sample(range(strand_index_start,len(input_library[strand_index])-self._args.p2),self._args.fails)
             for nuc_ind in nucleotide_indexes:
                 fault_type=random.randint(0,2)
                 fault_list[strand_index][nuc_ind]=str(fault_type)
-
-        
+                
         return fault_list
-    """
-        for strand_num in range(self._args.faulty):
-            #chose a strand
-            index,chosen_strand_index=self.random_array_element(strand_indexes)
-            #delete chosen strands from list so that it is not chosen again
-            del strand_indexes[index]
-            strand=input_library[chosen_strand_index]
-            
-            fault_list[chosen_strand_index]={}
-            #create list of nucleotide indexes so that we can avoid choosing the same index
-            nucleotide_indexes=range(strand_index_start,len(strand)-self._args.p2)
-            if self._args.run is True:
-                start_point=random.randint(strand_index_start,len(strand)-self._args.p2-self._args.fails)
-                nucleotide_indexes=range(start_point,start_point+self._args.fails)
-            #now find some nucleotides within the strand to inject faults
-            for nucleotide_fault in range(self._args.fails):
-                if self._args.run is not True:
-                    index,nucleotide_index=self.random_array_element(nucleotide_indexes)
-                    del nucleotide_indexes[index]
-                elif self._args.run is True:
-                    nucleotide_index=nucleotide_indexes[nucleotide_fault]
-                fault_type=random.randint(0,2)
-                fault_list[chosen_strand_index][nucleotide_index]=str(fault_type)
-        return fault_list
-    """
-     
 
         
     #inject the errors into the selected strands and nucleotides
