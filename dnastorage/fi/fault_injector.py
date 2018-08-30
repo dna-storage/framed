@@ -2,7 +2,8 @@
 import os
 import random
 import csv
-
+import generate
+import time
 #structure to bundle together the parser's results, will allow the classes in fault_injector.py be more flexible
 class fault_injector_arguments:
     o = None
@@ -112,8 +113,15 @@ class strand_fault(BaseModel):
         self._error_strands=[]
         #if there is no csv file, chose random spots and errors
         if self._args.fault_file is None:
+            time0=time.time()
             self._injection=self.injection_sites(self._input_library)
+            time1=time.time()
+            print "Selecting"
+            print "Selection Time {}".format(time1-time0)
+            time0=time.time()
             self._error_strands=self.inject_errors(self._injection,self._input_library)
+            time1=time.time()
+            print "Injection Time {}".format(time1-time0)
         #if there is a csv file, inject errors based off the data
         elif self._args.fault_file is not None:
             self._error_strands=self.inject_distribution(self._input_library,self._csv_data)
@@ -152,8 +160,9 @@ class strand_fault(BaseModel):
         self._ins_rate=[]
         self._sub_rate=[]
         
-        
+        time0=time.time()
         out_list=input_strands[:]
+       
         #inject faults throughout the input strands, no subset is chosen, unlike the other fault model, maybe add that in later if wanted?
         overall_error=[]
         del_giv_error=[]
@@ -266,7 +275,7 @@ class strand_fault(BaseModel):
             else:
                 nucleotide_indexes=random.sample(range(strand_index_start,len(input_library[strand_index])-self._args.p2),self._args.fails)
             for nuc_ind in nucleotide_indexes:
-                fault_type=random.randint(0,2)
+                fault_type=generate.rand_in_range(0,2)
                 fault_list[strand_index][nuc_ind]=str(fault_type)
                 
         return fault_list
@@ -274,7 +283,10 @@ class strand_fault(BaseModel):
         
     #inject the errors into the selected strands and nucleotides
     def inject_errors(self,inject_sites,input_library):
+        time0=time.time()
         out_list=input_library[:]
+        time1=time.time()
+        print "copy time {}".format(time1-time0)
         for strand_indexes in inject_sites:
             for fault_indexes in sorted(inject_sites[strand_indexes],reverse=True):
                 #substitution error
@@ -304,7 +316,7 @@ class combo(BaseModel):
         self.strand_faults=strand_fault(args)
         self.missing_strands=miss_strand(args)
         self.read_file()
-         #read csv file if it is available
+        #read csv file if it is available
         if self._args.fault_file is not None:
             self._csv_data=self.read_csv(self._args.fault_file)
     def Run(self,write_out=False):

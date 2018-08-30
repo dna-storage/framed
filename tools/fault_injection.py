@@ -12,7 +12,7 @@ from dnastorage.util.neg_binomial_gen import *
 from dnastorage.handle_strands.strand_handlers import *
 import sys
 import os
-
+import time
 #!/usr/bin/python
 
 def build_decode_architecture(arch, pf, primer5, primer3, fountain_table=None):
@@ -253,15 +253,18 @@ if __name__ == "__main__":
     
     #run many simulations to get an average 
     for sim_number in range(0,args.num_sims):
+        time0_loop=time.time()
         #build a "dirty" decoder and packetizedFile for each run
         dirty_packetizedFile= WritePacketizedFilestream(args.o,args.filesize,20)
         table=[]
         dirty_Decoder = build_decode_architecture(args.arch, dirty_packetizedFile, args.primer5, args.primer3,table)
 
 
+        time0=time.time()
         #get a new pool of strands based on the negative binomial distribution
         multiple_strand_pool=distribute_reads(clean_strands,read_randomizer)
-
+        time1=time.time()
+        print"Build Large pool time: {}".format(time1-time0)
     
 
 
@@ -275,10 +278,21 @@ if __name__ == "__main__":
         
         #set the fault_model's library equal to the new multiple strand pool
         fault_model.set_library(multiple_strand_pool)
+
+        time0=time.time()
         #inject the faults
         strands_after_faults=fault_model.Run()
+        time1=time.time()
+        print"Injecting faults time: {}".format(time1-time0)
+
+        time0=time.time()
         #call the strand handler, will return either key,value pairs or strands
         processed_strands=strand_handler.process(strands_after_faults)
+        time1=time.time()
+        print"Process strands time: {}".format(time1-time0)
+
+
+        time0=time.time()
         #Hand the processed strands off to decoding
         for proc in processed_strands:
             if type(proc) is tuple:
@@ -289,3 +303,6 @@ if __name__ == "__main__":
         if hasattr(dirty_Decoder,'attempt_final_decoding'):
             dirty_Decoder.attempt_final_decoding()
         
+        time1=time.time()
+        print"Decode run time: {}".format(time1-time0)
+        print"Total Loop time: {} Strands: {}".format(time1-time0_loop,len(strands_after_faults))
