@@ -278,13 +278,23 @@ class ReedSolomonInnerOuterDecoder(DecodePacketizedFile):
         return True
 
     def is_error_free(self, message, nsym):
+       # print message
+        if None in message:
+            return True
         return max(rs.rs_calc_syndromes(message,nsym)) == 0
 
     def check_inner_strand(self, message):
         # might need try-catch here
         erasures = [ i for i in range(len(message)) if message[i]==-1 or message[i]==None ]
         # correct the message
-        corrected_message, corrected_ecc = rs.rs_correct_msg(message,self._e_inner, erase_pos=erasures)   
+
+        try:
+            corrected_message, corrected_ecc = rs.rs_correct_msg(message,self._e_inner, erase_pos=erasures)
+        except Exception:
+            corrected_message=message[0:self._k_strand+self._k_index]
+            corrected_ecc=message[-self._e_inner:]
+
+
         return corrected_message+corrected_ecc
 
     def _collect_error_codes(self, error_strands):
@@ -349,7 +359,14 @@ class ReedSolomonInnerOuterDecoder(DecodePacketizedFile):
             erasures = self._find_erasures(message)
             # correct the message
             #print "messsage = {} {}".format(message,erasures)
-            corrected_message, corrected_ecc = rs.rs_correct_msg(message,self._e_outer,erase_pos=erasures)
+
+            #if number of erasures is too big give up on correction process
+            try:
+                corrected_message, corrected_ecc = rs.rs_correct_msg(message,self._e_outer,erase_pos=erasures)
+            except Exception:
+                corrected_message=message[0:self._k_outer]
+                corrected_ecc=message[-self._e_outer:]
+                
             #print corrected_message
             for i in range(len(corrected_message)):
                 # correct the matrix
@@ -359,9 +376,16 @@ class ReedSolomonInnerOuterDecoder(DecodePacketizedFile):
         # got here, everything worked out!
         # form large packet
         key = self._getBlockIndex(index)
-        value = ""
+        value=""
         for m in matrix:
-            value += "".join([ chr(_) for _ in m[self._k_index:self._k_index+self._k_strand] ])
+            slice_data=m[self._k_index:self._k_index+self._k_strand]
+            for data_element in slice_data:
+                if data_element is None or  data_element==-1:
+                    value+='\x00'
+                else:
+                    value+=chr(data_element)
+
+        #value += "".join([ chr(_) for _ in m[self._k_index:self._k_index+self._k_strand] ])
 
         assert len(value) == self._packetizedFile.packetSize
         self.writeToFile(key,value)                    
@@ -371,8 +395,11 @@ class ReedSolomonInnerOuterDecoder(DecodePacketizedFile):
         # merge index bytes and value bytes
         value2 = base_conversion.convertIntToBytes(key,self._k_index)
         # expand string into bytes
-        value2 += [ ord(x) for x in value ]
-        #print value2
+        #value2 += [ ord(x) for x in value ]
+        value2+=value
+
+        
+        
         self._rsMap[key] = value2
         #print "rsMap[{}] = {}".format(key,value2)
         if self._is_block_ready_to_decode(key) and not self._is_block_decoded(key):

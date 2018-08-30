@@ -96,9 +96,14 @@ class DecodePacketizedFile:
     def _decode(self,key,value):
         self.writeToFile(key,value)
 
-    def decode(self,strand):
-        key,val = self._Codec.decode(strand)
+    def decode(self,strand,bypass=False,input_key=None,input_value=None):
+        if bypass is False:
+            key,val = self._Codec.decode(strand)
+        else:
+            key=input_key
+            val=input_value
         self._decode(key,val)
+        
 
     @property
     def complete(self):

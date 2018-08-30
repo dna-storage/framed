@@ -16,9 +16,12 @@ If s can be rotated to create a value equal to s, then it has a self cycle
 def self_cycle_check(s):
     t = s+s
     # create all rotations of s
-    l = [ t[i:i+8] for i in range(1,8) ]
+    l = [ t[i:i+6] for i in range(1,6) ]
+  
     # if s is present in l, there's a cycle
     if s in l:
+       # print s
+        #print l
         return True
     return False
 
@@ -27,7 +30,7 @@ Make sure that b does not appear in a cycle of a
 """
 def same_cycle(a,b):
     t = a+a
-    l = [ t[i:i+8] for i in range(1,8) ]
+    l = [ t[i:i+6] for i in range(1,6) ]
     return b in l
 
 def print_characteristics(all):
@@ -144,18 +147,18 @@ def comma_free_codec_design():
     allbytes = []
 
     for a in index1ex:
-        allbytes += [a[i:i+8] for i in range(len(a)-7)]
+        allbytes += [a[i:i+6] for i in range(len(a)-5)]
         
     for a in index2ex:
-        allbytes += [a[i:i+8] for i in range(len(a)-7)]
+        allbytes += [a[i:i+6] for i in range(len(a)-5)]
 
     allbytes += [ reverse_complement(a) for a in allbytes ]
 
     all = []
 
     # rule out certain harmful sequences
-    for i in range(2**16):
-        d = convertQuarnary(i,8)
+    for i in range(2**12):
+        d = convertQuarnary(i,6)
         if hasRepeat(d):
             continue
         if hasShortDimerRun(d):

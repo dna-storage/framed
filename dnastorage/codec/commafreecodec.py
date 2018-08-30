@@ -1,6 +1,6 @@
 from dnastorage.codec.base import *
 from dnastorage.codec import base_conversion
-
+from random import randint
 cfc = ['CTACACGA', 'CATGCAGT', 'CTATGCGA', 'CACGAGCT', 'CTGCGTCT', 'CGACGTGA', 'CATGTAGA', 'CGTGCACT', 'CAGCATCA', 'CGCACTGA', 'CGCGCTGA', 'CAGATCGT', 'CTCTATAT', 'CATCTGCA', 'CACTACGT', 'CTAGATGA', 'CTGAGTAT', 'CGCACGTA', 'CATGATCA', 'CGCATAGA', 'CGACGACA', 'CACATAGA', 'CATAGCAT', 'CTGATACT', 'CTAGTACA', 'CTAGTATA', 'CTCGTATA', 'CTAGACGA', 'CTATCTCT', 'CGATCTCA', 'CGTCAGTA', 'CGCGAGAT', 'CGTAGTAT', 'CGTGCTGT', 'CACGTCGA', 'CGACGTCT', 'CAGCGCAT', 'CACACGTA', 'CGTGCTCT', 'CTGCTCAT', 'CTGCTAGT', 'CTGATATA', 'CGCACTCT', 'CATAGCGT', 'CTATACGT', 'CACAGAGA', 'CTACAGTA', 'CAGCATAT', 'CAGCAGTA', 'CATCGAGT', 'CTCGATAT', 'CAGCATCT', 'CTGAGACT', 'CACAGTCT', 'CATGTCGA', 'CACGAGAT', 'CACATACA', 'CGCATGTA', 'CGCTAGAT', 'CTGTGCGT', 'CTAGTGCA', 'CTAGAGAT', 'CTACATGA', 'CACTATAT', 'CAGCATGA', 'CTGTACAT', 'CACTGTCA', 'CACTGCGA', 'CTCTATGA', 'CTGCTCGA', 'CGATGTGT', 'CATCGAGA', 'CTGTCTCA', 'CTGACTCA', 'CTATCACT', 'CGAGCATA', 'CAGATGCA', 'CAGACTCT', 'CATGAGCT', 'CTGATGTA', 'CGTGTGCA', 'CAGACAGT', 'CGCGTCGA', 'CTACACAT', 'CTCTGCGA', 'CTAGCTCA', 'CTCGCTGT', 'CTGTATAT', 'CGTAGACT', 'CAGAGCGT', 'CATGCATA', 'CGCGTAGT', 'CAGTGTCT', 'CAGATCAT', 'CAGCGAGT', 'CTGCGTAT', 'CGATCTGT', 'CTATCTCA', 'CACATGCT', 'CTACATCA', 'CACAGTAT', 'CGAGCACT', 'CATATACA', 'CGACGAGA', 'CAGAGTCA', 'CTCGAGCT', 'CAGCAGCT', 'CGCGACAT', 'CGCATGCA', 'CGATGCAT', 'CGCACTCA', 'CTGATCAT', 'CTATCGCT', 'CACGCTGA', 'CACTGTGT', 'CTAGAGTA', 'CGAGCGTA', 'CGCAGCGA', 'CTATAGTA', 'CGACTACT', 'CGCGCTCT', 'CTGTAGCT', 'CGCTAGCA', 'CTAGATGT', 'CGACGTAT', 'CTATCAGT', 'CAGCGTCT', 'CACTACGA', 'CACGCTGT', 'CACACTGA', 'CAGAGTGT', 'CGCGATGA', 'CAGTGCGA', 'CTATAGCA', 'CGATAGTA', 'CAGCTACT', 'CTCGTACA', 'CGCTGCGA', 'CAGTGACT', 'CTCTACGA', 'CTAGTAGT', 'CGCGTACA', 'CTATCTGT', 'CGCGCTCA', 'CATATAGT', 'CGTGTACT', 'CACGATCA', 'CACGCAGT', 'CATGTCGT', 'CATCGTCT', 'CGATGAGT', 'CTCTGTCA', 'CGCGTCGT', 'CGAGCGCT', 'CTAGTGCT', 'CTACAGCT', 'CGCGCTGT', 'CTATGCAT', 'CGTCATCA', 'CGATGCGT', 'CGACGAGT', 'CTGTATCT', 'CGCTACGT', 'CTGAGATA', 'CTCGCAGT', 'CTGTATCA', 'CGATGATA', 'CTGCGTGT', 'CGCATACA', 'CGCATGCT', 'CAGCAGCA', 'CTAGCTGA', 'CTGTACGT', 'CTAGCTGT', 'CTGATCGT', 'CATCTACT', 'CTCGAGAT', 'CTAGCGTA', 'CGCTACGA', 'CGTGCAGT', 'CACATACT', 'CATGTGCA', 'CGTGCGCT', 'CAGAGCAT', 'CGATAGAT', 'CTCGATCA', 'CATAGTCA', 'CATATGAT', 'CGTAGCAT', 'CATCGTGA', 'CGCACGCT', 'CTGCTACT', 'CGTGCTCA', 'CACAGTCA', 'CGCTATAT', 'CACACTCT', 'CTGTATGA', 'CGATACGA', 'CAGATACA', 'CACGATAT', 'CTATGTCT', 'CGCGTGAT', 'CATATGCT', 'CTGATAGT', 'CGTGCTGA', 'CGATCTCT', 'CTCTGCAT', 'CTATAGAT', 'CTAGCATA', 'CTGAGTGT', 'CATGAGAT', 'CATGATGA', 'CTATACGA', 'CTAGTAGA', 'CTACGCAT', 'CATGCGCT', 'CTATCTGA', 'CTATCATA', 'CTGTAGAT', 'CGATAGCT', 'CTGTATGT', 'CACGTGAT', 'CTAGCGCT', 'CAGACTGT', 'CAGCGTCA', 'CTAGTGAT', 'CTGATGCA', 'CGCGTATA', 'CTACATAT', 'CTGCGCAT', 'CATATGTA', 'CATAGTCT', 'CGATGTAT', 'CATATGCA', 'CGCTGCAT', 'CTCGAGTA', 'CGTAGAGA', 'CATGAGTA', 'CGCGCAGT', 'CGCGAGCT', 'CTCGCTCA', 'CGTGCATA', 'CTGAGCGT', 'CTGCGTCA', 'CTGCTGCA', 'CGCGTACT', 'CAGCGTAT', 'CGATGCGA', 'CTAGACGT', 'CGATCGTA', 'CTAGCTCT', 'CTGAGTGA', 'CAGCTGCA', 'CTGTGAGT', 'CTGCTCGT', 'CTCGTACT']
 
 cfc_inv = {}
@@ -46,7 +46,9 @@ class CommaFreeCodec(BaseCodec):
                 dec[n] = split[i]
                 i += 8
                 prior = True
-            else:
+            elif split[i] == None:
+                if i+8>=l*8:
+                    break
                 # maybe have an insertion, deletion, or substitution
                 if split[i+8] != None:
                     # guess substitution, leave entry as None
@@ -74,6 +76,20 @@ class CommaFreeCodec(BaseCodec):
 
 
     def _decode(self,s):
-        dec = self._decode_helper(s)        
-        key = base_conversion.convertBytesToInt(dec[0:self._keyWidthInBytes])        
-        return key,"".join([ chr(x) for x in dec[self._keyWidthInBytes:]])
+        dec = self._decode_helper(s)
+        #have a None object, generate random byte values
+        key_array=[]
+        #need to handle case of not being able to come up with a complete key
+        if None in dec[0:self._keyWidthInBytes]:
+            for i in dec[0:self._keyWidthInBytes]:
+                if i is None:
+                    key_array.append(randint(0,255))
+                else:
+                    key_array.append(i)
+        else:
+            key_array=dec[0:self._keyWidthInBytes]    
+        key = base_conversion.convertBytesToInt(key_array)        
+        #return key,"".join([ chr(x) for x in dec[self._keyWidthInBytes:]])
+        
+        #Return an array of values rather than joining them as characters, possibly FIX_ME?
+        return key,dec[self._keyWidthInBytes:]

@@ -73,6 +73,7 @@ class WritePacketizedFilestream:
     ## Warning: requires buffering the whole file!
     def write(self):
         items = self.__data.items()
+        
         items.sort(cmp=lambda x,y: cmp(x[0],y[0]))
         i = 0
         emptyString = '\x00'*self.packetSize

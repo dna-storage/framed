@@ -33,13 +33,25 @@ class BaseModel:
         self._args=args
     #read input file
     def read_file(self):
-        _file=open(self._args.input_file,'r')
-        self._input_library=[]
+        if self._args.input_file is not None:
+            _file=open(self._args.input_file,'r')
+            self._input_library=[]
+            for line in _file:
+                line=line.strip('\n')
+                self._input_library.append(line)
+            _file.close()
+
+    #These two setting functions allow easier altertion of the input library to fault injection, and parameters around fault injection
+    def set_library(self,input_strands):
+        self._input_library=input_strands
         
-        for line in _file:
-            line=line.strip('\n')
-            self._input_library.append(line)
-        _file.close()
+    def set_faulty_missing(self,desired_faulty_count,desired_missing_count):
+        self._args.faulty=desired_faulty_count
+        self._args.missing=desired_missing_count
+
+
+
+    #NOTE:deprecated function, random.sample is used for generating indexes now
     def random_array_element(self,input_set):
         random_index=random.randint(0,len(input_set)-1)
         return random_index,input_set[random_index]
@@ -61,23 +73,20 @@ class miss_strand(BaseModel):
         BaseModel.__init__(self,args)
         self.read_file()
         
-    def Run(self):
+    def Run(self,write_out=False):
         removal_sites=[]
         self._faulty_strands=[]
         removal_sites=self.remove_sites(self._input_library)
         self._faulty_strands=self.remove_strands(self._removal_sites,self._input_library)
-        self.write_out(self._faulty_strands)
+        if write_out is False:
+            return self._faulty_strands
+        else:
+            self.write_out(self._faulty_strands)
 
         
     #gets a collection of indexes to remove from the input file, all indexes are relative to the original file e.g removal_index=1 means we will remove the second strand (indexing starting at 0)
     def remove_sites(self,input_library):
-        removal_sites=[]
-        strand_indexes=range(len(input_library))
-        for fault_ID in range(self._args.missing):
-            index,removal_strand_index=self.random_array_element(strand_indexes)
-            del strand_indexes[index]
-            removal_sites.append(removal_strand_index)
-        return removal_sites
+        return random.sample(range(len(input_library)),self._args.missing)
 
  #remove the strands indicated by the sites list from the input library
     def remove_strands(self,sites,input_library):
@@ -98,7 +107,7 @@ class strand_fault(BaseModel):
         #read csv file if it is available
         if self._args.fault_file is not None:
             self._csv_data=self.read_csv(self._args.fault_file)
-    def Run(self):
+    def Run(self,write_out=False):
         self._injection={}
         self._error_strands=[]
         #if there is no csv file, chose random spots and errors
@@ -108,7 +117,10 @@ class strand_fault(BaseModel):
         #if there is a csv file, inject errors based off the data
         elif self._args.fault_file is not None:
             self._error_strands=self.inject_distribution(self._input_library,self._csv_data)
-        self.write_out(self._error_strands)
+        if write_out is False:
+            return self._error_strands
+        else:
+            self.write_out(self._error_strands)
 
     #These functions are used for testing code
     def get_fault_spread(self):
@@ -245,6 +257,21 @@ class strand_fault(BaseModel):
         strand_indexes=range(len(input_library))
         fault_list={} 
         strand_index_start=self._args.p1
+        strand_locations=random.sample(range(len(input_library)),self.args._faulty)
+        for strand_index in strand_locations:
+            fault_list[strand_index]={}
+            if self._args.run is True:
+                start_point=random.randint(strand_index_start,len(strand)-self._args.p2-self._args.fails)
+                nucleotide_indexes=range(start_point,start_point+self._args.fails)
+            else:
+                nucletoide_indexes=random.sample(range(strand_index_start,len(strand)-self._args.p2),self._args.fails)
+            for nuc_ind in nucleotide_indexes:
+                fault_type=random.randint(0,2)
+                fault_list[strand_index][nuc_ind]=str(fault_type)
+
+        
+        return fault_list
+    """
         for strand_num in range(self._args.faulty):
             #chose a strand
             index,chosen_strand_index=self.random_array_element(strand_indexes)
@@ -268,7 +295,7 @@ class strand_fault(BaseModel):
                 fault_type=random.randint(0,2)
                 fault_list[chosen_strand_index][nucleotide_index]=str(fault_type)
         return fault_list
-
+    """
      
 
         
@@ -307,7 +334,7 @@ class combo(BaseModel):
          #read csv file if it is available
         if self._args.fault_file is not None:
             self._csv_data=self.read_csv(self._args.fault_file)
-    def Run(self):
+    def Run(self,write_out=False):
         strands_after_missing=[]
         missing_sites=[]
         missing_strands_with_errors=[]
@@ -319,7 +346,10 @@ class combo(BaseModel):
             missing_strands_with_errors=self.strand_faults.inject_errors(error_sites,strands_after_missing)
         elif self._args.fault_file is not None:
             missing_strands_with_errors=self.strand_faults.inject_distribution(strands_after_missing,self._csv_data)
-        self.write_out(missing_strands_with_errors)
+        if write_out is False:
+            return missing_strands_with_errors
+        else:
+            self.write_out(missing_strands_with_errors)
 
 
                     
