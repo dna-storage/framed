@@ -10,6 +10,7 @@ from dnastorage.arch.strand import *
 from dnastorage.primer.primer_util import *
 from dnastorage.util.neg_binomial_gen import *
 from dnastorage.handle_strands.strand_handlers import *
+
 import sys
 import os
 import time
@@ -154,15 +155,20 @@ def clean_run(args):
 
 
 #use the negative binomial distribution to generate a new pool of strands
-def distribute_reads(strands,neg_bin_ranomizer):
+def distribute_reads(strands,neg_bin_randomizer,tuple_format=True):
     read_count=[]
     new_pool=[]
-    for s in strands:
-        read_count.append(neg_bin_ranomizer.gen())
-    for index, s in enumerate(strands):
-        new_pool+=[s for i in range(0,read_count[index])]
-    return new_pool
-
+    #Tuple format accelerates simulation of fault models of nucleotide strand faults and missing strand faults
+    if tuple_format==False:
+        for s in strands:
+            read_count.append(neg_bin_randomizer.gen())
+        for index, s in enumerate(strands):
+            new_pool+=[s for i in range(0,read_count[index])]
+        return new_pool
+    else:
+        #make a simple array of tuples in format (strand,count for that strand)
+        new_pool=[(s,neg_bin_randomizer.gen()) for s in strands]
+        return new_pool
 
 def build_strand_handler(strand_handler,Codec):
     if strand_handler == "data_vote_simple":
@@ -267,7 +273,6 @@ if __name__ == "__main__":
         print"Build Large pool time: {}".format(time1-time0)
     
 
-
         # set the number of strands accordingly for the fault model class
         if len(multiple_strand_pool)<desired_faulty_count or len(multiple_strand_pool)<desired_missing_count:
             fault_model.set_faulty_missing(len(multiple_strand_pool),len(multiple_strand_pool))
@@ -276,18 +281,20 @@ if __name__ == "__main__":
             
 
         
-        #set the fault_model's library equal to the new multiple strand pool
+        #set the fault_model's library to the new strand pool
         fault_model.set_library(multiple_strand_pool)
 
         time0=time.time()
         #inject the faults
-        strands_after_faults=fault_model.Run()
+        strands_after_faults=fault_model.Run_tuple()
         time1=time.time()
+
+        
         print"Injecting faults time: {}".format(time1-time0)
 
         time0=time.time()
         #call the strand handler, will return either key,value pairs or strands
-        processed_strands=strand_handler.process(strands_after_faults)
+        processed_strands=strand_handler.process_tuple(strands_after_faults)
         time1=time.time()
         print"Process strands time: {}".format(time1-time0)
 

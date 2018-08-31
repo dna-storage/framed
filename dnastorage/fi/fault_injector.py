@@ -1,3 +1,4 @@
+
 #Classes for each of the fault models
 import os
 import random
@@ -113,15 +114,8 @@ class strand_fault(BaseModel):
         self._error_strands=[]
         #if there is no csv file, chose random spots and errors
         if self._args.fault_file is None:
-            time0=time.time()
             self._injection=self.injection_sites(self._input_library)
-            time1=time.time()
-            print "Selecting"
-            print "Selection Time {}".format(time1-time0)
-            time0=time.time()
             self._error_strands=self.inject_errors(self._injection,self._input_library)
-            time1=time.time()
-            print "Injection Time {}".format(time1-time0)
         #if there is a csv file, inject errors based off the data
         elif self._args.fault_file is not None:
             self._error_strands=self.inject_distribution(self._input_library,self._csv_data)
@@ -129,6 +123,93 @@ class strand_fault(BaseModel):
             return self._error_strands
         else:
             self.write_out(self._error_strands)
+
+
+    #this function complies with a tuple format for the library
+    def Run_tuple(self):
+        self._injection_sites={}
+        self._strands_after_errors=[]
+        self._injection_sites=self.injection_sites_tuple(self._input_library)
+        self._strands_after_errors=self.inject_errors_tuple(self._injection_sites,self._input_library)
+        return self._strands_after_errors
+        
+
+
+      #get strands to inject faults at and nucleotides within the strand
+    def injection_sites_tuple(self,input_library):
+        converted_index=0
+        sum_to_last_index=input_library[0][1]
+        #list of strand indexes to chose from
+        sum_values=0
+        for s in input_library:
+            sum_values+=s[1]
+        strand_indexes=range(sum_values)
+        fault_list={} 
+        strand_index_start=self._args.p1
+        strand_locations_before_conversion=sorted(random.sample(strand_indexes,self._args.faulty))
+        strand_locations=[]
+        #convert the locations down to the original library to see what strand we are actually injecting 
+        for samples in strand_locations_before_conversion:
+            converted_index,sum_to_last_index=self.convert_index(samples,input_library,converted_index,sum_to_last_index)
+            strand_locations.append(converted_index)
+        for strand_index in strand_locations:
+            fault_list[strand_index]={}
+            if self._args.run is True:
+                start_point=random.randint(strand_index_start,len(input_library[strand_index][0])-self._args.p2-self._args.fails)
+                nucleotide_indexes=range(start_point,start_point+self._args.fails)
+            else:
+                nucleotide_indexes=random.sample(range(strand_index_start,len(input_library[strand_index][0])-self._args.p2),self._args.fails)
+            for nuc_ind in nucleotide_indexes:
+                fault_type=generate.rand_in_range(0,2)
+                fault_list[strand_index][nuc_ind]=str(fault_type)
+                
+        return fault_list
+
+    #This function converts an index generated in the injection_sites_tuple funciton to an index into the actual library
+    def convert_index(self,index_to_convert,library,last_index,sum_to_last_index):
+        index=last_index
+        _sum=sum_to_last_index
+        while index_to_convert>_sum:
+            index+=1
+            _sum+=library[index][1]
+        assert index>=0 and index<len(library)
+        return index,_sum
+        
+
+    
+    #inject the errors into the selected strands and nucleotides
+    def inject_errors_tuple(self,inject_sites,input_library):
+        out_list=input_library[:]
+        for strand_indexes in inject_sites:
+            #print"library length {}".format(len(input_library))
+            #print strand_indexes
+            for fault_indexes in sorted(inject_sites[strand_indexes],reverse=True):
+                #substitution error
+                if inject_sites[strand_indexes][fault_indexes] == '0':
+                    #chose a random nucleotide that is different from the current one
+                    sub_nucleotide=random.choice(sub_dict[out_list[strand_indexes][0][fault_indexes]])
+                    #add on some extra information to the injection sites that indicates the nucleotide used for substitution
+                    inject_sites[strand_indexes][fault_indexes]='0-'+sub_nucleotide
+                    #append erroneous strands as tuple and adjust count of strands in out_list
+                    out_list[strand_indexes]=(out_list[strand_indexes][0],out_list[strand_indexes][1]-1)
+                    out_list.append((out_list[strand_indexes][0][0:fault_indexes]+sub_nucleotide+out_list[strand_indexes][0][fault_indexes+1:len(out_list[strand_indexes][0])],1))
+                #deletion error
+                elif inject_sites[strand_indexes][fault_indexes] == '1':
+                     #add on some extra information to the injection sites, append the nucleotide that was removed from the original strand
+                    inject_sites[strand_indexes][fault_indexes]='1-'+out_list[strand_indexes][0][fault_indexes]
+                    out_list[strand_indexes]=(out_list[strand_indexes][0],out_list[strand_indexes][1]-1)
+                    out_list.append((out_list[strand_indexes][0][0:fault_indexes]+out_list[strand_indexes][0][fault_indexes+1:len(out_list[strand_indexes][0])],1))
+                #insertion error
+                elif inject_sites[strand_indexes][fault_indexes] == '2':
+                    insert_nucleotide=random.choice(nuc_list)
+                    inject_sites[strand_indexes][fault_indexes]='2-'+insert_nucleotide
+                    out_list[strand_indexes]=(out_list[strand_indexes][0],out_list[strand_indexes][1]-1)
+                    out_list.append((out_list[strand_indexes][0][0:fault_indexes]+insert_nucleotide+out_list[strand_indexes][0][fault_indexes:len(out_list[strand_indexes][0])],1))
+            #print out_list[strand_indexes][0]
+        return out_list
+
+
+        
 
     #These functions are used for testing code
     def get_fault_spread(self):

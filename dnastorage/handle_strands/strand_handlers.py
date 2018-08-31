@@ -39,3 +39,36 @@ class data_vote_simple:
             #print key
             #print data
         return key_val_array
+    def process_tuple(self,strands):
+        key_value={}
+        key_val_array=[]
+        #seperare the strands up to their indexes
+        for s in strands:
+            if(s[1]>0):
+                key,value=self._Codec.decode(s[0])
+                if key not in key_value:
+                    key_value[key]=[]
+                    for i in range(0,s[1]):
+                        key_value[key].append(value)
+                else:
+                    for i in range(0,s[1]):
+                        key_value[key].append(value)
+
+        #go through each index and figure out the majority data
+        for key in key_value:
+            data=[]
+            for x in range(0,len(key_value[key][0])):
+                #get a list of values that belong to the same location
+                same_position_values=[data_strand[x] for data_strand in key_value[key]]
+                #print same_position_values
+                cnt=Counter(same_position_values)
+                most_common_value=cnt.most_common(1)[0][0]
+                #print most_common_value
+                data.append(most_common_value)
+            #put the key and data into an array
+            key_val_array.append((key,data))
+            #print key
+            #print data
+        return key_val_array
+
+
