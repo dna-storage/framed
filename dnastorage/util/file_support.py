@@ -73,7 +73,6 @@ class WritePacketizedFilestream:
     ## Warning: requires buffering the whole file!
     def write(self):
         items = self.__data.items()
-        
         items.sort(cmp=lambda x,y: cmp(x[0],y[0]))
         i = 0
         emptyString = '\x00'*self.packetSize
@@ -89,7 +88,27 @@ class WritePacketizedFilestream:
             i+=1
         if self.__fd != sys.stdout:
             self.__fd.close()
-        
+    
+    def dummy_write(self):
+        items = self.__data.items()
+        items.sort(cmp=lambda x,y: cmp(x[0],y[0]))
+        i = 0
+        emptyString = '\x00'*self.packetSize
+        output_data=""
+        for key,value in items:
+            if i < key:
+                while i < key:                    
+                    output_data+=emptyString
+                    i+=1
+            if i == self.numberOfPackets-1:
+                output_data+=value[0:self.lastPacketSize]
+            else:
+                output_data+=value
+            i+=1
+        return output_data
+
+
+            
 class WritePacketizedFile(WritePacketizedFilestream):
     def __init__(self,filename,size,packetSize):
         WritePacketizedFilestream.__init__(self,open(filename,"wb"),size,packetSize)

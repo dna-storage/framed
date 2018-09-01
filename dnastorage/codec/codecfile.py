@@ -112,6 +112,8 @@ class DecodePacketizedFile:
     def write(self):
         self._packetizedFile.write()
 
+    def dummy_write(self):
+        return self._packetizedFile.dummy_write()
 
 
 if __name__ == "__main__":

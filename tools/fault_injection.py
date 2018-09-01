@@ -10,6 +10,7 @@ from dnastorage.arch.strand import *
 from dnastorage.primer.primer_util import *
 from dnastorage.util.neg_binomial_gen import *
 from dnastorage.handle_strands.strand_handlers import *
+from dnastorage.util.data_fi import *
 
 import sys
 import os
@@ -151,7 +152,9 @@ def clean_run(args):
         initial_strands.append(s)
         clean_Decoder.decode(s)  
 
-    return clean_Decoder,clean_packetizedFile,initial_strands
+    clean_file=clean_Decoder.dummy_write()
+    
+    return clean_file,initial_strands,clean_Decoder
 
 
 #use the negative binomial distribution to generate a new pool of strands
@@ -179,12 +182,71 @@ def build_strand_handler(strand_handler,Codec):
 
 
 
+#function to wrap the process of running many 
+def run_monte(args,desired_faulty_count,clean_strands,clean_file,data_keeper,strand_handler,fault_model,desired_faults_per_strand=None):
+    #run many simulations to perform statistical analysis
+    table=[]
+    
+    if desired_faults_per_strand is not None:
+        fault_model.set_faults_per_strand(desired_faults_per_strand)
+
+        
+    for sim_number in range(0,args.num_sims):
+      
+        #build a "dirty" decoder and packetizedFile for each run
+        dirty_packetizedFile= WritePacketizedFilestream(args.o,args.filesize,20)
+        dirty_Decoder = build_decode_architecture(args.arch, dirty_packetizedFile, args.primer5, args.primer3,table)
+        #get a new pool of strands based on the negative binomial distribution
+        multiple_strand_pool=distribute_reads(clean_strands,read_randomizer)
+
+        # set the number of strands accordingly for the fault model class
+        if len(multiple_strand_pool)<desired_faulty_count:
+            fault_model.set_faulty_missing(len(multiple_strand_pool),len(multiple_strand_pool))
+        else:
+            fault_model.set_faulty_missing(desired_faulty_count,desired_faulty_count)
+        #set the fault_model's library to the new strand pool
+        fault_model.set_library(multiple_strand_pool)
+
+
+        strands_after_faults=fault_model.Run_tuple()
+        #call the strand handler, will return either key,value pairs or strands
+        processed_strands=strand_handler.process_tuple(strands_after_faults)
+        
+        #Hand the processed strands off to decoding
+        for proc in processed_strands:
+            if type(proc) is tuple:
+               dirty_Decoder.decode(None,bypass=True,input_key=proc[0],input_value=proc[1])
+            else:
+                dirty_Decoder.decode(proc)
+        #perform a dummy write
+        bad_file=dirty_Decoder.dummy_write()
+        percent_correct=data_keeper.calculate_correctness(bad_file,clean_file)
+        data_keeper.insert_correctness_result(percent_correct)
+
+
+    #grab an example of the distribution that was used
+    data_keeper.set_distribution(multiple_strand_pool)
+    #keep track of correctness results
+    lower,middle,upper=data_keeper.calculate_midpoint()
+    if desired_faults_per_strand is None:
+        data_point=(desired_faulty_count,lower,middle,upper)
+    else:
+        data_point=(desired_faults_per_strand,desired_faulty_count,lower,middle,upper)
+    data_keeper.insert_data_point(data_point)
+    data_keeper.clear_correctness_results()
+    
+
 '''
 Main file for injecting faults into an input DNA file, 3 available options are available
 
 miss_strand --- missing strand fault model, e.g. strand is not available to the decoder
 strand_fault --- faults within strand fault model, e.g. insert deletions, insertions, substitutions
 combo --- combine both missing strands and within strand fault model
+
+Combo fault mode will not be supported immediately for fault injection due to the current run-time constraints
+
+miss_strand will eventually be supported, as will the fault rate file miss strand mode
+
 
 '''
 
@@ -197,9 +259,11 @@ if __name__ == "__main__":
     parser.add_argument('--fault_rate_file', dest="fault_file",action="store", default=None, help='file to have fault rate per nucleotide')
     parser.add_argument('--fault_model',required=True,choices=['miss_strand','strand_fault','combo'])
     parser.add_argument('--run',action="store_true",help="Should strand_fault faults be in a run")
-    parser.add_argument('--missing_count',dest="missing",action="store",type=int,default=10,help="Number of missing strands")
-    parser.add_argument('--faulty_count',dest="faulty",action="store",type=int,default=10,help="Number of faulty strands")    
-    parser.add_argument('--fail_count',dest="fails",action="store",type=int,default=2,help="Number of faults within faulty strands")
+    parser.add_argument('--faulty_count',dest="faulty",action="store",default='10-10',help="range to sweep the number of faulty/missing strands")    
+    parser.add_argument('--fail_count',dest="fails",action="store",default='2-2',help="range to sweep the number of nucleotide errors ")
+    parser.add_argument('--faulty_step',dest="faulty_step",action="store",type=int,default=1,help="Step size through strand range")
+    parser.add_argument('--fail_step',dest="fails_step",type=int,action="store",default=1,help="Step size through nucleotide range")
+    
     parser.add_argument('--filesize',type=int,dest="filesize",action="store",default=0, help="Size of file to decode.")
     parser.add_argument('--primer5',dest="primer5",action="store",default=None, help="Beginning primer.")
     parser.add_argument('--primer3',dest="primer3",action="store",default=None, help="Ending primer.")
@@ -212,22 +276,33 @@ if __name__ == "__main__":
     parser.add_argument('--arch',required=True,choices=['UW+MSv1','Illinois','Binary','Goldman','Fountain','RS+CFC8'])
     parser.add_argument('input_file', nargs='?', type=argparse.FileType('r'), default=sys.stdin, help='Clean strands file') 
     parser.add_argument('--strand_handler',required=True,choices=['simple','data_vote_simple','nuc_vote_simple'])
-
+    parser.add_argument('--fileID',action="store",default='1',help="ID for the input file")
+  
     
     args = parser.parse_args()
 
+    #Parse the ranges for the nucleotide errors count and number of strands to be selected
+    nuc_lower,nuc_upper=args.fails.split('-')
+    nuc_lower=int(nuc_lower)
+    nuc_upper=int(nuc_upper)+1
+    strand_lower,strand_upper=args.faulty.split('-')
+    strand_lower=int(strand_lower)
+    strand_upper=int(strand_upper)+1
+    
+
+    
     model_name= args.fault_model
 
-    #set up fault injection arguments
+    #set up fault injection arguments, note this is just to initialize some variables in the fault model object
+    #things like injector.fails will be changed durin simulation sweeps
     injector_args=fault_injector.fault_injector_arguments()
     injector_args.o=args.o
     injector_args.input_file=None
     injector_args.fault_file=args.fault_file
     injector_args.fault_model=args.fault_model
     injector_args.run=args.run
-    injector_args.missing=args.missing
-    injector_args.faulty=args.faulty
-    injector_args.fails=args.fails
+    injector_args.faulty=0
+    injector_args.fails=0
     injector_args.p1=args.p1
     injector_args.p2=args.p2
 
@@ -238,7 +313,7 @@ if __name__ == "__main__":
         sys.exit(1)
     
     #clean_Decoder will buffer the clean_packetizedFile we will use to compare with the faulty file
-    clean_Decoder,clean_packetizedFile,clean_strands=clean_run(args)
+    clean_file,clean_strands,clean_Decoder=clean_run(args)
 
     # instantiate a fault model object
     fault_model = eval('fault_injector.'+model_name+'(injector_args)')
@@ -248,68 +323,13 @@ if __name__ == "__main__":
 
     #instantiate the strand handler
     strand_handler=build_strand_handler(args.strand_handler,clean_Decoder._Codec)
-    #FIX ME: need a method for collecitng data
 
-    #data=data_helper()
-
-    #will need to add 2 more loops to sweep across numbers of faults and numbers of strands
-
-    desired_missing_count=args.missing
-    desired_faulty_count=args.faulty
     
-    #run many simulations to get an average 
-    for sim_number in range(0,args.num_sims):
-        time0_loop=time.time()
-        #build a "dirty" decoder and packetizedFile for each run
-        dirty_packetizedFile= WritePacketizedFilestream(args.o,args.filesize,20)
-        table=[]
-        dirty_Decoder = build_decode_architecture(args.arch, dirty_packetizedFile, args.primer5, args.primer3,table)
+    if args.fault_model == "strand_fault" and args.fault_file is None:
+        #initialize the data helper object
+        data_keeper=data_helper(args.fileID,args.arch,args.strand_handler,args.mean,args.var,args.fault_model,args.num_sims,args.faulty,args.fails)
+        for n in range(nuc_lower,nuc_upper,args.fails_step):
+            for s in range(strand_lower,strand_upper,args.faulty_step): 
+                run_monte(args,s,clean_strands,clean_file,data_keeper,strand_handler,fault_model,n)
 
-
-        time0=time.time()
-        #get a new pool of strands based on the negative binomial distribution
-        multiple_strand_pool=distribute_reads(clean_strands,read_randomizer)
-        time1=time.time()
-        print"Build Large pool time: {}".format(time1-time0)
-    
-
-        # set the number of strands accordingly for the fault model class
-        if len(multiple_strand_pool)<desired_faulty_count or len(multiple_strand_pool)<desired_missing_count:
-            fault_model.set_faulty_missing(len(multiple_strand_pool),len(multiple_strand_pool))
-        else:
-            fault_model.set_faulty_missing(desired_faulty_count,desired_missing_count)
-            
-
-        
-        #set the fault_model's library to the new strand pool
-        fault_model.set_library(multiple_strand_pool)
-
-        time0=time.time()
-        #inject the faults
-        strands_after_faults=fault_model.Run_tuple()
-        time1=time.time()
-
-        
-        print"Injecting faults time: {}".format(time1-time0)
-
-        time0=time.time()
-        #call the strand handler, will return either key,value pairs or strands
-        processed_strands=strand_handler.process_tuple(strands_after_faults)
-        time1=time.time()
-        print"Process strands time: {}".format(time1-time0)
-
-
-        time0=time.time()
-        #Hand the processed strands off to decoding
-        for proc in processed_strands:
-            if type(proc) is tuple:
-               dirty_Decoder.decode(None,bypass=True,input_key=proc[0],input_value=proc[1])
-            else:
-                dirty_Decoder.decode(proc)
-        #if there is a final decoding try, try it
-        if hasattr(dirty_Decoder,'attempt_final_decoding'):
-            dirty_Decoder.attempt_final_decoding()
-        
-        time1=time.time()
-        print"Decode run time: {}".format(time1-time0)
-        print"Total Loop time: {} Strands: {}".format(time1-time0_loop,len(strands_after_faults))
+    data_keeper.dump()

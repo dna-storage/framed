@@ -68,6 +68,8 @@ class BaseModel:
         _file=open(file_name,'r')
         csv_parsed=csv.reader(_file,delimiter=',')
         return csv_parsed
+    def set_faults_per_strand(self,desired_faults_per_strand):
+        self._args.fails=desired_faults_per_strand
 
 #class that contains functionality for missing strands fault model
 class miss_strand(BaseModel):
@@ -148,6 +150,8 @@ class strand_fault(BaseModel):
         strand_index_start=self._args.p1
         strand_locations_before_conversion=sorted(random.sample(strand_indexes,self._args.faulty))
         strand_locations=[]
+        #need to seed the C generator
+        generate.seed()
         #convert the locations down to the original library to see what strand we are actually injecting 
         for samples in strand_locations_before_conversion:
             converted_index,sum_to_last_index=self.convert_index(samples,input_library,converted_index,sum_to_last_index)
@@ -348,6 +352,8 @@ class strand_fault(BaseModel):
         fault_list={} 
         strand_index_start=self._args.p1
         strand_locations=random.sample(range(len(input_library)),self._args.faulty)
+        #need to seed the C generator
+        generate.seed()
         for strand_index in strand_locations:
             fault_list[strand_index]={}
             if self._args.run is True:

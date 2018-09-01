@@ -434,6 +434,11 @@ class ReedSolomonInnerOuterDecoder(DecodePacketizedFile):
         self.attempt_final_decoding()
         DecodePacketizedFile.write(self)
 
+    #dummy write allows us to get a data structure back for comparison
+    def dummy_write(self):
+        self.attempt_final_decoding()
+        return DecodePacketizedFile.dummy_write(self)
+
 if __name__ == "__main__":
     import sys
     from random import randint
