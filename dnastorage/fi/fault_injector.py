@@ -145,6 +145,7 @@ class strand_fault(BaseModel):
         sum_values=0
         for s in input_library:
             sum_values+=s[1]
+        #print sum_values
         strand_indexes=range(sum_values)
         fault_list={} 
         strand_index_start=self._args.p1
@@ -156,8 +157,11 @@ class strand_fault(BaseModel):
         for samples in strand_locations_before_conversion:
             converted_index,sum_to_last_index=self.convert_index(samples,input_library,converted_index,sum_to_last_index)
             strand_locations.append(converted_index)
-        for strand_index in strand_locations:
-            fault_list[strand_index]={}
+        #print "Strand locations length {}".format(len(strand_locations))
+        for index,strand_index in enumerate(strand_locations):
+            strand_ID=str(strand_index)+'-'+str(strand_locations_before_conversion[index])
+            #print "Strand Id {}".format(strand_ID)
+            fault_list[strand_ID]={}
             if self._args.run is True:
                 start_point=random.randint(strand_index_start,len(input_library[strand_index][0])-self._args.p2-self._args.fails)
                 nucleotide_indexes=range(start_point,start_point+self._args.fails)
@@ -165,8 +169,8 @@ class strand_fault(BaseModel):
                 nucleotide_indexes=random.sample(range(strand_index_start,len(input_library[strand_index][0])-self._args.p2),self._args.fails)
             for nuc_ind in nucleotide_indexes:
                 fault_type=generate.rand_in_range(0,2)
-                fault_list[strand_index][nuc_ind]=str(fault_type)
-                
+                fault_list[strand_ID][nuc_ind]=str(fault_type)
+        #print "fault_list length {}".format(len(fault_list))
         return fault_list
 
     #This function converts an index generated in the injection_sites_tuple funciton to an index into the actual library
@@ -184,32 +188,33 @@ class strand_fault(BaseModel):
     #inject the errors into the selected strands and nucleotides
     def inject_errors_tuple(self,inject_sites,input_library):
         out_list=input_library[:]
-        for strand_indexes in inject_sites:
-            #print"library length {}".format(len(input_library))
-            #print strand_indexes
-            for fault_indexes in sorted(inject_sites[strand_indexes],reverse=True):
+        #print "Length of injection sites {}".format(len(inject_sites))
+        for index in inject_sites:
+            strand_indexes=int(index.split('-')[0])
+            error_strand=out_list[strand_indexes][0]
+            for fault_indexes in sorted(inject_sites[index],reverse=True):
                 #substitution error
-                if inject_sites[strand_indexes][fault_indexes] == '0':
+                if inject_sites[index][fault_indexes] == '0':
                     #chose a random nucleotide that is different from the current one
                     sub_nucleotide=random.choice(sub_dict[out_list[strand_indexes][0][fault_indexes]])
                     #add on some extra information to the injection sites that indicates the nucleotide used for substitution
-                    inject_sites[strand_indexes][fault_indexes]='0-'+sub_nucleotide
-                    #append erroneous strands as tuple and adjust count of strands in out_list
-                    out_list[strand_indexes]=(out_list[strand_indexes][0],out_list[strand_indexes][1]-1)
-                    out_list.append((out_list[strand_indexes][0][0:fault_indexes]+sub_nucleotide+out_list[strand_indexes][0][fault_indexes+1:len(out_list[strand_indexes][0])],1))
+                    inject_sites[index][fault_indexes]='0-'+sub_nucleotide
+                    #calculate the error strand
+                    error_strand=error_strand[0:fault_indexes]+sub_nucleotide+error_strand[fault_indexes+1:len(error_strand)]
                 #deletion error
-                elif inject_sites[strand_indexes][fault_indexes] == '1':
-                     #add on some extra information to the injection sites, append the nucleotide that was removed from the original strand
-                    inject_sites[strand_indexes][fault_indexes]='1-'+out_list[strand_indexes][0][fault_indexes]
-                    out_list[strand_indexes]=(out_list[strand_indexes][0],out_list[strand_indexes][1]-1)
-                    out_list.append((out_list[strand_indexes][0][0:fault_indexes]+out_list[strand_indexes][0][fault_indexes+1:len(out_list[strand_indexes][0])],1))
+                elif inject_sites[index][fault_indexes] == '1':
+                    #add on some extra information to the injection sites, append the nucleotide that was removed from the original strand
+                    inject_sites[index][fault_indexes]='1-'+out_list[strand_indexes][0][fault_indexes]
+                    error_strand=error_strand[0:fault_indexes]+error_strand[fault_indexes+1:len(error_strand)]
                 #insertion error
-                elif inject_sites[strand_indexes][fault_indexes] == '2':
+                elif inject_sites[index][fault_indexes] == '2':
                     insert_nucleotide=random.choice(nuc_list)
-                    inject_sites[strand_indexes][fault_indexes]='2-'+insert_nucleotide
-                    out_list[strand_indexes]=(out_list[strand_indexes][0],out_list[strand_indexes][1]-1)
-                    out_list.append((out_list[strand_indexes][0][0:fault_indexes]+insert_nucleotide+out_list[strand_indexes][0][fault_indexes:len(out_list[strand_indexes][0])],1))
-            #print out_list[strand_indexes][0]
+                    inject_sites[index][fault_indexes]='2-'+insert_nucleotide
+                    error_strand=error_strand[0:fault_indexes]+insert_nucleotide+error_strand[fault_indexes:len(error_strand)]
+            #subtract a clean strand from the list location indicated by strand_indexes
+            out_list[strand_indexes]=(out_list[strand_indexes][0],out_list[strand_indexes][1]-1)
+            #append the error strand to the output list
+            out_list.append((error_strand,1))
         return out_list
 
 
@@ -370,10 +375,10 @@ class strand_fault(BaseModel):
         
     #inject the errors into the selected strands and nucleotides
     def inject_errors(self,inject_sites,input_library):
-        time0=time.time()
+        #time0=time.time()
         out_list=input_library[:]
-        time1=time.time()
-        print "copy time {}".format(time1-time0)
+        #time1=time.time()
+        #print "copy time {}".format(time1-time0)
         for strand_indexes in inject_sites:
             for fault_indexes in sorted(inject_sites[strand_indexes],reverse=True):
                 #substitution error

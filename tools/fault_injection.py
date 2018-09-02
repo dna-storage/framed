@@ -171,7 +171,10 @@ def distribute_reads(strands,neg_bin_randomizer,tuple_format=True):
     else:
         #make a simple array of tuples in format (strand,count for that strand)
         new_pool=[(s,neg_bin_randomizer.gen()) for s in strands]
-        return new_pool
+        pool_size=0
+        for strand in new_pool:
+            pool_size+=strand[1]
+        return new_pool,pool_size
 
 def build_strand_handler(strand_handler,Codec):
     if strand_handler == "data_vote_simple":
@@ -197,11 +200,12 @@ def run_monte(args,desired_faulty_count,clean_strands,clean_file,data_keeper,str
         dirty_packetizedFile= WritePacketizedFilestream(args.o,args.filesize,20)
         dirty_Decoder = build_decode_architecture(args.arch, dirty_packetizedFile, args.primer5, args.primer3,table)
         #get a new pool of strands based on the negative binomial distribution
-        multiple_strand_pool=distribute_reads(clean_strands,read_randomizer)
+        multiple_strand_pool,pool_size=distribute_reads(clean_strands,read_randomizer)
 
-        # set the number of strands accordingly for the fault model class
-        if len(multiple_strand_pool)<desired_faulty_count:
-            fault_model.set_faulty_missing(len(multiple_strand_pool),len(multiple_strand_pool))
+        
+        # make sure we do not select more strands than pool size
+        if pool_size<desired_faulty_count:
+            fault_model.set_faulty_missing(pool_size,pool_size)
         else:
             fault_model.set_faulty_missing(desired_faulty_count,desired_faulty_count)
         #set the fault_model's library to the new strand pool
@@ -209,13 +213,14 @@ def run_monte(args,desired_faulty_count,clean_strands,clean_file,data_keeper,str
 
 
         strands_after_faults=fault_model.Run_tuple()
+        #print len(strands_after_faults)
         #call the strand handler, will return either key,value pairs or strands
         processed_strands=strand_handler.process_tuple(strands_after_faults)
         
         #Hand the processed strands off to decoding
         for proc in processed_strands:
             if type(proc) is tuple:
-               dirty_Decoder.decode(None,bypass=True,input_key=proc[0],input_value=proc[1])
+                dirty_Decoder.decode(None,bypass=True,input_key=proc[0],input_value=proc[1])
             else:
                 dirty_Decoder.decode(proc)
         #perform a dummy write
