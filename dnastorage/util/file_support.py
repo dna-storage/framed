@@ -19,8 +19,8 @@ class WritePacketizedFilestream:
     def has_key(self,key):
         return self.__data.has_key(key)
     def __setitem__(self,key,value):
-        assert key >= 0 and key < self.numberOfPackets
-        self.__data[key] = value
+        if key >= 0 and key < self.numberOfPackets:
+            self.__data[key] = value
     def __getitem__(self,key):
         assert key >= 0 and key < self.numberOfPackets
         return self.__data[key]
@@ -96,14 +96,16 @@ class WritePacketizedFilestream:
         emptyString = '\x00'*self.packetSize
         output_data=""
         for key,value in items:
+            if value is not type(str):
+                value2="".join(value)
             if i < key:
                 while i < key:                    
                     output_data+=emptyString
                     i+=1
             if i == self.numberOfPackets-1:
-                output_data+=value[0:self.lastPacketSize]
+                output_data+=value2[0:self.lastPacketSize]
             else:
-                output_data+=value
+                output_data+=value2
             i+=1
         return output_data
 

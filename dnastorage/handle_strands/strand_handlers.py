@@ -46,13 +46,14 @@ class data_vote_simple:
         for s in strands:
             if(s[1]>0):
                 key,value=self._Codec.decode(s[0])
-                if key not in key_value:
-                    key_value[key]=[]
-                    for i in range(0,s[1]):
-                        key_value[key].append(value)
-                else:
-                    for i in range(0,s[1]):
-                        key_value[key].append(value)
+                if key is not None and value is not None:
+                    if key not in key_value:
+                        key_value[key]=[]
+                        for i in range(0,s[1]):
+                            key_value[key].append(value)
+                    else:
+                        for i in range(0,s[1]):
+                            key_value[key].append(value)
 
         #go through each index and figure out the majority data
         for key in key_value:

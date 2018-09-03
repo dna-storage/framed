@@ -27,8 +27,11 @@ class Checksum(BaseCodec):
     def _decode(self,s):
         key = s[0]
         value = [x for x in bytearray(s[1])]
-        assert value[-1] == sum(value[:-1])% 256        
-        return (key,str(bytearray(value[:-1])))
+        if value[-1] == sum(value[:-1])% 256:        
+            return (key,str(bytearray(value[:-1])))
+        #dont break on a mismatching checksum
+        else:
+            return None,None
 
 
 class StrandPrimers(BaseCodec):

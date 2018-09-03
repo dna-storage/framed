@@ -152,7 +152,7 @@ def huffman_decode(strand):
                 array.append(chr(byte))
                 i+=6
             else:
-                assert False            
+                array.append(None)
             
     packet = bytearray(array)
     return packet
@@ -176,8 +176,14 @@ def huffman_decode_limited(strand,numBytes):
                 count += 1
                 i+=6
             else:
-                assert False            
-    assert count == numBytes
+                #append None in case I cant figure out what the data is due to an error in the strand
+                array.append(chr(0))
+                i+=6
+                count+=1
+    while count < numBytes:
+        array.append(chr(0))
+        count+=1
+        
     packet = bytearray(array)
     return packet
 
@@ -215,7 +221,9 @@ def rotate_decode(strand,prev='A'):
     r = []
     for s in strand:
         n = unrotate_table[prev][rotate_map[s]]
-        #assert n!='X'
+        #add filler if X happens, means there was an error
+        if n =='X':
+            n='A'
         r.append( n )
         prev = s
     return "".join(r)
