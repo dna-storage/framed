@@ -123,7 +123,9 @@ class DecodeGoldmanStrand(DecodePacketizedFile):
     def write(self):
         assert self._packetizedFile.complete
         DecodePacketizedFile.write(self)
-
+    #dummy write for Goldman encoding
+    def dummy_write(self):
+        return DecodePacketizedFile.dummy_write(self)
 
 class EncodeXORStrand(EncodePacketizedFile):
     def __init__(self,packetizedFile,CodecObj):
@@ -195,6 +197,26 @@ class DecodeXORStrand(DecodePacketizedFile):
             assert self._packetizedFile.complete
         DecodePacketizedFile.write(self)
 
+    
+    #dummy writes are needed for all architectures to be evaluated by FI tools
+    def dummy_write(self):
+        if not self._packetizedFile.complete:
+            missing = self._packetizedFile.getMissingKeys()
+            missing = [ 2*m for m in missing ]
+            for m in missing:
+                assert self._data.has_key(m)==False                
+                # strategy one: check m-1 and m-2
+                if self._data.has_key(m-1) and self._data.has_key(m-2):
+                    value = self.assemble(m-1,m-2)
+                    self._data[m] = value
+                    self._packetizedFile[m/2] = value
+                # strategy two: check m+1 and m+2
+                elif self._data.has_key(m+1) and self._data.has_key(m+2):
+                    value = self.assemble(m+1,m+2)
+                    self._data[m] = value
+                    self._packetizedFile[m/2] = value
+        return(DecodePacketizedFile.dummy_write(self))
+        
 
 class EncodeFountainStrand(EncodePacketizedFile):
     def __init__(self,packetizedFile,factor,CodecObj):
