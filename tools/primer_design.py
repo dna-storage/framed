@@ -43,9 +43,12 @@ def montecarlo(args):
                 pg.append(l)
         print "Removed {} primers from list.".format(kk)
 
-    t = time.time();
+    t = time.time()
     i = 0
-    while count < args.n and (time.time() - t <= args.timeout):
+    while (count < args.n):
+        if(args.timeout != None): 
+          if(time.time() - t >= args.timeout):
+             break 
         s = pg.get()
         i += 1
         if design_rules.check(s):
@@ -55,6 +58,34 @@ def montecarlo(args):
     print design_rules
     return (L,count,i)
 
+def ranged(args):
+    use_nupack = args.use_nupack
+    distance = args.distance
+    length = args.primer_length
+    L = [] # list of primers
+   
+    design_rules = build_standard_design_rules(L,use_nupack)
+    
+    pg=LinearPrimerGenerator(args.ranged)
+     
+    t = time.time()
+    i=args.ranged[0]
+    while (i<(args.ranged[0]+args.ranged[1]) and i<4**20): 
+       if(args.timeout != None): 
+          if(time.time() - t >= args.timeout):
+             break 
+       s=pg.get(i)
+       i+=1
+       found=True
+       if len(L) and s[0] == L[0][-1]:
+            found = False
+       else:
+            found = design_rules.check(s)
+       if found:
+            L.append(s)
+
+    print design_rules
+    return L, i
 
 parser = argparse.ArgumentParser(description="Select a method for computing number of primers.")
 
@@ -76,9 +107,17 @@ parser.add_argument('--fast',dest="fast",action="store_true",help="Use a faster 
 
 parser.add_argument('--timeout',type=int,dest="timeout",action="store",default=60, help="If no primers are produced after timeout tries, give up.")
 
+parser.add_argument('--ranged',type=int, nargs=2,dest="ranged",action="store",help="Checks certain range of primers. First arg is starting point and second is range from that point")
+
+
 parser.add_argument('--o',dest="o",action="store",default=None, help="Output file.")
 
+parser.add_argument('--notime',action="store_true", help="Get rid of time limitations for run")
+
 args = parser.parse_args()
+
+if args.notime: 
+   args.timeout = None
 
 if args.mc:
     (L,count,i) = montecarlo(args)
@@ -95,4 +134,22 @@ if args.mc:
             print l
 
     print "Simulation: ",count, " out of ", i
-    print "Estimated primer population: ",4**20 * float(count)/i                    
+    print "Estimated primer population: ",4**20 * float(count)/i 
+
+elif args.ranged != None:
+     (L,count)=ranged(args)
+
+     f = open("runInfo.txt", 'a')
+     f.write("Range:"+ str(args.ranged[0]) +" to "+str((args.ranged[0]+args.ranged[1]))+" tested "+str(count-args.ranged[0])+ " primers.\n" )
+
+     if args.o != None:
+        f = open(args.o,"w")
+        for l in L:
+            #print l,"  Tm=",mt.Tm_NN(l)
+            f.write(l+"\n")
+        f.close()
+        os.system("mv "+str(args.o)+" ./Primers")
+     else:
+        for l in L:
+            print l
+                   

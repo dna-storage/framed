@@ -3,6 +3,7 @@ init:
 	pip install -r requirements.txt
 
 test:
+        #! /usr/bin/python2.7.15
 	nosetests tests
 
 clean:

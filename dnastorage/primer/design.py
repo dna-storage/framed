@@ -30,6 +30,48 @@ class UniquePrimerGenerator(RandomPrimerGenerator):
                 self.avoid.append(s)
                 return s
 
+class SpecificPrimerGenerator:
+    def __init__(self,value, chars="AGCT", length=20):
+        self.chars = chars
+        self.len = length
+
+    def get(self,v):
+        l=''
+        value=v
+        for i in range(19,-1,-1):
+            if(value>=3*4**i):
+              l += "T"
+              value-=3*4**i
+            elif(value>=2*4**i):
+              l += "C"
+              value-=2*4**i
+            elif(value>=1*4**i):
+              l += "G"
+              value-=1*4**i
+            else:
+              l += "A"
+        #print value
+        # print l
+        return l
+
+class LinearPrimerGenerator(SpecificPrimerGenerator):
+    def __init__(self, chars="AGCT", length=20, library=[]):
+        SpecificPrimerGenerator.__init__(self,chars,length)
+        self.avoid = library[:]
+
+    def append(self, l):
+        self.avoid.append(l)
+
+    def _get_helper(self,i):
+        return SpecificPrimerGenerator.get(self,i)
+
+    def get(self,i):
+        while True:
+            s = self._get_helper(i)
+            if not (s in self.avoid):
+                self.avoid.append(s)
+                return s
+
 class LikelyPrimerGenerator(UniquePrimerGenerator):
     def __init__(self, chars="AGCT", length=20, library=[], last='G', repl_factor=5):
         UniquePrimerGenerator.__init__(self,chars,length,library)
@@ -129,7 +171,7 @@ def build_correlation_distance_library_rule(L):
     return LibraryRule(lambda s,l: not (primer_util.correlation_distance(s,l) > 4), "Correlation distance <= 4", L)
 
 def build_hamming_distance_library_rule(distance,L):
-    return LibraryRule(lambda s,l: not (primer_util.hamming_distance(s,l) < distance), "Hamming distance > {}".format(distance), L)
+    return LibraryRule(lambda s,l: not (primer_util.hamming_distance(s,l) <= distance), "Hamming distance > {}".format(distance), L)
 
 def build_nupack_nonspecific_bindings_library_rule(L, Tm=50):
     return LibraryRule(lambda s,l: primer_util.nupack_check_complexes(s,l,Tm), "Avoid non-specific binding with libary (Tm={})".format(Tm), L)
@@ -164,6 +206,7 @@ class DesignRules:
         return "{} Results \n\t{}".format(self.name,"\n\t".join(str(self.rules[i]) for i in range(0,len(self.rules))))
 
 def build_standard_design_rules(Library, with_nupack=True):
+
     dr = DesignRules("Standard Design Rules")
     dr.add_rule(build_last_must_be_g_rule())
     dr.add_rule(build_singlerun_rule())

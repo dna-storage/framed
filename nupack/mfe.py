@@ -16,10 +16,15 @@ def create_mfe_input(sequences,num):
     f.close()
     return prefix
 
-def read_mfe_output(filename):
+def read_mfe_output(prefix, extention):
+    filename = prefix+extention
     f = open(filename,"r")
     lines = f.readlines()
     f.close()
+    cd = os.listdir("./")
+    for files in cd : 
+        if files.startswith(prefix): 
+           os.remove(files)
     i = 0
     complexes = []
     l = lines
