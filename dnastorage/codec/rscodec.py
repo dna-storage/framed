@@ -130,6 +130,7 @@ class ReedSolomonInnerOuterEncoder(EncodePacketizedFile):
         self._k_outer = k_outer
         self._e_outer = e_outer    
         self._packetizedFile.packetSize = k_outer*k_datastrand
+        self._packetizedFile._RS=True;
         assert (k_datastrand + k_index + e_inner  <= 255) # required by GF(256)
         assert (k_outer + e_outer  <= 255) # required by GF(256)
         self.strand_length = k_datastrand + k_index + e_inner
@@ -153,6 +154,10 @@ class ReedSolomonInnerOuterEncoder(EncodePacketizedFile):
         # self._packetizedFile will pad it to match the requested packetSize.        
         raw = self._packetizedFile.next()
 
+        #pad raw out to make sure we have enough data for strands
+        while(len(raw)%self._k_strand != 0):
+            raw.append('\x00')
+        
         matrix = []
 
         # distribute adjacent bytes in the file across strands to make loss of a strand
@@ -161,18 +166,33 @@ class ReedSolomonInnerOuterEncoder(EncodePacketizedFile):
             pass
 
         # compute inner code
-        for x in range(0,self._k_outer*self._k_strand,self._k_strand):
+        #Changed _k_strand*_k_outer to len(raw) !! May need to fix this
+        for x in range(0,len(raw),self._k_strand):
             r = raw[x:x+self._k_strand]
             ind = base_conversion.convertIntToBytes(x/self._k_strand + self.index,self._k_index)
             message = ind + [x for x in bytearray(r)]
             mesecc = rs.rs_encode_msg(message, self._e_inner);                    
             matrix.append(mesecc)
-                
-        self.index += self._k_outer*self._k_strand/self._k_strand
 
+
+        self.index += self._k_outer*self._k_strand/self._k_strand
+            
+        num_real_strands=len(matrix)
+        #pad out the matrix with dummy strands
+        dummy_index=num_real_strands
+        while(len(matrix)<self._k_outer):
+            dummy=['\x00']*(self._k_strand)
+            ind=base_conversion.convertIntToBytes(dummy_index,self._k_index)
+            dummy_message=ind+[_ for _ in bytearray(dummy)]
+            dummy_mesecc=rs.rs_encode_msg(message,self._e_inner)
+            matrix.append(dummy_mesecc)
+            dummy_index+=1
+                
+    
         # number of error strands
         n_error_strands = int(ceil(self.strand_length * self._e_outer / float(self._k_strand)))
 
+        
         # outer error codes 
         error_codes = []
 
@@ -200,11 +220,13 @@ class ReedSolomonInnerOuterEncoder(EncodePacketizedFile):
             matrix.append(mesecc)
             self.index += 1
         
-        for m in matrix:
-            tup = (base_conversion.convertBytesToInt(m[:self._k_index]),m[self._k_index:])
-            #codecs expect a (index,value) tuple
-            self.strands.append(self._Codec.encode(tup))
-
+        for i, m in enumerate(matrix):
+            #only append strands if they are real and are error correction strands 
+            if i<num_real_strands or i>=self._k_outer:
+                tup = (base_conversion.convertBytesToInt(m[:self._k_index]),m[self._k_index:])
+                #codecs expect a (index,value) tuple
+                self.strands.append(self._Codec.encode(tup))
+            
         return self._pop_strand()
 
     
@@ -243,6 +265,8 @@ class ReedSolomonInnerOuterDecoder(DecodePacketizedFile):
         if not rs_initialized:
             rs.init_tables(0x11d)
             rs_initialized = True
+        self._file_size=self._packetizedFile.size
+        self._file_size=self._packetizedFile.size
         self._k_strand = k_datastrand
         self._k_index = k_index
         self._e_inner = e_inner
@@ -259,8 +283,41 @@ class ReedSolomonInnerOuterDecoder(DecodePacketizedFile):
         self.n_error_strands = int(ceil(self.strand_length * self._e_outer / float(self._k_strand)))
         self.outer_block = k_outer+self.n_error_strands
         self.decodedMap = {}
+        self._build_dummy_strands()
+       
 
 
+    #need to build and insert dummy strands into rsMap
+    def _build_dummy_strands(self):
+        block_size_B=self._packetizedFile.packetSize
+        last_block_size_B=self._file_size%block_size_B
+        num_real_data_strands_last_block=int(ceil(last_block_size_B/float(self._k_strand)))
+        num_blocks=int(ceil(self._file_size/float(block_size_B)))
+        strands_per_block_data=int(ceil(block_size_B/float(self._k_strand)))
+        strands_per_block_error=self.n_error_strands
+        #total_strands_per_block will be the number of indexes per block
+        total_strands_per_block=strands_per_block_data+strands_per_block_error
+
+        #this is the first index in the last block
+        last_block_base_index=total_strands_per_block*(num_blocks-1)
+
+        #this is the first index of dummy strands
+        dummy_start_index=last_block_base_index+num_real_data_strands_last_block
+
+        #upper_bound for the dummy strands
+        dummy_upper_bound=(total_strands_per_block*num_blocks)-strands_per_block_error
+
+
+        #insert dummy values into the rsMap table
+        for index in range(dummy_start_index,dummy_upper_bound):
+            dummy_index=base_conversion.convertIntToBytes(index,self._k_index)
+            dummy_data=['\x00']*self._k_strand
+            dummy_message=dummy_index+[_ for _ in bytearray(dummy_data)]
+            dummy_mesecc=rs.rs_encode_msg(dummy_message,self._e_inner)
+            self._rsMap[index]=dummy_mesecc
+            
+        
+        
     def _get_base(self, index):
         base = index/self.outer_block*self.outer_block 
         return base

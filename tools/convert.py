@@ -99,7 +99,7 @@ def build_decode_architecture(arch, pf, primer5, primer3, fountain_table=None):
         return None
 
     elif arch == 'RS+CFC8':
-        print pf.packetSize
+        #print pf.packetSize
         b = commafreecodec.CommaFreeCodec(13,None,2)
         p = StrandPrimers(primer5, primer3, b)
         dec = ReedSolomonInnerOuterDecoder(pf,p,k_datastrand=9,e_inner=2,k_index=2)

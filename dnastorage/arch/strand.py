@@ -161,7 +161,7 @@ class EncodeXORStrand(EncodePacketizedFile):
 class DecodeXORStrand(DecodePacketizedFile):
     def __init__(self,packetizedFile,CodecObj):
         DecodePacketizedFile.__init__(self,packetizedFile,CodecObj)
-    
+        self._num_XOR_used=0
     def _decode(self, key, value):
         if key % 2 == 0:        
             #self.decode(key,value)
@@ -210,11 +210,14 @@ class DecodeXORStrand(DecodePacketizedFile):
                     value = self.assemble(m-1,m-2)
                     self._data[m] = value
                     self._packetizedFile[m/2] = value
+                    self._num_XOR_used+=1
                 # strategy two: check m+1 and m+2
                 elif self._data.has_key(m+1) and self._data.has_key(m+2):
                     value = self.assemble(m+1,m+2)
                     self._data[m] = value
                     self._packetizedFile[m/2] = value
+                    self._num_XOR_used+=1
+            print self._num_XOR_used
         return(DecodePacketizedFile.dummy_write(self))
         
 
