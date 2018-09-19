@@ -320,6 +320,7 @@ def check_old_strands(s):
     return True
 
 # should go somewhere else!
+
 def checkComplexes(seqs,Tm=50):
     prefix = create_mfe_input(seqs,2)
     args = complexes_args(prefix)
