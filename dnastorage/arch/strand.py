@@ -217,7 +217,7 @@ class DecodeXORStrand(DecodePacketizedFile):
                     self._data[m] = value
                     self._packetizedFile[m/2] = value
                     self._num_XOR_used+=1
-            print self._num_XOR_used
+            #print self._num_XOR_used
         return(DecodePacketizedFile.dummy_write(self))
         
 

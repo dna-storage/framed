@@ -107,6 +107,9 @@ class WritePacketizedFilestream:
             else:
                 output_data+=value2
             i+=1
+        while(i<self.numberOfPackets):
+            output_data+=emptyString
+            i+=1
         return output_data
 
 

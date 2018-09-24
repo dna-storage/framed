@@ -11,6 +11,7 @@ from dnastorage.primer.primer_util import *
 from dnastorage.util.neg_binomial_gen import *
 from dnastorage.handle_strands.strand_handlers import *
 from dnastorage.util.data_fi import *
+import numpy as np
 
 import sys
 import os
@@ -158,19 +159,28 @@ def clean_run(args):
 
 
 #use the negative binomial distribution to generate a new pool of strands
+#will only return 1 copy of each strand if negative binomial distribution is disabled
 def distribute_reads(strands,neg_bin_randomizer,tuple_format=True):
     read_count=[]
     new_pool=[]
+    dist=[]
     #Tuple format accelerates simulation of fault models of nucleotide strand faults and missing strand faults
     if tuple_format==False:
-        for s in strands:
-            read_count.append(neg_bin_randomizer.gen())
+        for ind,s in enumerate(strands):
+            if neg_bin_randomizer is not None:
+                read_count.append(neg_bin_randomizer.gen())
+            else:
+                read_count.append(1)
+            dist.append((ind,read_count[ind]))
         for index, s in enumerate(strands):
             new_pool+=[s for i in range(0,read_count[index])]
-        return new_pool
+        return new_pool,dist
     else:
-        #make a simple array of tuples in format (strand,count for that strand)
-        new_pool=[(s,neg_bin_randomizer.gen()) for s in strands]
+        if neg_bin_randomizer is not None:
+            #make a simple array of tuples in format (strand,count for that strand)
+            new_pool=[(s,neg_bin_randomizer.gen()) for s in strands]
+        else:
+            new_pool=[(s,1) for s in strands]
         pool_size=0
         for strand in new_pool:
             pool_size+=strand[1]
@@ -185,8 +195,8 @@ def build_strand_handler(strand_handler,Codec):
 
 
 
-#function to wrap the process of running many 
-def run_monte(args,desired_faulty_count,clean_strands,clean_file,data_keeper,strand_handler,fault_model,desired_faults_per_strand=None):
+#function to wrap the process of running many strand_fault and missing_strand fault model simulations 
+def run_monte_MS(args,desired_faulty_count,clean_strands,clean_file,data_keeper,strand_handler,fault_model,desired_faults_per_strand=None):
     #run many simulations to perform statistical analysis
     table=[]
     
@@ -199,6 +209,8 @@ def run_monte(args,desired_faulty_count,clean_strands,clean_file,data_keeper,str
         #build a "dirty" decoder and packetizedFile for each run
         dirty_packetizedFile= WritePacketizedFilestream(args.o,args.filesize,20)
         dirty_Decoder = build_decode_architecture(args.arch, dirty_packetizedFile, args.primer5, args.primer3,table)
+        
+        
         #get a new pool of strands based on the negative binomial distribution
         multiple_strand_pool,pool_size=distribute_reads(clean_strands,read_randomizer)
 
@@ -239,14 +251,66 @@ def run_monte(args,desired_faulty_count,clean_strands,clean_file,data_keeper,str
         data_point=(desired_faults_per_strand,desired_faulty_count,lower,middle,upper)
     data_keeper.insert_data_point(data_point)
     data_keeper.clear_correctness_results()
+
+
+
+
+#function for running monte carlo simulations for a fixed rate fault model 
+def run_monte_rate(args,clean_strands,clean_file,data_keeper,strand_handler,fault_model,error_rate):
+    #run many simulations to perform statistical analysis
+    table=[]
+    dist=[]
+    fault_model.set_fault_rate(error_rate)
+    for sim_number in range(0,args.num_sims):
+      
+        #build a "dirty" decoder and packetizedFile for each run
+        dirty_packetizedFile= WritePacketizedFilestream(args.o,args.filesize,20)
+        dirty_Decoder = build_decode_architecture(args.arch, dirty_packetizedFile, args.primer5, args.primer3,table)
+        #get a new pool of strands based on the negative binomial distribution
+        multiple_strand_pool,dist=distribute_reads(clean_strands,read_randomizer,False)
+        
+        #set the fault_model's library to the new strand pool
+        fault_model.set_library(multiple_strand_pool)
+        strands_after_faults=fault_model.Run()
+        
+        #call the strand handler, will return either key,value pairs or strands
+        processed_strands=strand_handler.process(strands_after_faults)
+        
+        #Hand the processed strands off to decoding
+        for proc in processed_strands:
+            if type(proc) is tuple:
+                dirty_Decoder.decode(None,bypass=True,input_key=proc[0],input_value=proc[1])
+            else:
+                dirty_Decoder.decode(proc)
+        #perform a dummy write
+        bad_file=dirty_Decoder.dummy_write()
+        percent_correct=data_keeper.calculate_correctness(bad_file,clean_file)
+        data_keeper.insert_correctness_result(percent_correct)
+
+
+    #grab an example of the distribution that was used
+    data_keeper.set_distribution(dist)
+    #keep track of correctness results
+    lower,middle,upper=data_keeper.calculate_midpoint()
+    data_point=(error_rate,lower,middle,upper)
+    data_keeper.insert_data_point(data_point)
+    data_keeper.clear_correctness_results()
     
 
+
+
+
+
+    
+    
+
+    
 '''
 Main file for injecting faults into an input DNA file, 3 available options are available
 
 miss_strand --- missing strand fault model, e.g. strand is not available to the decoder
 strand_fault --- faults within strand fault model, e.g. insert deletions, insertions, substitutions
-combo --- combine both missing strands and within strand fault model
+fixed_rate --- fixed fault rate applied to each nucleotide in each strand.
 
 Combo fault mode will not be supported immediately for fault injection due to the current run-time constraints
 
@@ -257,32 +321,42 @@ miss_strand will eventually be supported, as will the fault rate file miss stran
 
 
 
+
+
+
+
+
+
+
 if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser(description="Inject faults into input file and perform analysis")
     parser.add_argument('--fault_rate_file', dest="fault_file",action="store", default=None, help='file to have fault rate per nucleotide')
-    parser.add_argument('--fault_model',required=True,choices=['miss_strand','strand_fault','combo'])
+    parser.add_argument('--fault_model',required=True,choices=['miss_strand','strand_fault','combo','fixed_rate'])
     parser.add_argument('--run',action="store_true",help="Should strand_fault faults be in a run")
     parser.add_argument('--faulty_count',dest="faulty",action="store",default='10-10',help="range to sweep the number of faulty/missing strands")    
     parser.add_argument('--fail_count',dest="fails",action="store",default='2-2',help="range to sweep the number of nucleotide errors ")
     parser.add_argument('--faulty_step',dest="faulty_step",action="store",type=int,default=1,help="Step size through strand range")
     parser.add_argument('--fail_step',dest="fails_step",type=int,action="store",default=1,help="Step size through nucleotide range")
+    parser.add_argument('--fault_rate',dest="rate",action="store",default='0.001-0.001',help="range to sweep the fault rate")
+    parser.add_argument('--rate_step',dest="rate_step",type=float,action="store",default=0.001,help="Step size through fault rate range")
     
+
     parser.add_argument('--filesize',type=int,dest="filesize",action="store",default=0, help="Size of file to decode.")
     parser.add_argument('--primer5',dest="primer5",action="store",default=None, help="Beginning primer.")
     parser.add_argument('--primer3',dest="primer3",action="store",default=None, help="Ending primer.")
     parser.add_argument('--primer1_length',dest="p1",action="store",type=int,default=20,help="Length of primer1 (total, so if hierarchy set to 40 instead of 20)")    
     parser.add_argument('--primer2_length',dest="p2",action="store",type=int,default=20,help="Length of primer2, for all our experiments this will be set to 20")    
-    parser.add_argument('--seq_mean',dest="mean",action="store",type=float,default=0,help="Mean of the sequencing distribution")    
-    parser.add_argument('--seq_var',dest="var",action="store",type=float,default=4.3,help="Variance of the sequencing distribution") 
+    parser.add_argument('--seq_mean',dest="mean",action="store",type=float,default=0,help="Mean of the sequencing distribution,set to 0 to deactivate distribution")    
+    parser.add_argument('--seq_var',dest="var",action="store",type=float,default=4.3,help="Variance of the sequencing distribution, set to 0 to deactivate distribution") 
     parser.add_argument('--simulation_runs',dest="num_sims",action="store",type=int,default=10000,help="Number of simulations to run")    
     parser.add_argument('--o',nargs='?', type=argparse.FileType('w'), default=sys.stdout, help="Output file.")    
     parser.add_argument('--arch',required=True,choices=['UW+MSv1','Illinois','Binary','Goldman','Fountain','RS+CFC8'])
     parser.add_argument('input_file', nargs='?', type=argparse.FileType('r'), default=sys.stdin, help='Clean strands file') 
     parser.add_argument('--strand_handler',required=True,choices=['simple','data_vote_simple','nuc_vote_simple'])
     parser.add_argument('--fileID',action="store",default='1',help="ID for the input file")
-  
+    
     
     args = parser.parse_args()
 
@@ -293,13 +367,16 @@ if __name__ == "__main__":
     strand_lower,strand_upper=args.faulty.split('-')
     strand_lower=int(strand_lower)
     strand_upper=int(strand_upper)+1
-    
 
+    #parse the range for the fault rate range
+    rate_lower,rate_upper=args.rate.split('-')
+    rate_lower=float(rate_lower)
+    rate_upper=float(rate_upper)+args.rate_step
     
     model_name= args.fault_model
 
     #set up fault injection arguments, note this is just to initialize some variables in the fault model object
-    #things like injector.fails will be changed durin simulation sweeps
+    #things like injector.fails/faulty/rate will be changed durin simulation sweeps
     injector_args=fault_injector.fault_injector_arguments()
     injector_args.o=args.o
     injector_args.input_file=None
@@ -322,19 +399,28 @@ if __name__ == "__main__":
 
     # instantiate a fault model object
     fault_model = eval('fault_injector.'+model_name+'(injector_args)')
-    #instantiate the negative binomial random number generator, used for distributing the number of reads
-    read_randomizer=neg_bin(args.mean,args.var)
 
+    #instantiate the negative binomial random number generator, used for distributing the number of reads
+    if(args.mean !=0 and args.var !=0):
+        read_randomizer=neg_bin(args.mean,args.var)
+    else:
+        read_randomizer=None
 
     #instantiate the strand handler
     strand_handler=build_strand_handler(args.strand_handler,clean_Decoder._Codec)
 
-    
+    #determine which model to run
     if args.fault_model == "strand_fault" and args.fault_file is None:
         #initialize the data helper object
-        data_keeper=data_helper(args.fileID,args.arch,args.strand_handler,args.mean,args.var,args.fault_model,args.num_sims,args.faulty,args.fails)
+        data_keeper=data_helper(args.fileID,args.arch,args.strand_handler,args.mean,args.var,args.fault_model,args.num_sims,strand_range=args.faulty,nuc_range=args.fails,rate_range=args.rate)
         for n in range(nuc_lower,nuc_upper,args.fails_step):
             for s in range(strand_lower,strand_upper,args.faulty_step): 
-                run_monte(args,s,clean_strands,clean_file,data_keeper,strand_handler,fault_model,n)
+                run_monte_MS(args,s,clean_strands,clean_file,data_keeper,strand_handler,fault_model,n)
 
+    elif args.fault_model == "fixed_rate":
+        #initialize the data helper object
+        data_keeper=data_helper(args.fileID,args.arch,args.strand_handler,args.mean,args.var,args.fault_model,args.num_sims,strand_range=args.faulty,nuc_range=args.fails,rate_range=args.rate)
+        for error_rate in np.arange(rate_lower,rate_upper,args.rate_step):
+             run_monte_rate(args,clean_strands,clean_file,data_keeper,strand_handler,fault_model,error_rate)
+        
     data_keeper.dump()
