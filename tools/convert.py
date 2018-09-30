@@ -12,6 +12,7 @@ from dnastorage.primer.primer_util import *
 import sys
 import os
 
+
 def build_encode_architecture(arch, pf, primer5, primer3):    
     if arch == "UW+MSv1":
         h = huffman.RotateCodec(huffman.HuffmanCodec(21,Checksum()))
@@ -56,6 +57,12 @@ def build_encode_architecture(arch, pf, primer5, primer3):
         p = StrandPrimers(primer5, primer3, b)
         enc = ReedSolomonInnerOuterEncoder(pf,p,k_datastrand=9,e_inner=2,k_index=2)
         return enc
+    
+    elif arch == 'RS+ROT':
+        h = huffman.RotateCodec(huffman.HuffmanCodec(11,None,11,99))
+        p = StrandPrimers(primer5, primer3, h)
+        enc = ReedSolomonInnerOuterEncoder(pf,p,k_datastrand=9,e_inner=2,k_index=2)
+        return enc        
 
 def build_decode_architecture(arch, pf, primer5, primer3, fountain_table=None):
     if arch == "UW+MSv1":
@@ -104,6 +111,11 @@ def build_decode_architecture(arch, pf, primer5, primer3, fountain_table=None):
         p = StrandPrimers(primer5, primer3, b)
         dec = ReedSolomonInnerOuterDecoder(pf,p,k_datastrand=9,e_inner=2,k_index=2)
         return dec
+    elif arch == 'RS+ROT':
+        h = huffman.RotateCodec(huffman.HuffmanCodec(11,None,11,99))
+        p = StrandPrimers(primer5, primer3, h)
+        enc = ReedSolomonInnerOuterDecoder(pf,p,k_datastrand=9,e_inner=2,k_index=2)
+        return enc     
 
 
 def read_header(dec_file):
@@ -139,7 +151,7 @@ if __name__ == "__main__":
     parser.add_argument('--encode',dest="encode",action="store_true",default=False,help="Encode input file into DNA.")    
     parser.add_argument('--decode',dest="decode",action="store_true",default=False,help="Decode input file from DNA into original binary form.")    
 
-    parser.add_argument('--arch',required=True,choices=['UW+MSv1','Illinois','Binary','Goldman','Fountain','RS+CFC8'])
+    parser.add_argument('--arch',required=True,choices=['UW+MSv1','Illinois','Binary','Goldman','Fountain','RS+CFC8','RS+ROT'])
     parser.add_argument('--filesize',type=int,dest="filesize",action="store",default=0, help="Size of file to decode.")
 
     parser.add_argument('--primer5',dest="primer5",action="store",default="", help="Beginning primer.")

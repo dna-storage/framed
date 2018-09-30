@@ -386,19 +386,19 @@ class ReedSolomonInnerOuterDecoder(DecodePacketizedFile):
             matrix.append(self._rsMap[x])
         
         # check for inner errors on all the strands
-        for m in matrix:
+        #for m in matrix:
             # better way?
-            if not self.is_error_free(m,self._e_inner):
-                s = self.check_inner_strand(m)
-                for i in range(len(s)):
-                    m[i] = s[i]
+            #if not self.is_error_free(m,self._e_inner):
+                #s = self.check_inner_strand(m)
+                #for i in range(len(s)):
+                    #m[i] = s[i]
 
         error_strands = []
         for x in range(base+self.outer_block-self.n_error_strands,base+self.outer_block):
             s = self._rsMap[x]
             # check for inner errors on the error_strands
-            if not self.is_error_free(s,self._e_inner):
-                s = self.check_inner_strand(s)
+            #if not self.is_error_free(s,self._e_inner):
+             #   s = self.check_inner_strand(s)
             error_strands.append(s)
         
         # check for outer errors on the block
@@ -455,12 +455,15 @@ class ReedSolomonInnerOuterDecoder(DecodePacketizedFile):
         #value2 += [ ord(x) for x in value ]
         value2+=value
 
-        
-        
-        self._rsMap[key] = value2
+        s=value2
+        #do inner checking before placement into RS table, hopefully fix index errors before placement
+        if not self.is_error_free(value2,self._e_inner):
+                s = self.check_inner_strand(value2)
+        _key=base_conversion.convertBytesToInt(s[:self._k_index])
+        self._rsMap[_key] = s
         #print "rsMap[{}] = {}".format(key,value2)
-        if self._is_block_ready_to_decode(key) and not self._is_block_decoded(key):
-            self._decode_block(key)
+        if self._is_block_ready_to_decode(_key) and not self._is_block_decoded(_key):
+            self._decode_block(_key)
         return
 
     """

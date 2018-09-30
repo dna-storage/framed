@@ -64,6 +64,11 @@ def build_decode_architecture(arch, pf, primer5, primer3, fountain_table=None):
         p = StrandPrimers(primer5, primer3, b)
         dec = ReedSolomonInnerOuterDecoder(pf,p,k_datastrand=9,e_inner=2,k_index=2)
         return dec
+    elif arch == 'RS+ROT':
+        h = huffman.RotateCodec(huffman.HuffmanCodec(11,None,11,99))
+        p = StrandPrimers(primer5, primer3, h)
+        enc = ReedSolomonInnerOuterDecoder(pf,p,k_datastrand=9,e_inner=2,k_index=2)
+        return enc     
 
 
 def read_header(dec_file):
@@ -297,14 +302,7 @@ def run_monte_rate(args,clean_strands,clean_file,data_keeper,strand_handler,faul
     data_keeper.clear_correctness_results()
     
 
-
-
-
-
-    
-    
-
-    
+ 
 '''
 Main file for injecting faults into an input DNA file, 3 available options are available
 
@@ -318,14 +316,6 @@ miss_strand will eventually be supported, as will the fault rate file miss stran
 
 
 '''
-
-
-
-
-
-
-
-
 
 
 if __name__ == "__main__":
@@ -352,7 +342,7 @@ if __name__ == "__main__":
     parser.add_argument('--seq_var',dest="var",action="store",type=float,default=4.3,help="Variance of the sequencing distribution, set to 0 to deactivate distribution") 
     parser.add_argument('--simulation_runs',dest="num_sims",action="store",type=int,default=10000,help="Number of simulations to run")    
     parser.add_argument('--o',nargs='?', type=argparse.FileType('w'), default=sys.stdout, help="Output file.")    
-    parser.add_argument('--arch',required=True,choices=['UW+MSv1','Illinois','Binary','Goldman','Fountain','RS+CFC8'])
+    parser.add_argument('--arch',required=True,choices=['UW+MSv1','Illinois','Binary','Goldman','Fountain','RS+CFC8','RS+ROT'])
     parser.add_argument('input_file', nargs='?', type=argparse.FileType('r'), default=sys.stdin, help='Clean strands file') 
     parser.add_argument('--strand_handler',required=True,choices=['simple','data_vote_simple','nuc_vote_simple'])
     parser.add_argument('--fileID',action="store",default='1',help="ID for the input file")
