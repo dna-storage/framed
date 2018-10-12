@@ -67,7 +67,11 @@ def ranged(args):
     design_rules = build_standard_design_rules(L,use_nupack)
     
     pg=LinearPrimerGenerator(args.ranged)
-     
+
+    if(args.primers != None): 
+        L.append(read_resumed_runs(args.primers))
+        
+
     t = time.time()
     i=args.ranged[0]
     while (i<(args.ranged[0]+args.ranged[1]) and i<4**20): 
@@ -84,8 +88,10 @@ def ranged(args):
        if found:
             L.append(s)
 
-    print design_rules
-    return L, i
+    f = open("runInfo.txt", "a")
+    f.write(str(design_rules))
+    f.close()
+    return L, i-args.ranged[0]
 
 parser = argparse.ArgumentParser(description="Select a method for computing number of primers.")
 
@@ -139,11 +145,13 @@ if args.mc:
 elif args.ranged != None:
      (L,count)=ranged(args)
 
-     f = open("runInfo.txt", 'a')
-     f.write("Range:"+ str(args.ranged[0]) +" to "+str((args.ranged[0]+args.ranged[1]))+" tested "+str(count-args.ranged[0])+ " primers.\n" )
-
      if args.o != None:
         f = open(args.o,"w")
+        if(count>=args.ranged[1]):
+            f.write("finished Wooo\n")
+        else:
+            f.write(str(args.ranged[0]+count) +" "+ str(args.ranged[1]-count)+"\n")
+
         for l in L:
             #print l,"  Tm=",mt.Tm_NN(l)
             f.write(l+"\n")

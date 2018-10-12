@@ -35,6 +35,21 @@ def read_primers(filename):
         L.append(l)
     return L
 
+def read_resumed_runs(filename):
+    f = open(filename,"r")
+    trash = f.readline(); 
+    tmp = f.readlines()
+    f.close()
+    L = []
+    for l in tmp:
+        l = l.strip()
+        if l.startswith('%'):
+            continue
+        if len(l) == 0:
+            continue
+        L.append(l)
+    return L
+
 def mutate_sequence(seq, d):
     m = {'A': 'C', 'C' : 'T', 'G':'A', 'T':'G'}
     used = {}
@@ -327,7 +342,7 @@ def checkComplexes(seqs,Tm=50):
     args.append("-T")
     args.append(str(Tm))
     complexes(args)
-    c = read_mfe_output(prefix+".ocx-mfe")
+    c = read_mfe_output(prefix,".ocx-mfe")
     problems = [cc for cc in c if cc['deltaG'] < -10.0]
     return problems
 
