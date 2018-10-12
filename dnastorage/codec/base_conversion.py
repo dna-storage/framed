@@ -43,9 +43,9 @@ def convertQuarnary(dec,length):
 def convertBaseHelper(base,dec,s):
     m = dec % base
     q = dec / base
-    print(s)
+    #print(s)
     s = s + bases[m]
-    print(s)
+    #print(s)
     if q > 0:
         return convertBaseHelper(base,q,s)
     else:

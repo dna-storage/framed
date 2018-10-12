@@ -107,6 +107,9 @@ class WritePacketizedFilestream:
             else:
                 output_data+=value2
             i+=1
+        while(i<self.numberOfPackets):
+            output_data+=emptyString
+            i+=1
         return output_data
 
 
@@ -133,12 +136,15 @@ class ReadPacketizedFilestream:
         self.__fd = fd
         self.__set_packetSize(120)
         self.__read_size = 0
+        self._RS=False
 
     def read(self):
         b = self.__fd.read(self.packetSize)
         self.__read_size += len(b)
-        if b and len(b) != self.packetSize:
-            b = b.ljust(self.packetSize,'\x00')           
+        #only pad out if it is not RS, RS encodes by blocks so padding may lead to many useless strands
+        if b and len(b) != self.packetSize and not self._RS:
+            b = b.ljust(self.packetSize,'\x00')
+            
         return b
 
     # packet property
