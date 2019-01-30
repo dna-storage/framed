@@ -250,13 +250,16 @@ def run_monte_MS(args,desired_faulty_count,clean_strands,clean_file,data_keeper,
     data_keeper.set_distribution(multiple_strand_pool)
     #keep track of correctness results
     lower,middle,upper=data_keeper.calculate_midpoint()
+    prob=data_keeper.get_probability_value()
     if desired_faults_per_strand is None:
         data_point=(desired_faulty_count,lower,middle,upper)
+        data_keeper.insert_probability_point((desired_faulty_count,prob))
     else:
         data_point=(desired_faults_per_strand,desired_faulty_count,lower,middle,upper)
+        data_keeper.insert_probability_point((desired_faults_per_strand,desired_faulty_count,prob))
     data_keeper.insert_data_point(data_point)
     data_keeper.clear_correctness_results()
-
+    data_keeper.clear_probability_results()
 
 
 
@@ -292,7 +295,6 @@ def run_monte_rate(args,clean_strands,clean_file,data_keeper,strand_handler,faul
         percent_correct=data_keeper.calculate_correctness(bad_file,clean_file)
         data_keeper.insert_correctness_result(percent_correct)
 
-
     #grab an example of the distribution that was used
     data_keeper.set_distribution(dist)
     #keep track of correctness results
@@ -300,6 +302,9 @@ def run_monte_rate(args,clean_strands,clean_file,data_keeper,strand_handler,faul
     data_point=(error_rate,lower,middle,upper)
     data_keeper.insert_data_point(data_point)
     data_keeper.clear_correctness_results()
+    prob=data_keeper.get_probability_value()
+    data_keeper.insert_probability_point((error_rate,prob))
+    data_keeper.clear_probability_results()
     
 
  

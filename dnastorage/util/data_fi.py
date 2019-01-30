@@ -15,6 +15,9 @@ class data_helper:
         self._distribution=[]
         self._percent_correct=[]
         self._data_points=[]
+        self._prob_data=[]
+        self.num_correct=0
+        self._num_trials=number_trials
         self._out_file_directory="results_fi/"+"_".join([file_name,arch,handler,str(int(mean)),str(int(var)),fault_model,str(number_trials)])
         if not os.path.exists("results_fi"):
             os.mkdir("results_fi")
@@ -25,21 +28,28 @@ class data_helper:
         if fault_model == "miss_strand":
             self._dist_file_path="".join([self._out_file_directory,'/',strand_range,'_dist','.txt'])
             self._correctness_file_path="".join([self._out_file_directory,'/',strand_range,'_cor','.csv'])
+            self._prob_file_path="".join([self._out_file_directory,'/',strand_range,'_prob','.csv'])
         elif fault_model == "strand_fault" and fault_file is None :
             self._dist_file_path="".join([self._out_file_directory,'/',strand_range,'_',nuc_range,'_dist','.txt'])
             self._correctness_file_path="".join([self._out_file_directory,'/',strand_range,'_',nuc_range,'_cor','.csv'])
+            self._prob_file_path="".join([self._out_file_directory,'/',strand_range,'_',nuc_range,'_prob','.csv'])
         elif fault_model == "strand_fault" and fault_file is not None:
             self._dist_file_path="".join([self._out_file_directory,'/','_dist','.txt'])
             self._correctness_file_path="".join([self._out_file_directory,'/',fault_file,'_cor','.csv'])
+            self._prob_file_path="".join([self._out_file_directory,'/',fault_file,'_prob','.csv'])
+            
         elif fault_model == "fixed_rate":
             self._dist_file_path="".join([self._out_file_directory,'/',rate_range,'_dist','.txt'])
             self._correctness_file_path="".join([self._out_file_directory,'/',rate_range,'_cor','.csv'])
-                           
+            self._prob_file_path="".join([self._out_file_directory,'/',rate_range,'_prob','.csv'])
+                 
         #delete files if they already exits 
         if os.path.exists(self._dist_file_path):
             os.remove(self._dist_file_path)
         if os.path.exists(self._correctness_file_path):
             os.remove(self._correctness_file_path)
+        if os.path.exists(self._prob_file_path):
+            os.remove(self._prob_file_path)
 
 
            
@@ -52,6 +62,13 @@ class data_helper:
     def insert_data_point(self,input_data_point):
         self._data_points.append(input_data_point)
 
+    def get_probability_value(self):
+        print self.num_correct
+        return float(self.num_correct*100)/float(self._num_trials)
+    def insert_probability_point(self,prob_data):
+        self._prob_data.append(prob_data)
+
+        
     #This function calculates the midpoint and upper,lower bounds for 95 percent confidence interval for the correctness results aquired from one monte carlo loop
     def calculate_midpoint(self):
         #calculate sample standard deviation and mean, 
@@ -67,29 +84,42 @@ class data_helper:
     #write out the results to files in their directores
     def dump(self):
         _dist=open(self._dist_file_path,'w+')
-        _correctness=open(self._correctness_file_path,'w+')
         for index,item in enumerate(self._distribution):
             _dist.write("{} {}\n".format(index,item[1]))
-        for point in self._data_points:
+            
+        self.dump_file(self._correctness_file_path,self._data_points)
+        self.dump_file(self._prob_file_path,self._prob_data)
+        
+        _dist.close()
+
+    def dump_file(self,path,points):
+        _file=open(path,'w+')
+        for point in points:
             data_array=[]
             for coordinates in point:
                 data_array.append(str(coordinates))
-            _correctness.write( "{}\n".format(",".join(data_array)))
-        _correctness.close()
-        _dist.close()
-                        
-
+            _file.write( "{}\n".format(",".join(data_array)))
+        _file.close()
 
     #calculate a correctness value, takes in a key value dictionary for both files to compare byte correctness
+    #also, track whether the file was decoded
     def calculate_correctness(self,bad_file,clean_file):
         total_bytes=0
         total_correct_bytes=0
+        bad=False
         assert len(bad_file) == len(clean_file)
         for bad_byte,clean_byte in zip(bad_file,clean_file):
             if bad_byte == clean_byte:
                 total_correct_bytes+=1
+            else:
+                bad=True
             total_bytes+=1
+        if not bad:
+            self.num_correct+=1
         return float(total_correct_bytes*100/total_bytes)
 
     def clear_correctness_results(self):
         self._percent_correct=[]
+
+    def clear_probability_results(self):
+        self.num_correct=0
