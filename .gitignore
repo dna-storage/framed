@@ -4,7 +4,8 @@ junk
 tmp
 
 # Emacs editing
-*~  
+*~
+*#*#*
 
 # Compiled Object files
 *.slo
