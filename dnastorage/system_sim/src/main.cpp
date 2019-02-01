@@ -12,17 +12,17 @@
 
 
 int main(int argc, char** argv){
-  system* system_simulator;
+  system_sim* system_simulator;
   FILE* config_file;
   FILE* trace_file;
   //variables to be sent to the 
 
-  config_file=fopen(argv[1],'r');
+  config_file=fopen(argv[1],"r");
   if(config_file==NULL){
     perror("Missing config file");
     return 1;
   }
-  trace_file=fopen(argv[1],'r');
+  trace_file=fopen(argv[1],"r");
   if(trace_file==NULL){
     perror("Missing trace file");
     return 1;
