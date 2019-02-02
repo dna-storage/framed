@@ -12,7 +12,7 @@
 
 
 int main(int argc, char** argv){
-  system_sim* system_simulator;
+  system_sim_t* system_simulator;
   FILE* config_file;
   FILE* trace_file;
   //variables to be sent to the 
