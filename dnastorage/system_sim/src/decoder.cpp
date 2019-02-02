@@ -2,8 +2,8 @@
 #include "decoder.h"
 #include "prep.h"
 #include "sequencer.h"
-
-decoder_unit_t::decoder_unit_t(unsigned long timer, unsigned long num_channels, system_sim* system_descriptor) : system_unit(timer,num_channels,system_descriptor){}
+#include <stdlib.h>
+decoder_unit_t::decoder_unit_t(unsigned long timer, unsigned long num_channels) : system_unit_t(timer,num_channels){}
 
 decoder_t::decoder_t(unsigned long timer, unsigned long num_channels, unsigned long buffer_size, unsigned long num_decoders,list_entry_t* seq_dec_buffer,system_sim_t* _system ){
   this->num_decoders=num_decoders;

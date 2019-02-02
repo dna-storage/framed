@@ -5,7 +5,7 @@
 class system_unit_t;
 class system_sim_t;
 
-typedef list_entry_t;
+//typedef list_entry_t;
 
 
 class sequencer_unit_t: public system_unit_t{
@@ -22,7 +22,7 @@ class sequencer_unit_t: public system_unit_t{
   float utilization;
 
   //constructor for base class and sequencer class
-  sequencer_t(unsigned long timer,unsigned long max_sequencing, unsigned long num_channels);
+  sequencer_unit_t(unsigned long timer,unsigned long max_sequencing, unsigned long num_channels);
 };
 
 
@@ -44,7 +44,7 @@ class sequencer_t{
   policy sequencer_policy;
 
 
-}
+};
 
 
 

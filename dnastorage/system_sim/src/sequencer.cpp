@@ -2,8 +2,8 @@
 #include "decoder.h"
 #include "prep.h"
 #include "sequencer.h"
-
-sequencer_unit_t::sequencer_unit_t(unsigned long timer,unsigned long max_sequencing, unsigned long num_channels, system_sim* system_descriptor):system_unit(timer,num_channels,system_descriptor){
+#include <stdlib.h>
+sequencer_unit_t::sequencer_unit_t(unsigned long timer,unsigned long max_sequencing, unsigned long num_channels):system_unit_t(timer,num_channels){
   this->max_strands=max_sequencing;
   this->used_strands=0;
   this->wasted_strands=0;
@@ -20,8 +20,8 @@ sequencer_t:: sequencer_t(unsigned long timer,unsigned long max_strands, unsigne
   this->buffer_size=buffer_size;
 
   //allocate sequencer units
-  this->sequencer_set=(sequencer**)malloc(sizeof(sequencer*)*this->num_sequencers);
-  for(int i=0; i<this->num_sequencers; i++) this->sequencer_set[i]=new sequencer_unit_t(timer,max_strand,0);
+  this->sequencer_set=(sequencer_unit_t**)malloc(sizeof(sequencer_unit_t*)*this->num_sequencers);
+  for(int i=0; i<this->num_sequencers; i++) this->sequencer_set[i]=new sequencer_unit_t(timer,max_strands,0);
  
 }
 

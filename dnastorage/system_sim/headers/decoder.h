@@ -4,12 +4,12 @@
 class system_unit_t;
 class system_sim_t;
 
-typedef list_entry_t;
 
 
-class decoder_unit_t: public system_unit{
+
+class decoder_unit_t: public system_unit_t{
  public:
-  decoder_unit(unsigned long timer, unsigned long num_channels);
+  decoder_unit_t(unsigned long timer, unsigned long num_channels);
  
 };
 

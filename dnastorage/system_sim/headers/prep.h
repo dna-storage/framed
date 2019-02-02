@@ -6,11 +6,11 @@ class system_sim_t;
 class system_storage_t;
 
 
-typedef list_entry_t;
+//typedef list_entry_t;
 
 class prep_unit_t: public system_unit_t{
  public:
-  prep_t(unsigned long timer, unsigned long num_channels);
+  prep_unit_t(unsigned long timer, unsigned long num_channels);
  
 };
 
@@ -26,7 +26,7 @@ class prep_t{
   system_storage_t* dna_storage;
   
   
-  prep_t(unsigned_long timer, unsigned long num_channels, unsigned long buffer_size,unsigned long num_preps,list_entry_t* prep_seq_buffer,system_sim_t* _system,system_storage_t* dna_storage);
+  prep_t(unsigned long timer, unsigned long num_channels, unsigned long buffer_size,unsigned long num_preps,list_entry_t* prep_seq_buffer,system_sim_t* _system,system_storage_t* dna_storage);
   ~prep_t();
 
   typedef void(prep_t::*policy)(void);
