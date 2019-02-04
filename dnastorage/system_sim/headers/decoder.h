@@ -9,7 +9,7 @@ class system_sim_t;
 
 class decoder_unit_t: public system_unit_t{
  public:
-  decoder_unit_t(unsigned long timer, unsigned long num_channels);
+  decoder_unit_t(unsigned long num_channels);
  
 };
 
@@ -22,11 +22,19 @@ class decoder_t{
   system_sim_t* _system;
   list_entry_t* seq_dec_buffer;
   unsigned long buffer_size;
-  decoder_t(unsigned long timer, unsigned long num_channels, unsigned long buffer_size, unsigned long num_decoders,list_entry_t* seq_dec_buffer,system_sim_t* _system );
+  unsigned long base_timer;
+  decoder_t(unsigned long timer, unsigned long num_channels,
+	    unsigned long buffer_size, unsigned long num_decoders,
+	    list_entry_t* seq_dec_buffer,system_sim_t* _system );
   ~decoder_t();
 
   typedef void (decoder_t::*policy)(void);
-  policy decoder_policy;
+  policy decoder_policy; //function pointer ensures that we dont change the interface for other routines upon the desire of a different policy
+
+  //functions to be called from the top level simulator
+  unsigned long decoder_backend(void); //decoder backend will remove jobs from each decoder,and return the number of jobs completed
+  void decoder_frontend(void);//search the seq_dec_buffer to find jobs that can be placed into decoders
+  
 };
 
 

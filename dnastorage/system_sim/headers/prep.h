@@ -10,7 +10,7 @@ class system_storage_t;
 
 class prep_unit_t: public system_unit_t{
  public:
-  prep_unit_t(unsigned long timer, unsigned long num_channels);
+  prep_unit_t(unsigned long num_channels);
  
 };
 
@@ -24,13 +24,19 @@ class prep_t{
   list_entry_t* prep_seq_buffer;
   unsigned long buffer_size;
   system_storage_t* dna_storage;
+  unsigned long base_timer;
   
-  
-  prep_t(unsigned long timer, unsigned long num_channels, unsigned long buffer_size,unsigned long num_preps,list_entry_t* prep_seq_buffer,system_sim_t* _system,system_storage_t* dna_storage);
+  prep_t(unsigned long timer, unsigned long num_channels, unsigned long buffer_size,
+	 unsigned long num_preps,list_entry_t* prep_seq_buffer,
+	 system_sim_t* _system,system_storage_t* dna_storage);
   ~prep_t();
 
   typedef void(prep_t::*policy)(void);
   policy prep_policy;
+
+  //functions that are called from the top level simulator
+  void prep_backend(void); //function that will remove jobs from prep stations and place them into the prep_seq_buffer
+  void prep_frontend(void); //function that will try to service jobs that are waiting 
 
 };
 

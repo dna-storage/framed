@@ -22,7 +22,7 @@ class sequencer_unit_t: public system_unit_t{
   float utilization;
 
   //constructor for base class and sequencer class
-  sequencer_unit_t(unsigned long timer,unsigned long max_sequencing, unsigned long num_channels);
+  sequencer_unit_t(unsigned long max_sequencing, unsigned long num_channels);
 };
 
 
@@ -36,13 +36,18 @@ class sequencer_t{
   list_entry_t* seq_dec_buffer;
   list_entry_t* prep_seq_buffer;
   unsigned long buffer_size;
-  
-  sequencer_t(unsigned long timer,unsigned long max_strands, unsigned long num_channels,unsigned long buffer_size,unsigned long num_sequencers,list_entry_t* seq_dec_buffer,list_entry_t* prep_seq_buffer, system_sim_t* _system);
+  unsigned long base_timer;
+  sequencer_t(unsigned long timer,unsigned long max_strands, unsigned long num_channels,
+	      unsigned long buffer_size,unsigned long num_sequencers,list_entry_t* seq_dec_buffer,
+	      list_entry_t* prep_seq_buffer, system_sim_t* _system);
   ~sequencer_t();
 
   typedef void(sequencer_t::*policy)(void);
   policy sequencer_policy;
 
+  //top level sequencer functions to be called by the top level simulator
+  void sequencer_backend(void);//this function will check sequencers and put transactions into the seq_dec_buffer
+  void sequencer_frontend(void);
 
 };
 
