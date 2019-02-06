@@ -34,7 +34,10 @@ class decoder_t{
   //functions to be called from the top level simulator
   unsigned long decoder_backend(void); //decoder backend will remove jobs from each decoder,and return the number of jobs completed
   void decoder_frontend(void);//search the seq_dec_buffer to find jobs that can be placed into decoders
-  
+  //function that can be used to deactivate a decoder
+  void decoder_complete(unsigned long decoder_ID);
+  void init_decoder(unsigned long decoder_ID,unsigned long transaction_ID);
+  unsigned long decoder_avail(void);
 };
 
 

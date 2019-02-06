@@ -16,7 +16,7 @@ typedef struct{
   unsigned long pool_ID; //pool_ID of the original transaction
   unsigned long file_ID; // file_ID with the selected pool
   unsigned long transaction_ID;
-  //conuter that will increment to keep track of the divisions of a request
+  //conuter that will increment to keep track of the divisions of a request, should be 0 after all pieces are sequenced 
   unsigned long cracked_count;
   //number of strands that will need to be sequenced for this file, will be a function of desired read depth
   unsigned long strands_to_sequence;// total strands to be sequenced: read_depth*(file_size/bytes_per_strand)+undesired_strands

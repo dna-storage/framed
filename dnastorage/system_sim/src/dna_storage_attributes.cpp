@@ -113,12 +113,9 @@ void system_sim_t::simulate(){
   (this->prep)->prep_backend();
   //FIX ME: Need to be able to create a list of the access trace in order to allow the prep_frontend function to traverse it and find possible jobs to run
   (this->prep)->prep_frontend();
-  //FIX ME:add in some support for the dna storage system structure here
+  //FIX ME:add in some support for the dna storage system structure here, need to go through and fix up pools that may have been used in the previous ste
   
   //FIX ME:need to increment time_step
-  
-
-
   
 }
 

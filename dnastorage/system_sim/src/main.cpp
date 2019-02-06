@@ -38,6 +38,7 @@ int main(int argc, char** argv){
   //system_simulator->simulate();
 
   //done with simulation
+  //FIX ME: Need to print out statistics
   //delete system_simulator;
   return 0;
 

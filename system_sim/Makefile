@@ -4,9 +4,8 @@ EXE=system_sim
 SOURCES=$(wildcard ../dnastorage/system_sim/src/*.cpp)
 OBJECTS=$(SOURCES:.cpp=.o)
 INCLUDES=../dnastorage/system_sim/headers
-INCLUDES+=../dnastorage/system_sim/utils
 
-CFLAGS=-O3 -I$(INCLUDES)
+CFLAGS=-O3 -I$(INCLUDES) -I../dnastorage/system_sim/utils
 
 all: $(EXE)
 
