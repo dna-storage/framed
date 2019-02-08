@@ -60,7 +60,7 @@ class system_sim_t{
   //trace pointer is used to access the file that contains the trace
   FILE* trace_pointer;
   //list used for finding and retiring cracked operations
-  transaction_t* window[WINDOW_SIZE];
+  transaction_t window[WINDOW_SIZE];
   unsigned long window_head;
   unsigned long window_tail;
   //lists for each component in the system
@@ -106,9 +106,12 @@ class system_unit_t{
   //trasactions mapped to the unit
   unsigned long* transaction_slots;
 
+  unsigned long transaction_pointer;
   // indicates the unit is busy
   int unit_active;
 
+  unsigned long standby_timer;
+  
   //constructor
   system_unit_t(unsigned long num_channels);
   ~system_unit_t();

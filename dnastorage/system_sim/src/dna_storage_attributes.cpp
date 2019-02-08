@@ -63,6 +63,7 @@ system_unit_t::system_unit_t(unsigned long timer, unsigned long num_channels){
   this->next_open=0;
   //allocate an array for each system unit
   this->transaction_slots=(unsigned long*)malloc(sizeof(unsigned long)*this->num_channels);
+  this->transaction_pointer=0;
 }
 
 system_unit_t::~system_unit_t(){

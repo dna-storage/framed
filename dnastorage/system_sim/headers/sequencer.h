@@ -37,12 +37,14 @@ class sequencer_t{
   list_entry_t* prep_seq_buffer;
   unsigned long buffer_size;
   unsigned long base_timer;
+  unsigned long base_standby_timer;
   sequencer_t(unsigned long timer,unsigned long max_strands, unsigned long num_channels,
 	      unsigned long buffer_size,unsigned long num_sequencers,list_entry_t* seq_dec_buffer,
-	      list_entry_t* prep_seq_buffer, system_sim_t* _system);
+	      list_entry_t* prep_seq_buffer, system_sim_t* _system,
+	      unsigned long base_standby_timer);
   ~sequencer_t();
 
-  typedef void(sequencer_t::*policy)(void);
+  typedef int(sequencer_t::*policy)(unsigned long, unsigned long);
   policy sequencer_policy;
 
   //top level sequencer functions to be called by the top level simulator
