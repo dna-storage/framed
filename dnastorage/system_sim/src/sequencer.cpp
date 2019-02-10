@@ -45,13 +45,13 @@ void sequencer_t::sequencer_backend(void){
   //iterate through the sequencers
   for(unsigned long i=0;i<(this->num_sequencers);i++){
     _sequencer=this->sequencer_set[i];
-    unsigned long timer=_sequencer->timer;
+    unsigned long _timer=_sequencer->timer;
     int active=_sequencer->unit_active;
-    if(active && timer==0){
+    if(active && _timer==0){
       //found a done sequencer, need to move each transaction in the list to the seq_dec_buffer
       this->sequencer_complete(i); //this function handles all of the steps needed for opening a decoder
     }
-    else if(active && timer>0){
+    else if(active && _timer>0){
       //active sequencer, decrement the timer
       this->sequencer_timestep(i);
     }
@@ -213,7 +213,7 @@ void sequencer_t::sequencer_complete(unsigned long sequencer_ID){
       _sequencer->transaction_pointer++){
     
     unsigned long i=_sequencer->transaction_pointer;
-    unsigned long transaction_number=transaction_slots[i];
+    unsigned long transaction_number=_sequencer->transaction_slots[i];
     int seq_dec_index= this->get_seqdec(transaction_number);
     if(seq_dec_index==-1) return; //no more buffer spots 
     
