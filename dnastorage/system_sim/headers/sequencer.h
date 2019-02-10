@@ -44,8 +44,8 @@ class sequencer_t{
 	      unsigned long base_standby_timer);
   ~sequencer_t();
 
-  typedef int(sequencer_t::*policy)(unsigned long, unsigned long);
-  policy sequencer_policy;
+  typedef int(sequencer_t::*poolpolicy)(unsigned long, unsigned long);
+  poolpolicy sequencer_poolpolicy;
 
   //top level sequencer functions to be called by the top level simulator
   void sequencer_backend(void);//this function will check sequencers and put transactions into the seq_dec_buffer

@@ -32,10 +32,12 @@ decoder_t::~decoder_t(){
 //function that looks through the decoders and see which transactions are finished
 unsigned long decoder_t::decoder_backend(void){
   unsigned long done_count=0;
+  decoder_unit_t* _decoder;
   //iterate through the decoders and look for complete jobs
   for(unsigned long i=0; i<this->num_decoders;i++){
-    int active=(this->decoder_set[i])->unit_active;
-    unsigned long timer=(this->decoder_set[i])->timer;
+    _decoder=this->decoder_set[i];
+    int active=_decoder->unit_active;
+    unsigned long timer=_decoder->timer;
     if(timer==0 && active){
       this->decoder_complete(i); //complete the transaction within the decoder
       done_count++;
@@ -48,11 +50,15 @@ unsigned long decoder_t::decoder_backend(void){
 
 //need to fill up non-active decoders with transactions in the seq_dec_buffer
 void decoder_t::decoder_frontend(void){
+  list_entry_t* _s_d;
+  transaction_t* _window=this->_system->window;
+  
+  
   for(unsigned long i=0; i<(this->buffer_size);i++){
-    if(this->seq_dec_buffer[i].used && (this->_system)->window[this->seq_dec_buffer[i].transaction_index].cracked_count==0){
+    if(_s_d[i].used && _window[_s_d[i].transaction_index].cracked_count==0){
       //found a location in the buffer that is ready
       unsigned long decoder_ID=this->decoder_avail();
-      unsigned long transaction_ID=this->seq_dec_buffer[i].transaction_index;
+      unsigned long transaction_ID=_s_d[i].transaction_index;
       if(decoder_ID==-1) break; //no decoder avilable, stop looking through the seq_dec_buffer
       this->init_decoder(decoder_ID,transaction_ID); //initialize the decoder found thats available
     }
@@ -63,8 +69,10 @@ void decoder_t::decoder_frontend(void){
 
 //reach into the decoder set and deactivate the decoder and complete the transaction
 void decoder_t::decoder_complete(unsigned long decoder_ID){
-  (this->decoder_set[decoder_ID])->unit_active=0;
-  for(unsigned long i=0; i<next_open;i++) (this->_system)->window[(this->decoder_set[decoder_ID])->transaction_slots[i]].transaction_finished=1;
+  decoder_unit_t* _decoder=this->decoder_set[decoder_ID];
+  transaction_t* _window=this;
+  _decoder->unit_active=0;
+  for(unsigned long i=0; i<next_open;i++) _window[_decoder->transaction_slots[i]].transaction_finished=1;
 }
 
 void decoder_t::decoder_timestep(unsigned long decoder_ID){
@@ -73,8 +81,10 @@ void decoder_t::decoder_timestep(unsigned long decoder_ID){
 
 //search for deactivated decoders
 unsigned long decoder_t::decoder_avail(void){
+  decoder_unit_t* _decoder;
   for(unsigned long i=0; i<(this->num_decoders);i++){
-    if ((this->decoder_set[i])->unit_active==0){
+    _decooder=this->decoder_set[i];
+    if (_decoder->unit_active==0){
       return i;
     }
   }
@@ -83,8 +93,9 @@ unsigned long decoder_t::decoder_avail(void){
 
 //initialize the chosen decoder unit with timer, active signals etc
 void decoder_t::init_decoder(unsigned long decoder_ID, unsigned long transaction_ID){
-  (this->decoder_set[decoder_ID])->next_open=0;
-  (this->decoder_set[decoder_ID])->transaction_slots[next_open]=transaction_ID;
-  (this->decoder_set[decoder_ID])->unit_active=1;
-  (this->decoder_set[decoder_ID])->timer=(this->base_timer);
+  decoder_unit_t* _decoder=this->decoder_set[decoder_ID];
+  _decoder->next_open=0;
+  _decoder->transaction_slots[next_open]=transaction_ID;
+  _decoder->unit_active=1;
+  _decoder->timer=(this->base_timer);
 }

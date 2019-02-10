@@ -102,11 +102,11 @@ class system_unit_t{
   //number of channels that can fit inside the unit
   unsigned long num_channels;
   //next open slot in the channels list, serves also as a way to determine the number of transactions in the certain unit
-  unsigned long next_open;
+  unsigned long next_open; //used to fill up transaction_slots
   //trasactions mapped to the unit
   unsigned long* transaction_slots;
 
-  unsigned long transaction_pointer;
+  unsigned long transaction_pointer;//used to empty transaction_slots
   // indicates the unit is busy
   int unit_active;
 
