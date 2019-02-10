@@ -79,13 +79,12 @@ void sequencer_t::sequencer_frontend(void){
   for(int i=0; i<QUEUE_SIZE; i++){
     if(_p_s[i].used){
       transaction_ID=_p_s.transaction_index;
-      unsigned long sequencer_ID=this->sequencer_avail(transaction_ID);
+      int sequencer_ID=this->sequencer_avail(transaction_ID);
       if(sequencer_ID>=0){
 	this->sequencer_submit(transaction_ID,sequencer_ID); //submit the transaction to the sequencer
       }
     }
   }
-
   //kickoff sequencers
   this->sequencer_kickoff();
   //decrement standby timers
