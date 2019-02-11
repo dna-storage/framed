@@ -15,8 +15,6 @@ class system_storage_t;
 //transaction struct for transactions entered to the system 
 typedef struct{
   unsigned long pool_ID; //pool_ID of the original transaction
-  unsigned long file_ID; // file_ID with the selected pool
-  unsigned long transaction_ID;
   //conuter that will increment to keep track of the divisions of a request, should be 0 after all pieces are sequenced 
   unsigned long cracked_count;
   //number of strands that will need to be sequenced for this file, will be a function of desired read depth
@@ -150,6 +148,9 @@ class system_storage_t{
 		   unsigned long number_reads, unsigned long pool_write_time,
 		   unsigned long pool_wait_time);
   ~system_storage_t();
+  int storage_poolavailable(unsigned long pool_ID);
+  void storage_readmanage(unsigned long pool_ID, unsigned long copy_ID);
+  void storage_poolrestore(void);
 };
 
 

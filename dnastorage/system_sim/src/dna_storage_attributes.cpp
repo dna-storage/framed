@@ -104,7 +104,6 @@ system_storage_t:: system_storage_t(float sequencing_efficiency,
       this->pools[i].copies[j].in_use=0;
     }
   }
-
 }
 
 //free up space allocated for pools/files

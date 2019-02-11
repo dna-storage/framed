@@ -94,16 +94,16 @@ void sequencer_t::sequencer_frontend(void){
 //find sequencers that are setup to be kicked off
 void sequencer_t::sequencer_kickoff(void){
   sequencer_unit_t* _sequencer;
-
   //iterate through the sequencers and find expired stanby timers, or if the sequencing space has been exhausted
   for(int i=0; i<this->num_sequencers; i++){
     _sequencer=this->sequencer_set[i];
-    if(_sequencer->used_strands==_sequencer->max_strands || (_sequencer->standby_timer==0 && _sequencer->next_open!=0)){
+    if(_sequencer->used_strands==_sequencer->max_strands || (_sequencer->standby_timer==0 && _sequencer->next_open!=0) || _sequencer->next_open==_sequencer->num_channels){
       _sequencer->unit_active=1; //activate the unit
-      _sequencer->timer=base_timer-1; //initialize the timer for the sequencer
+      _sequencer->timer=this->base_timer-1; //initialize the timer for the sequencer
     }
   }
 }
+
 
 //decrease the standby timer 
 void sequencer_t::standbystep(void){
@@ -111,10 +111,9 @@ void sequencer_t::standbystep(void){
   for(int i=0; i<this->num_sequencers; i++){
     _sequencer=this->sequencer_set[i];
     if(_sequencer->standby_timer>0 && !_sequencer->unit_active && _sequencer->next_open!=0){
-      sequencer->standby_timer--;// decrement the stanby timer
+      _sequencer->standby_timer--;// decrement the stanby timer
     }
   }
-
 }
 
 

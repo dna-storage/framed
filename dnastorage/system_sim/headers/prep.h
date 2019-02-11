@@ -34,7 +34,9 @@ class prep_t{
 
   typedef (int)(prep_t::*poolpolicy)(unsigned long, unsigned long);
   poolpolicy prep_poolpolicy;
-
+  typedef (void)(prep_t::*calculationpolicy)(unsigned long);
+  calculationpolicy calc_policy;
+  
   //functions that are called from the top level simulator
   void prep_backend(void); //function that will remove jobs from prep stations and place them into the prep_seq_buffer
   void prep_frontend(void); //function that will try to service jobs that are waiting 
