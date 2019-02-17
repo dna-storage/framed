@@ -1,6 +1,5 @@
 #ifndef DNA_STORE_ATT
 #define DNA_STORE_ATT
-#include <random>
 
 
 #define WINDOW_SIZE 512
@@ -71,8 +70,8 @@ class system_sim_t{
   //overall system variables
   unsigned long current_data_buffer;
   unsigned long sim_time; //denotes the maximum amount of time the simulator should run for
-  unsigned long timer_tick;
-  unsigned long transactions_completed;
+  unsigned long timer_tick; //current time of the simulator
+  unsigned long transactions_completed; //count of how many transactions have completed
   float efficiency; // percentage of sequencing space used up by undesired strands, use for non-full pool accessing
   float bytes_per_strand;
   unsigned long sequencing_depth;
@@ -94,16 +93,10 @@ class system_sim_t{
   //these lists are used to manage the transactions between stages
   list_entry_t prep_seq_list[QUEUE_SIZE];
   list_entry_t seq_dec_list[QUEUE_SIZE];
-  
-  
-
-  
   //number of each unit
   int sequencers;
   int preps;
   int decoders;
-  int trace_exhuasted;//indicates that the trace file is exhausted
-  int trace_complete; //indicates that all of the trace transactions have been put into the pipeline
   
   system_sim_t(unsigned long num_preps, unsigned long  prep_channels,
 	       unsigned long num_sequencers, unsigned long  max_strands_sequencer,
@@ -144,76 +137,6 @@ class system_unit_t{
 };
 
 
-
-
-
-//class that models the system storage
-class system_storage_t{
- public:
-  unsigned long number_pools;
-  unsigned long average_pool_capacity; //average capacity of the pool (MB), need to model whole pool sequencing 
-  float sequencing_efficiency; //models how well a certain 
-  //parameters of pool re-use
-  unsigned long pool_copies;//number of copies the pool has
-  unsigned long number_reads;//number of reads that a pool can withstand 
-  unsigned long pool_write_time;//time it takes to replenish pool after using all of its reads
-  unsigned long pool_wait_time;//time it takes for a pool to be available after using it
-  //pool object that holds files
-  pool_model_t* pools;
-  system_storage_t(float sequencing_efficiency, unsigned long average_pool_capacity,
-		   unsigned long number_pools,
-		   unsigned long bytes_per_strand,unsigned long pool_copies,
-		   unsigned long number_reads, unsigned long pool_write_time,
-		   unsigned long pool_wait_time);
-  ~system_storage_t();
-  int storage_poolavailable(unsigned long pool_ID);
-  void storage_readmanage(unsigned long pool_ID, unsigned long copy_ID);
-  void storage_poolrestore(void);
-};
-
-
-//class that envelopes functionality for the scheduler
-class scheduler_t{
-  prep_t* _prep;
-  system_sim_t* _system;
-  system_storage_t* _storage; 
-  transaction_t* system_queue;
-  unsigned long number_components;//max number of components for a transaction
-  scheduler_t(system_storage_t* _storage, transaction_t* system_queue, prep_t*  _prep,
-	      system_sim_t* _system, unsigned long number_components); 
-  typedef void(*scheduler_t::reorder_policy)(void);//the idea of the reorder function is to reorder I/O operations in the system_queue
-  typedef void(*scheduler_t::schedule_policy)(void); //the scheduler policy dictates how to send instructions into the pipeline and how to group transactions together
-  typedef void(*scheduler_t::calcstrands)(unsigned long&,unsigned long&, unsigned long,
-					  unsigned long,float, float)// determine the desired strands and undesired strands fields of each request such that we know how many strands are used for the file that we actually want
-  reorder_policy reorder;//will be used as the pointer to a scheduling policy
-  schedule_policy scheduler; //scheduler function pointer
-  calcstrands strand_calculator;
-  void schedule_stage(void); //wrapper function for the system simulator
-}
-
-
-class generator_t{//class that implements the generator, places transactions into the syste queue
-  float rate; //rate at which transactions will be generated
-  int random_seed; //seed for the request generator
-  unsigned long max_file_size; //max size a file can be
-  unsigned long min_file_size; //min size a file can be
-  unsigned long unique_pools; //number of unique pools in the system
-  transaction_t* system_queue; //system queue to add transactions to
-  system_sim_t* _system;
-
-  std::default_random_engine* rand_pois;
-  std::poisson_distribution<int>* poisson_transactions;
-  std::default_random_engine* rand_file;
-  std::default_random_engine* rand_pool;
-  FILE* trace_file; //trace file pointer in case the generator is reading from a trace
-  generator_t(int rate, unsigned long max_file_size, unsigned long min_file_size,
-		unsigned long unique_pools,int random_seed, system_sim_t* _system);
-  ~generator_t();
-  typedef void(*generator_t::generator_source)(void);
-  generator_source gen;
-  void generator_stage(void);
-  
-}
 
 
 
