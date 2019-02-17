@@ -9,14 +9,15 @@ sequencer_unit_t::sequencer_unit_t(unsigned long timer,unsigned long max_sequenc
   this->used_strands=0;
   this->wasted_strands=0;
   this->utilization=0;
+  this->timeout=0;
 }
 
 
 sequencer_t:: sequencer_t(unsigned long timer,unsigned long max_strands,
-			  unsigned long num_channels,unsigned long buffer_size,
+			  unsigned long num_channels,unsigned long base_timeout,
+			  unsigned long buffer_size,
 			  unsigned long num_sequencers,list_entry_t* seq_dec_buffer,
-			  list_entry_t* prep_seq_buffer, system_sim_t* _system,
-			  unsigned long base_standby_timer){
+			  list_entry_t* prep_seq_buffer, system_sim_t* _system){
 
   
   this->num_sequencers=num_sequencers;
@@ -25,16 +26,20 @@ sequencer_t:: sequencer_t(unsigned long timer,unsigned long max_strands,
   this->prep_seq_buffer=prep_seq_buffer;
   this->buffer_size=buffer_size;
   this->base_timer=timer;
-  this->base_standby_timer=base_standby_timer;
+  this->base_timeout=base_timeout;
   //allocate sequencer units
   this->sequencer_set=(sequencer_unit_t**)malloc(sizeof(sequencer_unit_t*)*this->num_sequencers);
   for(int i=0; i<this->num_sequencers; i++) this->sequencer_set[i]=new sequencer_unit_t(max_strands,0);
 
-  //FIX ME: Need this to change to allow different policies regarding the pools that can be in the sequencer at one time
-  this->sequencer_poolpolicy=&sequencer_t::single_pool;
  
 }
 
+
+//wrapper for the sequencer stage
+void sequencer_t::sequencer_stage(void){
+  this->sequencer_backend();
+  this->sequencer_frontend();
+}
 
 
  
@@ -55,20 +60,10 @@ void sequencer_t::sequencer_backend(void){
       //active sequencer, decrement the timer
       this->sequencer_timestep(i);
     }
-
   }
 }
 
 //this function implements the frontend of the sequencer
-//the frontend is responsible for moving transactions from the prep_seq_buffer to a sequencing station
-/*
-  Steps:
-  1. Schedule to a sequencer. If the sequencer was totally idle (no other transaction scheduled yet) start the standby timer.
-     If a sequencer has no been kicked off yet, but some other transaction has been scheduled to it then make sure the sequencer placement policy
-     allows for it. If a transaction cannot fit in its entirety, need to track that a crack was made.
-  2. If the standby counter is 0 for a sequencer, tell it to become active
-  3. decrement standby counters
-*/
 void sequencer_t::sequencer_frontend(void){
   sequencer_unit_t* _sequencer;
   unsigned long transaction_strands; //number of strands that are still needed to be sequenced
@@ -87,33 +82,30 @@ void sequencer_t::sequencer_frontend(void){
   }
   //kickoff sequencers
   this->sequencer_kickoff();
-  //decrement standby timers
-  this->sequencer_standbystep();
+  this->sequencer_timeoutstep();
 }
 
 //find sequencers that are setup to be kicked off
 void sequencer_t::sequencer_kickoff(void){
   sequencer_unit_t* _sequencer;
-  //iterate through the sequencers and find expired stanby timers, or if the sequencing space has been exhausted
+  //iterate through the sequencers and find sequencers ready for kickoff
   for(int i=0; i<this->num_sequencers; i++){
     _sequencer=this->sequencer_set[i];
-    if(_sequencer->used_strands==_sequencer->max_strands || (_sequencer->standby_timer==0 && _sequencer->next_open!=0) || _sequencer->next_open==_sequencer->num_channels){
+    if((_sequencer->timeout==0 && _sequencer->next_open!=0) &&_sequencer->used_strands==_sequencer->max_strands || _sequencer->next_open==_sequencer->num_channels){
       _sequencer->unit_active=1; //activate the unit
       _sequencer->timer=this->base_timer-1; //initialize the timer for the sequencer
     }
   }
 }
 
-
-//decrease the standby timer 
-void sequencer_t::standbystep(void){
-  sequencer_unit_t* _sequencer;
-  for(int i=0; i<this->num_sequencers; i++){
+void sequencer_t::sequencer_timeoutstep(void){
+  sequencer_t* _sequencer;
+  //decrement timeout timers for sequencers
+  for(int i=0; i<this->num_sequencer;i++){
     _sequencer=this->sequencer_set[i];
-    if(_sequencer->standby_timer>0 && !_sequencer->unit_active && _sequencer->next_open!=0){
-      _sequencer->standby_timer--;// decrement the stanby timer
-    }
+    if(_sequencer->timeout>0) _sequencer->timeout--;
   }
+  
 }
 
 
@@ -147,12 +139,10 @@ void sequencer_t::sequencer_submit(unsigned long transaction_ID, unsigned long s
 	  //free up the _p_s entry
 	  _p_s[i].used=0;
 	}
-     	//make some changes to the standby timer and add the transactions to the sequencer
+     	//make some changes to the and add the transactions to the sequencer
 	_sequencer->transaction_slots[_sequencer->next_open]=transaction_ID;
-	//if we are the first ones here, start up the standby timer
-	if(_sequencer->next_open==0)_sequencer->standby_timer=this->base_standby_timer;
+	if(_sequencer->next_open==0) _sequencer->timeout=this->base_timeout; //set the timeout counter for the sequencer that just got its first transaction 
 	_sequencer->next_open++;
-
 }
 
 
@@ -160,8 +150,7 @@ void sequencer_t::sequencer_submit(unsigned long transaction_ID, unsigned long s
 //this function tries to find a sequencer that will work with transaction requested
 //if there is no possible sequencer, then return -1
 int sequencer_t::sequencer_avail(unsigned long transaction_ID){
-  sequencer_unit_t* _sequencer;
-  
+  sequencer_unit_t* _sequencer;  
   //iterate over all of the sequencers
   for(unsigned long i=0;i<(this->num_sequencers);i++){
     _sequencer=this->sequencer_set[i];
@@ -172,30 +161,11 @@ int sequencer_t::sequencer_avail(unsigned long transaction_ID){
 	//know that this sequencer is unused and unscheduled by any other transaction
 	return i;
       }
-      else{
-	//need to look at other transactions and based off of policy all the requested transaction in
- 	if(this->sequencer_poolpolicy(transaction_ID,i)) return i;
-      }
     }
-
   }
 }
 
 
-//policy function for the sequencer, only lets 1 pool be in a single sequencer
-int sequencer_t::single_pool(unsigned long transaction_ID, unsigned long sequencer_ID){
-  transaction_t* _window=this->_system->window;
-  sequencer_unit_t _sequencer=this->sequencer_set[sequencer_ID];
-  unsigned long sequencer_trans;
-  
-  //iterate through all the transactions on a given sequencer and evaluate the pools
-  for(int i=0; i< _sequencer->next_open ; i++){
-    sequencer_trans=_sequencer->transaction_slots[i];
-    if(_window[sequencer_trans].pool_ID==_window[transaction_ID].pool_ID) return 0;
-  }
-  return 1;
-
-}
 
 
 
@@ -244,7 +214,7 @@ int sequencer_t::get_seqdec(unsigned long transaction_ID){
   list_entry_t* _s_d=this->seq_dec_buffer;
   
   
-  //make syre that the seq_dec_buffer does not already have the transaction, do not want to double place transactions
+  //make sure that the seq_dec_buffer does not already have the transaction, do not want to double place transactions
   for(int i=0; i<QUEUE_SIZE;i++){
     if(transaction_ID==_s_d[i].transaction_index && _s_d[i].used) return -9999;
   }

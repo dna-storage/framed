@@ -1,9 +1,12 @@
 #ifndef DNA_STORE_ATT
 #define DNA_STORE_ATT
+#include <random>
+
 
 #define WINDOW_SIZE 512
 #define QUEUE_SIZE 512
-#define TRACE_BUFFER_SIZE 512
+#define FILE_UNIT 1024 //scale for the file size 1024 = 1 KB
+
 
 //forward declarations for classes 
 class sequencer_t;
@@ -13,7 +16,7 @@ class system_storage_t;
 
 
 //transaction struct for transactions entered to the system 
-typedef struct{
+typedef struct transaction_t{
   unsigned long pool_ID; //pool_ID of the original transaction
   //conuter that will increment to keep track of the divisions of a request, should be 0 after all pieces are sequenced 
   unsigned long cracked_count;
@@ -22,7 +25,16 @@ typedef struct{
   unsigned long undesired_strands_sequenced; //strands that are junk: (1/eff.-1)*desired
   unsigned long desired_strands_sequenced; //strands that we want: read_depth*(file_size/bytes_per_strand)
 
+  int component_decoded; //indicates if the transaction was decoded, needed for components of the larger transaction
   int transaction_finished; //flag used to indicate if the transaction in the list is finished or not
+  unsigned long digital_data_size; //digital data size
+
+  unsigned long time_stamp; //indicates the time a transaction or component became first available to the system
+  
+  struct transaction_t* components; // components of a single large transaction created at the scheduling point, this member is the head of a linked list of components for a transaction
+
+  struct transaction_t* next;
+  
   
 } transaction_t;
 
@@ -47,8 +59,8 @@ typedef struct{
 
 typedef struct trace_t{
   unsigned long pool_ID; //ID of the pool to be accessed
-  unsigned long time_stamp; //time at which the transaction will be available to the system
-  unsigned long file_size; //size of the file that is being accessed (in MB)
+  unsigned long time_stamp; //time at which the transaction became available to the system
+  unsigned long file_size; //size of the file that is being accessed (in KB)
   struct trace_t* next;//this structure is going to be used in a linked list
 } trace_t;
 
@@ -58,24 +70,33 @@ class system_sim_t{
  public:
   //overall system variables
   unsigned long current_data_buffer;
+  unsigned long sim_time; //denotes the maximum amount of time the simulator should run for
   unsigned long timer_tick;
   unsigned long transactions_completed;
-  float sequencing_efficiency;
+  float efficiency; // percentage of sequencing space used up by undesired strands, use for non-full pool accessing
+  float bytes_per_strand;
+  unsigned long sequencing_depth;
   //trace pointer is used to access the file that contains the trace
   FILE* trace_file;
-  trace_t* trace_list_head;
+  trace_t* qeueu_head; //system_queue used at the front end of the system for scheduling
   //list used for finding and retiring cracked operations
   transaction_t window[WINDOW_SIZE];
   unsigned long window_head;
   unsigned long window_tail;
+  unsigned long window_empty;
   //lists for each component in the system
   sequencer_t* sequencer;
   prep_t* prep;
   decoder_t* decoder;
   system_storage_t* dna_storage;
+  scheduler_t* scheduler;
+  generator_t* generator;
   //these lists are used to manage the transactions between stages
   list_entry_t prep_seq_list[QUEUE_SIZE];
   list_entry_t seq_dec_list[QUEUE_SIZE];
+  
+  
+
   
   //number of each unit
   int sequencers;
@@ -84,7 +105,7 @@ class system_sim_t{
   int trace_exhuasted;//indicates that the trace file is exhausted
   int trace_complete; //indicates that all of the trace transactions have been put into the pipeline
   
-  system_sim_t(FILE* trace_file,unsigned long num_preps, unsigned long  prep_channels,
+  system_sim_t(unsigned long num_preps, unsigned long  prep_channels,
 	       unsigned long num_sequencers, unsigned long  max_strands_sequencer,
 	       unsigned long num_decoders,float seq_efficiency, unsigned long prep_time,
 	       unsigned long seq_time, unsigned long dec_time, float seq_eff,
@@ -112,11 +133,10 @@ class system_unit_t{
   //trasactions mapped to the unit
   unsigned long* transaction_slots;
 
+  unsigned long timeout; //counter used to track when a sequencer should timeout
   unsigned long transaction_pointer;//used to empty transaction_slots
   // indicates the unit is busy
   int unit_active;
-
-  unsigned long standby_timer;
   
   //constructor
   system_unit_t(unsigned long num_channels);
@@ -130,8 +150,6 @@ class system_unit_t{
 //class that models the system storage
 class system_storage_t{
  public:
-  //parameters of the system
-  unsigned long bytes_per_strand; //used to model density
   unsigned long number_pools;
   unsigned long average_pool_capacity; //average capacity of the pool (MB), need to model whole pool sequencing 
   float sequencing_efficiency; //models how well a certain 
@@ -152,6 +170,50 @@ class system_storage_t{
   void storage_readmanage(unsigned long pool_ID, unsigned long copy_ID);
   void storage_poolrestore(void);
 };
+
+
+//class that envelopes functionality for the scheduler
+class scheduler_t{
+  prep_t* _prep;
+  system_sim_t* _system;
+  system_storage_t* _storage; 
+  transaction_t* system_queue;
+  unsigned long number_components;//max number of components for a transaction
+  scheduler_t(system_storage_t* _storage, transaction_t* system_queue, prep_t*  _prep,
+	      system_sim_t* _system, unsigned long number_components); 
+  typedef void(*scheduler_t::reorder_policy)(void);//the idea of the reorder function is to reorder I/O operations in the system_queue
+  typedef void(*scheduler_t::schedule_policy)(void); //the scheduler policy dictates how to send instructions into the pipeline and how to group transactions together
+  typedef void(*scheduler_t::calcstrands)(unsigned long&,unsigned long&, unsigned long,
+					  unsigned long,float, float)// determine the desired strands and undesired strands fields of each request such that we know how many strands are used for the file that we actually want
+  reorder_policy reorder;//will be used as the pointer to a scheduling policy
+  schedule_policy scheduler; //scheduler function pointer
+  calcstrands strand_calculator;
+  void schedule_stage(void); //wrapper function for the system simulator
+}
+
+
+class generator_t{//class that implements the generator, places transactions into the syste queue
+  float rate; //rate at which transactions will be generated
+  int random_seed; //seed for the request generator
+  unsigned long max_file_size; //max size a file can be
+  unsigned long min_file_size; //min size a file can be
+  unsigned long unique_pools; //number of unique pools in the system
+  transaction_t* system_queue; //system queue to add transactions to
+  system_sim_t* _system;
+
+  std::default_random_engine* rand_pois;
+  std::poisson_distribution<int>* poisson_transactions;
+  std::default_random_engine* rand_file;
+  std::default_random_engine* rand_pool;
+  FILE* trace_file; //trace file pointer in case the generator is reading from a trace
+  generator_t(int rate, unsigned long max_file_size, unsigned long min_file_size,
+		unsigned long unique_pools,int random_seed, system_sim_t* _system);
+  ~generator_t();
+  typedef void(*generator_t::generator_source)(void);
+  generator_source gen;
+  void generator_stage(void);
+  
+}
 
 
 

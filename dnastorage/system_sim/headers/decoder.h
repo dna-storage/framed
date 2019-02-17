@@ -7,8 +7,9 @@ class system_sim_t;
 
 
 
-class decoder_unit_t: public system_unit_t{
+class decoder_unit_t:public system_unit_t{
  public:
+  unsigned long component_ID; //identifies what component of a transaction a decoder is working on
   decoder_unit_t(unsigned long num_channels);
  
 };

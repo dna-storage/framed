@@ -1,0 +1,109 @@
+#include <stdlib.h>
+#include <stdio.h>
+#include <math.h>
+#include "dna_storage_attributes.h"
+#include "decoder.h"
+#include "prep.h"
+#include "sequencer.h"
+#include "stdio.h"
+#include "utlist.h"
+
+scheduler_t::scheduler_t(system_storage_t* _storage, transaction_t* system_queue, prep_t* _prep,
+			 system_sim_t* _system, unsigned long number_components){
+
+  this->_prep=_prep;
+  this->_system=_system;
+  this->_storage=_storage;
+  this->system_queue=system_queue;
+  this->reorder=&scheduler_t::reorder_none;
+  this->scheduler=&scheduler_t::scheduler_anypool;
+  this->strand_calculator=&scheduler_t::calc_singlefile;
+  this->number_components=number_components; 
+}
+
+//top level function called by the system sim
+void scheduler_t::schedule_stage(void){
+  this->reorder(); //this function reorders I/O in the system_queue
+  this->scheduler(); //this function injects transactions into prep stations 
+}
+
+
+
+//empty function for no re-ordering default setting
+void scheduler_t::reorder_none(void){
+}
+
+//this scheduling policy indicates that any pool can be put with one another 
+void scheduler_t::scheduler_anypool(void){
+
+  int prep_ID;
+  unsigned long transaction_ID;
+  system_sim_t* _system=this->_system;
+  transaction_t* _window=_system->window;
+  system_storage_t* _storage=this->_storage;
+  trace_t* temp;
+  trace_t* head;
+  unsigned long desired_strands_sequenced;
+  unsigned long undesired_strands_sequenced;
+  unsigned long strands_to_sequence;
+  prep_t* _prep=this->_prep;
+  while((prep_ID=_prep->prep_stationavail()>0) && this->system_queue!=NULL){
+    head=this->system_queue;
+    //keep going while there are things on the system queue and there are prep stations available
+
+    //take into account the cases where the pool is not available or the window is full
+    if(_system->window_head==_system->window_tail && _system->window_empty!=1) break;
+    if(!_storage->storage_poolavailable(head->pool_ID)) break;
+
+    //take care of the window_tail pointer
+    transaction_ID=_system->window_add();
+    //set up the transaction_t structure at window_head
+    _system->window_init(transaction_ID);
+
+    //loop until we can no longer batch anymore transactions
+    //each transaction needs to calculate out its strands, and then be accumulated with the top level transaction indicated by transaction_ID and then added to the component linked list
+    for(int i=0; i<this->number_components; i++){
+      if(this->system_queue==NULL) break; //break if nothing left on the queue
+      this->strand_calculator(desired_strands_sequenced,undesired_strands_sequenced,
+			      head->file_size, head->pool_ID, _system->efficiency,
+			      _system->bytes_per_strand, _system->sequencing_depth);
+      _system->window_componentadd(transaction_ID, undesired_strands_sequenced,
+				   desired_strands_sequenced, head->pool_ID,
+				   head->file_size);
+      //need to take the request off the top of the queue and remove the space for it
+      _system->queue_pop();
+    }
+    //submit the transaction to the previously found prep station
+    _prep->prep_stationsubmit(prep_ID,transaction_ID);
+  }
+}
+
+
+/*
+This strand calculator uses the file_size, efficiency, bytes_per_strand,
+and sequencing_depth to calculate the amount of desired_strands_sequenced
+and the undesired_strands_sequenced. This calculator should be used when 
+modeling the effect of accessing single individual files from a pool. Another
+calculator should be used to model sequencing the full pool.
+*/
+void scheduler_t::calc_singlefile(unsigned long& desired_strands_sequenced,
+				  unsigned long& undesired_strands_sequenced,
+				  unsigned long file_size,
+				  unsigned long pool_ID,
+				  float efficiency,
+				  float bytes_per_strand,
+				  unsigned long sequencing_depth)
+{
+  
+  float desired_strands;
+  float undesired_strands;
+  float _file_size;
+  float _sequencing_depth;
+
+  _sequencing_depth=(float)sequencing_depth;
+  _file_size=(float)file_size*(float)FILE_UNIT;
+  desired_strands=ceil(_file_size/bytes_per_strand)*_sequencing_depth;
+  undesired_strands=ceil(desired_strands/efficiency)-desired_strands;
+  desired_strands_sequenced=(unsigned long)desired_strands;
+  undesired_strands_sequenced=(unsigned long)undesired_strands;
+}

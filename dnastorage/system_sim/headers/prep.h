@@ -25,17 +25,13 @@ class prep_t{
   unsigned long buffer_size;
   system_storage_t* dna_storage;
   unsigned long base_timer;
-  unsigned long base_standbytimer;
+  
   
   prep_t(unsigned long timer, unsigned long num_channels, unsigned long buffer_size,
 	 unsigned long num_preps,list_entry_t* prep_seq_buffer,
 	 system_sim_t* _system,system_storage_t* dna_storage);
   ~prep_t();
 
-  typedef (int)(prep_t::*poolpolicy)(unsigned long, unsigned long);
-  poolpolicy prep_poolpolicy;
-  typedef (void)(prep_t::*calculationpolicy)(unsigned long);
-  calculationpolicy calc_policy;
   
   //functions that are called from the top level simulator
   void prep_backend(void); //function that will remove jobs from prep stations and place them into the prep_seq_buffer

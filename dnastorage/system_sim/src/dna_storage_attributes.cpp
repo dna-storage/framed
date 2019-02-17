@@ -24,9 +24,10 @@ system_sim_t::system_sim_t(FILE* trace_file,unsigned long num_preps,
   this->transactions_completed=0;
   this->window_head=0;
   this->window_tail=0;
+  this->window_empty=1;
   this->sequencing_efficiency=seq_eff;
   this->trace_file=trace_file;
-  this->trace_list_head=NULL;
+  this->queue_head=NULL;
   this->trace_exhausted=0;
   //initialize lists
   for(int i=0; i<QUEUE_SIZE; i++){
@@ -113,65 +114,101 @@ system_storage_t::~system_storage_t(){
 }
 
 
+//function that manages the head pointer when adding items
+unsigned long system_sim_t::window_add(void){
+  unsigned long out= this->window_tail;
+  this->window_tail++;
+  if(this->window_tail>=WINDOW_SIZE) this->window_tail=0;
+  if(this->window_head==this->window_tail) this->window_empty=0;
+  return out;
+}
+
+//function that creates and inserts a component into a window element
+void system_sim_t::window_componentadd(unsigned long transaction_ID,
+				       unsigned long undesired_strands_sequenced,
+				       unsigned long desired_strands_sequenced,
+				       unsigned long pool_ID,
+				       unsigned long digital_data_size){
+  transaction_t* new_component;
+  new_component=(transaction_t*)malloc(sizeof(transaction_t)); //allocate the space
+  new_component->next=NULL;
+  new_component->undesired_strands_sequenced=undesired_strands_sequenced;
+  new_component->desired_strands_sequenced=desired_strands_sequenced;
+  new_component->strands_to_sequence=desired_strands_sequenced+undesired_strands_sequenced;
+  new_component->pool_ID=pool_ID;
+  new_component->component_decoded=0;
+  LL_APPEND(this->window[transaction_ID].components,new_component); //append the component to the linked list
+  //accumulate component values into the overall transaction
+  this->window[transaction_ID].strands_to_sequence+=new_component->strands_to_sequence;
+  this->window[transaction_ID].digital_data_size+=digital_data_size;
+  this->window[transaction_ID].undesired_strands_sequenced+=undesired_strands_sequenced;
+  this->window[transaction_ID].desired_strands_sequenced+=desired_strands_sequenced;
+}
+
+
+//initialize a entry in the window
+void system_sim_t::window_init(unsigned long transaction_ID){
+  this->window[transaction_ID].cracked_count=1;
+  this->window[transaction_ID].strands_to_sequencer=0;
+  this->window[transaction_ID].undesired_strands_sequenced=0;
+  this->window[transaction_ID].desired_strands_sequenced=0;
+  this->window[transaction_ID]. component_decoded=0;
+  this->window[transaction_ID].transaction_finished=0;
+  this->window[transaction_ID].components=NULL;
+  this->window[transaction_ID].next=NULL;
+  this->window[transaction_ID].digital_data_size=0;
+}
+
+
+//pop a request off of the queue head
+void system_sim_t::queue_pop(void){
+  trace_t* temp;
+  temp=this->queue_head;
+  LL_DELETE(this->queue_head,this->queue_head);
+  free(temp);
+}
+
+//add new_trans to the end of the queue
+void system_sim_t::queue_append(trace_t* new_trans){
+  LL_APPEND(this->queue_head,new_trans);
+}
+
 
 //this is the top level simulator, and calls the different system unit functions
 void system_sim_t::simulate(){
 
-  
-  //clean up the active transaction list
-  this->cleanup_active_list();
-  //add on the number decoders done, decoder_backend will relinquish decoders provide a
-  this->transactions_completed+=(this->decoder)->decoder_backend();
-  (this->decoder)->decoder_frontend();
-  (this->sequencer)->sequencer_backend();
-  (this->sequencer)->sequencer_frontend();
-  (this->prep)->prep_backend();
-  (this->prep)->prep_frontend();
-  
-  //FIX ME:need to increment time_step
-  
+  //run the simulator for the duration of the simulation time
+  while(this->timer_tick<=this->sim_time){
+    //clean up the active transaction list
+    this->cleanup_active_list();
+    this->decoder->decoder_stage();
+    this->sequencer->sequencer_stage();
+    this->prep->prep_stage();
+    this->scheduler->schedule_stage();
+    this->generator->generator_stage();
+    this->timer_tick++;
+  }
 }
 
  
 //look through the transactions in window[], and clean it up by advancing the head pointer
 void system_sim_t::cleanup_active_list(void){
   unsigned long start_point=this->window_head;
+  transaction_t* component_head;
+  transaction_t* component_temp1;
+  transaction_t* component_temp2;
   while(start_point!=this->window_tail){
     if(this->window[start_point].transaction_finished){
+      //deallocate space for the components of the transactions
+      LL_FOREACH_SAFE(component_head,component_temp1,component_temp2){
+	LL_DELETE(component_head,component_head);
+	free(component_head);
+      }
       this->window_head++;
       start_point++;
     }
     else break;
   }
 }
-
-
-
-
-//add traces to the trace list
-int system_sim_t::add_traces(unsigned long num_traces){
-  trace_t* temp;
-  char* line_in;
-  unsigned long pool_ID;
-  unsigned long time_stamp;
-  unsigned long file_size;
-  for(unsigned long i=0; i<num_traces; i++){
-    if(fgets(line_in,1024,this->trace_file)!=NULL){
-      sscanf(line_in,"%l %l %l", &pool_ID,&time_stamp,&file_size);
-      temp=(trace_t*)malloc(sizeof(trace_t));
-      temp->pool_ID=pool_ID;//initialize the fields of the trace transaction
-      temp->time_stamp=time_stamp;
-      temp->file_size=file_size;
-      LL_APPEND(this->trace_list_head,temp); //add trace transaction to the list
-    }
-    else{
-      return 1; //return to notify that the trace file is empty
-    }
-
-  }
-  return 0;
-}
-
-
 
 
