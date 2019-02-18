@@ -1,20 +1,23 @@
 #include "dna_storage_attributes.h"
 #include "decoder.h"
 #include "prep.h"
+#include "generator.h"
+#include "scheduler.h"
+#include "storage_system.h"
 #include "sequencer.h"
+#include "utlist.h"
+
 #include <stdlib.h>
 decoder_unit_t::decoder_unit_t(unsigned long timer, unsigned long num_channels) : system_unit_t(num_channels){}
 
-decoder_t::decoder_t(unsigned long timer, unsigned long num_channels,
-		     unsigned long buffer_size, unsigned long num_decoders,
-		     list_entry_t* seq_dec_buffer,system_sim_t* _system )
+decoder_t::decoder_t(decoder_params_t decoder_params)
 {
   
-  this->num_decoders=num_decoders;
-  this->_system=_system;
-  this->seq_dec_buffer=seq_dec_buffer;
-  this->buffer_size=buffer_size;
-  this->base_timer=timer;
+  this->num_decoders=decoder_params.num_decoders;
+  this->_system=decoder_params._system;
+  this->seq_dec_buffer=decoder_params.seq_dec_buffer;
+  this->buffer_size=decoder_params.buffer_size;
+  this->base_timer=decoder_params.timer;
   
   //allocate the decoder set
   this->decoder_set=(decoder_unit_t**)malloc(sizeof(decoder_unit_t*)*this->num_decoders);

@@ -1,9 +1,44 @@
 #include "dna_storage_attributes.h"
 #include "decoder.h"
 #include "prep.h"
+#include "generator.h"
+#include "scheduler.h"
+#include "storage_system.h"
 #include "sequencer.h"
 #include "utlist.h"
 #include <stdlib.h>
+
+
+system_storage_t:: system_storage_t(storage_params_t storage_params){
+  this->sequencing_efficiency=storage_params.sequencing_efficiency;
+  this->number_pools=storage_params.number_pools;
+  this->bytes_per_strand=storage_params.bytes_per_strand;
+  this->pools=(pool_model_t*)malloc(sizeof(pool_model_t)*this->number_pools);
+  this->pool_wait_time=storage_params.pool_wait_time;
+  this->pool_copies=storage_params.pool_copies;
+  this->number_reads=storage_params.number_reads;
+  this->pool_write_time=storage_params.pool_write_time;
+  this->average_pool_capacity=storage_params.average_pool_capacity;
+  for(int i=0; i<this->number_pools;i++){
+    this->pools[i].copies=(pool_char_t*)malloc(sizeof(pool_char_t)*this->pool_copies);
+    //need to initialize the array of pool copies
+    for(int j=0; j<this->pool_copies; j++){
+      this->pools[i].copies[j].timer=0;
+      this->pools[i].copies[j].remaining_reads=this->number_reads;
+      this->pools[i].copies[j].in_use=0;
+    }
+  }
+}
+
+//free up space allocated for pools/files
+system_storage_t::~system_storage_t(){
+  for(int i=0; i<this->number_pools;i++) free(this->pools[i].copies);
+  free(this->pools);
+}
+
+
+
+
 
 //looks to see if there is an availabel copy for the pool requested, returns the copy identifier of that pool if so, else return -1
 int system_storage_t::storage_poolavailable(unsigned long pool_ID){

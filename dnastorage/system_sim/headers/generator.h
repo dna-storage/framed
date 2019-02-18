@@ -5,6 +5,18 @@
 class system_sim_t;
 struct transaction_t;
 
+typedef struct{
+  float rate;
+  unsigned long max_file_size;
+  unsigned long min_file_size;
+  unsigned long unique_pools;
+  int random_seed;
+  system_sim_t* _system;
+} generator_params_t;
+
+
+
+
 class generator_t{//class that implements the generator, places transactions into the syste queue
   float rate; //rate at which transactions will be generated
   int random_seed; //seed for the request generator
@@ -19,8 +31,7 @@ class generator_t{//class that implements the generator, places transactions int
   std::default_random_engine* rand_file;
   std::default_random_engine* rand_pool;
   FILE* trace_file; //trace file pointer in case the generator is reading from a trace
-  generator_t(int rate, unsigned long max_file_size, unsigned long min_file_size,
-		unsigned long unique_pools,int random_seed, system_sim_t* _system);
+  generator_t(generator_params_t generator_params);
   ~generator_t();
   typedef void(*generator_t::generator_source)(void);
   generator_source gen;

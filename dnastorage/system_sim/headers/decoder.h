@@ -4,7 +4,16 @@
 class system_unit_t;
 class system_sim_t;
 
+struct list_entry_t;
 
+typedef struct{
+  unsigned long timer;
+  unsigned long num_channels;
+  unsigned long buffer_size;
+  unsigned long num_decoders;
+  struct list_entry_t* seq_dec_buffer;
+  system_sim_t* _system;
+} decoder_params_t;
 
 
 class decoder_unit_t:public system_unit_t{
@@ -14,19 +23,16 @@ class decoder_unit_t:public system_unit_t{
  
 };
 
-
 //overall class that holds the prep unit array and supporting member functions to operate on the decoder units
 class decoder_t{
  public:
   decoder_unit_t** decoder_set;
   unsigned long num_decoders;
   system_sim_t* _system;
-  list_entry_t* seq_dec_buffer;
+  struct list_entry_t* seq_dec_buffer;
   unsigned long buffer_size;
   unsigned long base_timer;
-  decoder_t(unsigned long timer, unsigned long num_channels,
-	    unsigned long buffer_size, unsigned long num_decoders,
-	    list_entry_t* seq_dec_buffer,system_sim_t* _system );
+  decoder_t(decoder_params_t decoder_params);
   ~decoder_t();
 
   typedef void (decoder_t::*policy)(void);

@@ -64,6 +64,29 @@ typedef struct trace_t{
 } trace_t;
 
 
+typedef struct{
+  unsigned long num_preps;
+  unsigned long prep_channels;
+  unsigned long num_sequencers;
+  unsigned long max_strands_sequencer;
+  unsigned long num_decoders;
+  float seq_efficiency;
+  unsigned long prep_time;
+  unsigned long seq_time;
+  unsigned long dec_time;
+  float seq_eff;
+  unsigned long average_pool_capacity;
+  unsigned long number_pools;
+  float bytes_per_strand;
+  unsigned long pool_write_time;
+  unsigned long pool_wait_time;
+  unsigned long pool_copies;
+  unsigned long number_reads;
+  unsigned long sequencer_timeout;
+  FILE* trace_file;
+} system_sim_params_t;
+
+
 //variables that describe the overall system
 class system_sim_t{
  public:
@@ -98,14 +121,7 @@ class system_sim_t{
   int preps;
   int decoders;
   
-  system_sim_t(unsigned long num_preps, unsigned long  prep_channels,
-	       unsigned long num_sequencers, unsigned long  max_strands_sequencer,
-	       unsigned long num_decoders,float seq_efficiency, unsigned long prep_time,
-	       unsigned long seq_time, unsigned long dec_time, float seq_eff,
-	       unsigned long average_pool_capacity, unsigned long number_pools,
-	       unsigned long average_file_size, unsigned long bytes_per_strand,
-	       unsigned long pool_write_time,unsigned long pool_wait_time,
-	       unsigned long pool_copies, unsigned long number_reads);
+  system_sim_t(system_sim_params_t system_sim_params);
   ~system_sim_t();
   
   //this function will be the main function that processes each step in the pipeline

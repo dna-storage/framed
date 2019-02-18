@@ -1,9 +1,14 @@
+#include "dna_storage_attributes.h"
+#include "decoder.h"
+#include "prep.h"
+#include "generator.h"
+#include "scheduler.h"
+#include "storage_system.h"
+#include "sequencer.h"
+#include "utlist.h"
+
 #include<stdlib.h>
 #include<stdio.h>
-#include "dna_storage_attributes.h"
-#include "prep.h"
-#include "decoder.h"
-#include "sequencer.h"
 
 
 //function to strip the configuration file

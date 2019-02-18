@@ -1,22 +1,23 @@
-#include <stdlib.h>
-#include <stdio.h>
-#include <random>
 #include "dna_storage_attributes.h"
 #include "decoder.h"
 #include "prep.h"
+#include "generator.h"
+#include "scheduler.h"
+#include "storage_system.h"
 #include "sequencer.h"
-#include "stdio.h"
 #include "utlist.h"
+#include <stdlib.h>
+#include <stdio.h>
+#include <random>
 
-generator_t::generator_t(float rate,unsigned long max_file_size,unsigned long min_file_size,
-			 unsigned long unique_pools, int random_seed, system_sim_t* _system)
+generator_t::generator_t(generator_params_t generator_params)
 {
-  this->rate=rate;
-  this->max_file_size=max_file_size;
-  this->min_file_size=min_file_size;
-  this->unique_pools=unique_pools;
-  this->random_seed=random_seed;
-  this->_system=_system;
+  this->rate=generator_params.rate;
+  this->max_file_size=generator_params.max_file_size;
+  this->min_file_size=generator_params.min_file_size;
+  this->unique_pools=generator_params.unique_pools;
+  this->random_seed=generator_params.random_seed;
+  this->_system=generator_params._system;
   srand(this->random_seed);//set the random generator seed
   gen=&generator_t::gen_poisson;
   
@@ -34,6 +35,7 @@ generator_t::generator_t(float rate,unsigned long max_file_size,unsigned long mi
 generator_t::~generator_t(){
   delete this->rand_pois;
   delete this->rand_file;
+  delete this->rand_pool;
   delete this->poisson_transactions;
 }
 

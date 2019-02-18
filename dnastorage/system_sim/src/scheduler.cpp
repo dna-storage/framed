@@ -1,24 +1,26 @@
-#include <stdlib.h>
-#include <stdio.h>
-#include <math.h>
 #include "dna_storage_attributes.h"
 #include "decoder.h"
 #include "prep.h"
+#include "generator.h"
+#include "scheduler.h"
+#include "storage_system.h"
 #include "sequencer.h"
-#include "stdio.h"
 #include "utlist.h"
+#include <stdlib.h>
+#include <stdio.h>
+#include <math.h>
 
-scheduler_t::scheduler_t(system_storage_t* _storage, transaction_t* system_queue, prep_t* _prep,
-			 system_sim_t* _system, unsigned long number_components){
 
-  this->_prep=_prep;
-  this->_system=_system;
-  this->_storage=_storage;
-  this->system_queue=system_queue;
+scheduler_t::scheduler_t(scheduler_params_t scheduler_params){
+
+  this->_prep=scheduler_params._prep;
+  this->_system=scheduler_params._system;
+  this->_storage=scheduler_params._storage;
+  this->system_queue=scheduler_params.system_queue;
   this->reorder=&scheduler_t::reorder_none;
   this->scheduler=&scheduler_t::scheduler_anypool;
   this->strand_calculator=&scheduler_t::calc_singlefile;
-  this->number_components=number_components; 
+  this->number_components=scheduler_params.number_components; 
 }
 
 //top level function called by the system sim

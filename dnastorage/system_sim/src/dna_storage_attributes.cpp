@@ -1,11 +1,14 @@
-#include <stdlib.h>
-#include <stdio.h>
 #include "dna_storage_attributes.h"
 #include "decoder.h"
 #include "prep.h"
+#include "generator.h"
+#include "scheduler.h"
+#include "storage_system.h"
 #include "sequencer.h"
-#include "stdio.h"
 #include "utlist.h"
+#include <stdlib.h>
+#include <stdio.h>
+
 
 //constructor for the whole system
 system_sim_t::system_sim_t(FILE* trace_file,unsigned long num_preps,
@@ -79,38 +82,6 @@ system_unit_t::system_unit_t(unsigned long timer, unsigned long num_channels){
 system_unit_t::~system_unit_t(){
   free(transaction_slots);
   printf("Destructor of parent units\n");
-}
-
-system_storage_t:: system_storage_t(float sequencing_efficiency,
-				    unsigned long average_pool_capacity,
-				    unsigned long number_pools,
-				    unsigned long bytes_per_strand,unsigned long pool_copies,
-				    unsigned long number_reads,unsigned long pool_write_time,
-				    unsigned long pool_wait_time){
-  this->sequencing_efficiency=sequencing_efficiency;
-  this->number_pools=number_pools;
-  this->bytes_per_strand=bytes_per_strand;
-  this->pools=(pool_model_t*)malloc(sizeof(pool_model_t)*this->number_pools);
-  this->pool_wait_time=pool_wait_time;
-  this->pool_copies=pool_copies;
-  this->number_reads=number_reads;
-  this->pool_write_time=pool_write_time;
-  this->average_pool_capacity=average_pool_capacity;
-  for(int i=0; i<this->number_pools;i++){
-    this->pools[i].copies=(pool_char_t*)malloc(sizeof(pool_char_t)*this->pool_copies);
-    //need to initialize the array of pool copies
-    for(int j=0; j<this->pool_copies; j++){
-      this->pools[i].copies[j].timer=0;
-      this->pools[i].copies[j].remaining_reads=this->number_reads;
-      this->pools[i].copies[j].in_use=0;
-    }
-  }
-}
-
-//free up space allocated for pools/files
-system_storage_t::~system_storage_t(){
-  for(int i=0; i<this->number_pools;i++) free(this->pools[i].copies);
-  free(this->pools);
 }
 
 

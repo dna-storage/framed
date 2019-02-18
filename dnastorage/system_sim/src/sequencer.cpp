@@ -1,7 +1,11 @@
 #include "dna_storage_attributes.h"
 #include "decoder.h"
 #include "prep.h"
+#include "generator.h"
+#include "scheduler.h"
+#include "storage_system.h"
 #include "sequencer.h"
+#include "utlist.h"
 #include <stdlib.h>
 sequencer_unit_t::sequencer_unit_t(unsigned long timer,unsigned long max_sequencing,
 				   unsigned long num_channels):system_unit_t(num_channels){
@@ -13,25 +17,17 @@ sequencer_unit_t::sequencer_unit_t(unsigned long timer,unsigned long max_sequenc
 }
 
 
-sequencer_t:: sequencer_t(unsigned long timer,unsigned long max_strands,
-			  unsigned long num_channels,unsigned long base_timeout,
-			  unsigned long buffer_size,
-			  unsigned long num_sequencers,list_entry_t* seq_dec_buffer,
-			  list_entry_t* prep_seq_buffer, system_sim_t* _system){
-
-  
-  this->num_sequencers=num_sequencers;
-  this->_system=_system;
-  this->seq_dec_buffer=seq_dec_buffer;
-  this->prep_seq_buffer=prep_seq_buffer;
-  this->buffer_size=buffer_size;
-  this->base_timer=timer;
-  this->base_timeout=base_timeout;
+sequencer_t:: sequencer_t(sequencer_params_t sequencer_params){
+  this->num_sequencers=sequencer_params.num_sequencers;
+  this->_system=sequencer_params._system;
+  this->seq_dec_buffer=sequencer_params.seq_dec_buffer;
+  this->prep_seq_buffer=sequencer_params.prep_seq_buffer;
+  this->buffer_size=sequencer_params.buffer_size;
+  this->base_timer=sequencer_params.timer;
+  this->base_timeout=sequencer_params.base_timeout;
   //allocate sequencer units
   this->sequencer_set=(sequencer_unit_t**)malloc(sizeof(sequencer_unit_t*)*this->num_sequencers);
   for(int i=0; i<this->num_sequencers; i++) this->sequencer_set[i]=new sequencer_unit_t(max_strands,0);
-
- 
 }
 
 

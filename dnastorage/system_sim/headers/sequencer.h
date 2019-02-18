@@ -5,7 +5,19 @@
 class system_unit_t;
 class system_sim_t;
 
-//typedef list_entry_t;
+struct list_entry_t;
+
+typedef struct{
+  unsigned long timer;
+  unsigned long max_strands;
+  unsigned long num_channels;
+  unsigned long base_timeout;
+  unsigned long buffer_size;
+  unsigned long num_sequencers;
+  struct list_entry_t* seq_dec_buffer;
+  struct list_entry_t* prep_seq_buffer;
+  system_sim_t* _system;
+} sequencer_params_t;
 
 
 class sequencer_unit_t: public system_unit_t{
@@ -33,14 +45,12 @@ class sequencer_t{
   sequencer_unit_t** sequencer_set;
   unsigned long num_sequencers;
   system_sim_t* _system;
-  list_entry_t* seq_dec_buffer;
-  list_entry_t* prep_seq_buffer;
+  struct list_entry_t* seq_dec_buffer;
+  struct list_entry_t* prep_seq_buffer;
   unsigned long buffer_size;
   unsigned long base_timer;
   unsigned long base_timeout;
-  sequencer_t(unsigned long timer,unsigned long max_strands, unsigned long num_channels, unsigned long base_timeout,
-	      unsigned long buffer_size,unsigned long num_sequencers,list_entry_t* seq_dec_buffer,
-	      list_entry_t* prep_seq_buffer, system_sim_t* _system);
+  sequencer_t(sequencer_params_t sequencer_params);
   ~sequencer_t();
 
   

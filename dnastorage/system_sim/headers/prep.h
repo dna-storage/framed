@@ -5,8 +5,18 @@ class system_unit_t;
 class system_sim_t;
 class system_storage_t;
 
+struct list_entry_t;
 
-//typedef list_entry_t;
+
+typedef struct{
+  unsigned long timer;
+  unsigned long num_channels;
+  unsigned long buffer_size;
+  unsigned long num_preps;
+  struct list_entry_t* prep_seq_buffer;
+  system_sim_t* _system;
+  system_storage_t* dna_storage;
+} prep_params_t;
 
 class prep_unit_t: public system_unit_t{
  public:
@@ -21,15 +31,11 @@ class prep_t{
   prep_unit_t** prep_set;
   unsigned long num_preps;
   system_sim_t* _system;
-  list_entry_t* prep_seq_buffer;
+  struct list_entry_t* prep_seq_buffer;
   unsigned long buffer_size;
   system_storage_t* dna_storage;
   unsigned long base_timer;
-  
-  
-  prep_t(unsigned long timer, unsigned long num_channels, unsigned long buffer_size,
-	 unsigned long num_preps,list_entry_t* prep_seq_buffer,
-	 system_sim_t* _system,system_storage_t* dna_storage);
+  prep_t(prep_params_t prep_params);
   ~prep_t();
 
   
