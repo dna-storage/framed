@@ -8,10 +8,10 @@ struct transaction_t;
 
 typedef struct{
   system_storage_t* _storage;
-  transaction_t* system_queue;
+  transaction_t** system_queue;
   prep_t* _prep;
   system_sim_t* _system;
-  unsigned long number_components;
+  unsigned long batch_size;
 }scheduler_params_t;
 
 
@@ -21,7 +21,7 @@ class scheduler_t{
   system_sim_t* _system;
   system_storage_t* _storage; 
   struct transaction_t* system_queue;
-  unsigned long number_components;//max number of components for a transaction
+  unsigned long batch_size;//max number of components for a transaction
   scheduler_t(scheduler_params_t scheduler_params); 
   typedef void(*scheduler_t::reorder_policy)(void);//the idea of the reorder function is to reorder I/O operations in the system_queue
   typedef void(*scheduler_t::schedule_policy)(void); //the scheduler policy dictates how to send instructions into the pipeline and how to group transactions together

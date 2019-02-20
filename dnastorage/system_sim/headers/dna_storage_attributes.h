@@ -24,7 +24,6 @@ typedef struct transaction_t{
   unsigned long undesired_strands_sequenced; //strands that are junk: (1/eff.-1)*desired
   unsigned long desired_strands_sequenced; //strands that we want: read_depth*(file_size/bytes_per_strand)
 
-  int component_decoded; //indicates if the transaction was decoded, needed for components of the larger transaction
   int transaction_finished; //flag used to indicate if the transaction in the list is finished or not
   unsigned long digital_data_size; //digital data size
 
@@ -69,12 +68,12 @@ typedef struct{
   unsigned long prep_channels;
   unsigned long num_sequencers;
   unsigned long max_strands_sequencer;
+  unsigned long seq_channels;
   unsigned long num_decoders;
   float seq_efficiency;
   unsigned long prep_time;
   unsigned long seq_time;
   unsigned long dec_time;
-  float seq_eff;
   unsigned long average_pool_capacity;
   unsigned long number_pools;
   float bytes_per_strand;
@@ -84,6 +83,14 @@ typedef struct{
   unsigned long number_reads;
   unsigned long sequencer_timeout;
   FILE* trace_file;
+  unsigned long window_size;
+  unsigned long prep_seq_buffer_size;
+  unsigned long seq_dec_buffer_size;
+  unsigned long batch_size;
+  unsigned long max_file_size;
+  unsigned long min_file_size;
+  float rate;
+  int seed;
 } system_sim_params_t;
 
 
@@ -102,7 +109,9 @@ class system_sim_t{
   FILE* trace_file;
   trace_t* qeueu_head; //system_queue used at the front end of the system for scheduling
   //list used for finding and retiring cracked operations
-  transaction_t window[WINDOW_SIZE];
+  transaction_t* window;
+  unsigned long window_size; //max size of the window
+  unsigned long window_length; //number of active items in the window
   unsigned long window_head;
   unsigned long window_tail;
   unsigned long window_empty;
@@ -114,8 +123,10 @@ class system_sim_t{
   scheduler_t* scheduler;
   generator_t* generator;
   //these lists are used to manage the transactions between stages
-  list_entry_t prep_seq_list[QUEUE_SIZE];
-  list_entry_t seq_dec_list[QUEUE_SIZE];
+  list_entry_t* prep_seq_list;
+  list_entry_t* seq_dec_list;
+  unsigned long prep_seq_buffer_size;
+  unsigned long seq_dec_buffer_size;
   //number of each unit
   int sequencers;
   int preps;

@@ -6,7 +6,7 @@
 #include "storage_system.h"
 #include "sequencer.h"
 #include "utlist.h"
-
+#include <stdio.h>
 #include <stdlib.h>
 decoder_unit_t::decoder_unit_t(unsigned long timer, unsigned long num_channels) : system_unit_t(num_channels){}
 
@@ -83,9 +83,18 @@ void decoder_t::decoder_frontend(void){
 //reach into the decoder set and deactivate the decoder and complete the transaction
 void decoder_t::decoder_complete(unsigned long decoder_ID){
   decoder_unit_t* _decoder=this->decoder_set[decoder_ID];
+  transaction_t* temp, comp_head;
   transaction_t* _window=this->_system->window;
+  int batch_complete=1;
   _decoder->unit_active=0;
-  for(unsigned long i=0; i<next_open;i++) _window[_decoder->transaction_slots[i]].transaction_finished=1;
+  comp_head=_window[_decoder->transaction_slots[0]].components;
+  _window[_decoder->transaction_slots[0]].components[_decoder->component_ID].transaction_finished=1;
+
+  //check to see if all components are done
+  LL_FOREACH(comp_head,temp){
+    if(temp->transaction_finished!=1) batch_complete=0;
+  }
+  if(batch_complete) _window[_decoder->transaction_slots[0]].transaction_finished=1; //all pieces done in the original batch
 }
 
 void decoder_t::decoder_timestep(unsigned long decoder_ID){

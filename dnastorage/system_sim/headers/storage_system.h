@@ -6,7 +6,7 @@ typedef struct{
   float sequencing_efficiency;
   unsigned long average_pool_capacity;
   unsigned long number_pools;
-  unsigned long bytes_per_strand;
+  float  bytes_per_strand;
   unsigned long pool_copies;
   unsigned long pool_write_time;
   unsigned long pool_wait_time;

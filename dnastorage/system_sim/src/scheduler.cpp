@@ -20,7 +20,7 @@ scheduler_t::scheduler_t(scheduler_params_t scheduler_params){
   this->reorder=&scheduler_t::reorder_none;
   this->scheduler=&scheduler_t::scheduler_anypool;
   this->strand_calculator=&scheduler_t::calc_singlefile;
-  this->number_components=scheduler_params.number_components; 
+  this->batch_size=scheduler_params.batch_size; 
 }
 
 //top level function called by the system sim
@@ -49,23 +49,21 @@ void scheduler_t::scheduler_anypool(void){
   unsigned long undesired_strands_sequenced;
   unsigned long strands_to_sequence;
   prep_t* _prep=this->_prep;
-  while((prep_ID=_prep->prep_stationavail()>0) && this->system_queue!=NULL){
-    head=this->system_queue;
+  while((prep_ID=_prep->prep_stationavail()>0) && *(this->system_queue)!=NULL && !_system->window_full()){
+    head=*(this->system_queue);
     //keep going while there are things on the system queue and there are prep stations available
-
-    //take into account the cases where the pool is not available or the window is full
-    if(_system->window_head==_system->window_tail && _system->window_empty!=1) break;
     if(!_storage->storage_poolavailable(head->pool_ID)) break;
 
-    //take care of the window_tail pointer
+    //get a spot on the window
     transaction_ID=_system->window_add();
+    
     //set up the transaction_t structure at window_head
     _system->window_init(transaction_ID);
 
     //loop until we can no longer batch anymore transactions
     //each transaction needs to calculate out its strands, and then be accumulated with the top level transaction indicated by transaction_ID and then added to the component linked list
-    for(int i=0; i<this->number_components; i++){
-      if(this->system_queue==NULL) break; //break if nothing left on the queue
+    for(int i=0; i<this->batch_size; i++){
+      if(*(this->system_queue==NULL)) break; //break if nothing left on the queue
       this->strand_calculator(desired_strands_sequenced,undesired_strands_sequenced,
 			      head->file_size, head->pool_ID, _system->efficiency,
 			      _system->bytes_per_strand, _system->sequencing_depth);

@@ -12,7 +12,8 @@ typedef struct{
   unsigned long max_strands;
   unsigned long num_channels;
   unsigned long base_timeout;
-  unsigned long buffer_size;
+  unsigned long seq_dec_buffer_size;
+  unsigned long prep_seq_buffer_size;
   unsigned long num_sequencers;
   struct list_entry_t* seq_dec_buffer;
   struct list_entry_t* prep_seq_buffer;
@@ -47,7 +48,8 @@ class sequencer_t{
   system_sim_t* _system;
   struct list_entry_t* seq_dec_buffer;
   struct list_entry_t* prep_seq_buffer;
-  unsigned long buffer_size;
+  unsigned long seq_dec_buffer_size;
+  unsigned long prep_seq_buffer_size;
   unsigned long base_timer;
   unsigned long base_timeout;
   sequencer_t(sequencer_params_t sequencer_params);
