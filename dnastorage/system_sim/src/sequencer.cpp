@@ -1,4 +1,4 @@
-#include "dna_storage_attributes.h"
+#include "system.h"
 #include "decoder.h"
 #include "prep.h"
 #include "generator.h"

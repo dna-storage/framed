@@ -1,4 +1,4 @@
-#include "dna_storage_attributes.h"
+#include "system.h"
 #include "decoder.h"
 #include "prep.h"
 #include "generator.h"
@@ -15,7 +15,7 @@ using namespace rapidjson;
 
 int main(int argc, char** argv){
   system_sim_t* system_simulator;
-  system_sim_params_t sim_params
+  system_sim_params_t sim_params;
   FILE* config;
 
   if(argc<2){
