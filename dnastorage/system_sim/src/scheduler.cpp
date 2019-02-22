@@ -17,6 +17,9 @@ scheduler_t::scheduler_t(scheduler_params_t scheduler_params){
   this->_system=scheduler_params._system;
   this->_storage=scheduler_params._storage;
   this->system_queue=scheduler_params.system_queue;
+  this->bytes_per_strand=scheduler_params.bytes_per_strand;
+  this->sequencing_depth=scheduler_params.sequencing_depth;
+  this->efficiency=scheduler_params.efficiency;
   this->reorder=&scheduler_t::reorder_none;
   this->scheduler=&scheduler_t::scheduler_anypool;
   this->strand_calculator=&scheduler_t::calc_singlefile;
@@ -65,8 +68,8 @@ void scheduler_t::scheduler_anypool(void){
     for(int i=0; i<this->batch_size; i++){
       if(*(this->system_queue==NULL)) break; //break if nothing left on the queue
       this->strand_calculator(desired_strands_sequenced,undesired_strands_sequenced,
-			      head->file_size, head->pool_ID, _system->efficiency,
-			      _system->bytes_per_strand, _system->sequencing_depth);
+			      head->file_size, head->pool_ID, this->efficiency,
+			      this->bytes_per_strand, this->sequencing_depth);
       _system->window_componentadd(transaction_ID, undesired_strands_sequenced,
 				   desired_strands_sequenced, head->pool_ID,
 				   head->file_size);

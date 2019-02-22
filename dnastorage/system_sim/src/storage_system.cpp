@@ -10,9 +10,7 @@
 
 
 system_storage_t:: system_storage_t(storage_params_t storage_params){
-  this->sequencing_efficiency=storage_params.sequencing_efficiency;
   this->number_pools=storage_params.number_pools;
-  this->bytes_per_strand=storage_params.bytes_per_strand;
   this->pools=(pool_model_t*)malloc(sizeof(pool_model_t)*this->number_pools);
   this->pool_wait_time=storage_params.pool_wait_time;
   this->pool_copies=storage_params.pool_copies;
@@ -42,10 +40,9 @@ system_storage_t::~system_storage_t(){
 
 //looks to see if there is an availabel copy for the pool requested, returns the copy identifier of that pool if so, else return -1
 int system_storage_t::storage_poolavailable(unsigned long pool_ID){
-  system_storage_t* _dna_storage=this->dna_storage;
-  pool_char_t* _pool_copies=_dna_storage->pools[pool_ID].copies; //array of copies for the pool_ID
+  pool_char_t* _pool_copies=this->pools[pool_ID].copies; //array of copies for the pool_ID
 
-  for(int i=0; i<_dna_storage->pool_copies; i++){
+  for(int i=0; i<this->pool_copies; i++){
     if(_pool_copies[i].in_use!=1) return i;
   }
   return -1;
@@ -58,7 +55,7 @@ int system_storage_t::storage_poolavailable(unsigned long pool_ID){
 void system_storage_t::storage_readmanage(unsigned long pool_ID, unsigned long pool_copy_ID){
   unsigned long remaining_reads;
   this->pools[pool_ID].copies[pool_copy_ID].remaining_reads--;
-  remaining_reads=this->pools[pool_ID].copies.[pool_copy_ID].remaining_reads;
+  remaining_reads=this->pools[pool_ID].copies[pool_copy_ID].remaining_reads;
   if(remaining_reads==0){
     //used up all the reads, pool needs to be recovered in some way
     this->pools[pool_ID].copies[pool_copy_ID].in_use=1;

@@ -20,25 +20,19 @@ system_sim_t::system_sim_t(system_sim_params_t system_sim_params){
   decoder_params_t decoder_params;
   //initialize the system class members
   this->timer_tick=0;
-  this->current_data_buffer=0;
-  this->transactions_completed=0;
   this->window_size=system_sim_params.window_size;
   this->window_head=0;
   this->window_tail=0;
   this->window_length=0;
-  this->sequencing_efficiency=system_sim_params.seq_efficiency;
-  this->trace_file=system_sim_params.trace_file;
-  this->queue_head=NULL;
+  this->system_queue=NULL;
   this->trace_exhausted=0;
   //initialize lists
-  for(int i=0; i<QUEUE_SIZE; i++){
-    this->prep_seq_list[i].used=0;
-    this->seq_dec_list[i].used=0;
+  for(int i=0; i<system_sim_params.prep_seq_buffer_size; i++){
+    this->prep_seq_buffer[i].used=0;
   }
-
-  this->sequencers=system_sim_params.num_sequencers;
-  this->preps=system_sim_params.num_preps;
-  this->decoders=system_sim_params.num_decoders;
+  for(int i=0; i<system_sim_params.seq_dec_buffer_size; i++){
+    this->seq_dec_buffer[i].used=0;
+  }
 
   //create windows and buffers
   this->prep_seq_buffer_size=system_sim_params.prep_seq_buffer_size;
@@ -46,8 +40,8 @@ system_sim_t::system_sim_t(system_sim_params_t system_sim_params){
   this->window_size=system_sim_params.window_size
     
   this->window=(transaction_t*)malloc((this->window_size+1)*sizeof(transaction_t));
-  this->prep_seq_list=(list_entry_t*)malloc(this->prep_seq_buffer_size*sizeof(list_entry_t));
-  this->seq_dec_list=(list_entry_t*)malloc(this->seq_dec_buffer_size*sizeof(list_entry_t));
+  this->prep_seq_buffer=(list_entry_t*)malloc(this->prep_seq_buffer_size*sizeof(list_entry_t));
+  this->seq_dec_buffer=(list_entry_t*)malloc(this->seq_dec_buffer_size*sizeof(list_entry_t));
 
   //setup storage parameters
   storage_params.sequencing_efficiency=system_sim_params.seq_efficiency;
@@ -66,15 +60,17 @@ system_sim_t::system_sim_t(system_sim_params_t system_sim_params){
   prep_params.timer=system_sim_params.prep_time;
   prep_params.num_channels=system_sim_params.prep_channels;
   prep_params.buffer_size=system_sim_params.prep_seq_buffer_size;
-  prep_params.prep_seq_buffer=this->prep_seq_list;
+  prep_params.prep_seq_buffer=this->prep_seq_buffer;
   prep_params._system=this;
   prep_params.dna_storage=this->dna_storage;
-
+  prep_params.num_preps=system_sim_params.num_preps;
+  
   //setup decoder parameters
   decoder_params.timer=system_sim_params.dec_time;
   decoder_params.num_channels=1;
   decoder_params.buffer_size=system_sim_params.seq_dec_buffer_size;
-  decoder_params.seq_dec_buffer=this->seq_dec_list;
+  decoder_params.seq_dec_buffer=this->seq_dec_buffer;
+  decoder_params.num_decoders=system_simparams.num_decoders
 
   //setup sequencer parameters
   sequencer_params=system_sim_params.seq_time;
@@ -84,8 +80,8 @@ system_sim_t::system_sim_t(system_sim_params_t system_sim_params){
   sequencer_params.seq_dec_buffer_size=system_sim_params.seq_dec_buffer_size;
   sequencer_params.prep_seq_buffer_size=system_sim_params.prep_seq_buffer_size;
   sequencer_params.num_sequencers=system_sim_params.num_sequencers;
-  sequencer_params.seq_dec_buffer=seq_dec_list;
-  sequencer_params.prep_seq_buffer=prep_seq_list;
+  sequencer_params.seq_dec_buffer=seq_dec_buffer;
+  sequencer_params.prep_seq_buffer=prep_seq_buffer;
   sequencer_params._system=this;
 
 
@@ -97,10 +93,14 @@ system_sim_t::system_sim_t(system_sim_params_t system_sim_params){
 
   //setup scheduler parameters
   scheduler_params._storage=this->dna_storage;
-  scheduler_params.system_queue=&(this->queue_head);
+  scheduler_params.system_queue=&(this->system_queue);
   scheduler_params._prep=this->prep;
   scheduler_params._system=this;
   scheduler_params.batch_size=system_sim_params.batch_size;
+  scheduler_params.bytes_per_strand=system_sim_params.bytes_per_strand;
+  scheduler_params.sequencing_depth=system_sim_params.sequencing_depth;
+  scheduler_params.efficiency=system_sim_params.seq_efficiency;
+  
 
   //setup the generator parameters
   generator_params.max_file_size=system_sim_params.max_file_size;
@@ -125,8 +125,8 @@ system_sim_t::~system_sim_t(){
   delete this->generator;
   delete this->scheduler;
   free(this->window);
-  free(this->seq_dec_list);
-  free(this->prep_seq_list);
+  free(this->seq_dec_buffer);
+  free(this->prep_seq_buffer);
 }
 
 
@@ -152,14 +152,14 @@ system_unit_t::~system_unit_t(){
 //pop a request off of the queue head
 void system_sim_t::queue_pop(void){
   trace_t* temp;
-  temp=this->queue_head;
-  LL_DELETE(this->queue_head,this->queue_head);
+  temp=this->system_queue;
+  LL_DELETE(this->system_queue,this->system_queue);
   free(temp);
 }
 
 //add new_trans to the end of the queue
 void system_sim_t::queue_append(trace_t* new_trans){
-  LL_APPEND(this->queue_head,new_trans);
+  LL_APPEND(this->system_queue,new_trans);
 }
 
 

@@ -53,9 +53,6 @@ void prep_t::prep_backend(void){
 }
 
 
-
-
-
 //looks to see if there is a prep station that will accept the pool indicated by pool_ID
 int prep_t::prep_stationavail(void){
   prep_unit_t _prep;
@@ -106,7 +103,7 @@ void prep_t::prep_complete(unsigned long prep_ID){
 }
 
 //find an open spot in the prep_seq_buffer
-void prep_t::get_prepseq(unsigned long transaction_ID){
+int prep_t::get_prepseq(unsigned long transaction_ID){
   list_entry_t* _p_s=this->prep_seq_buffer;
 
   //find an open prep_seq_buffer location

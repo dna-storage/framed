@@ -8,7 +8,7 @@
 #include "utlist.h"
 #include <stdio.h>
 #include <stdlib.h>
-decoder_unit_t::decoder_unit_t(unsigned long timer, unsigned long num_channels) : system_unit_t(num_channels){}
+decoder_unit_t::decoder_unit_t(unsigned long num_channels) : system_unit_t(num_channels){}
 
 decoder_t::decoder_t(decoder_params_t decoder_params)
 {
@@ -58,7 +58,6 @@ void decoder_t::decoder_backend(void){
     }
     else this->decoder_timestep(i); //decrease the time on the decoder
   }
-  _system_sim->transactions_completed+=done_count;
 }
 
 //need to fill up non-active decoders with transactions in the seq_dec_buffer
@@ -83,7 +82,8 @@ void decoder_t::decoder_frontend(void){
 //reach into the decoder set and deactivate the decoder and complete the transaction
 void decoder_t::decoder_complete(unsigned long decoder_ID){
   decoder_unit_t* _decoder=this->decoder_set[decoder_ID];
-  transaction_t* temp, comp_head;
+  transaction_t* temp;
+  transaction_t* comp_head;
   transaction_t* _window=this->_system->window;
   int batch_complete=1;
   _decoder->unit_active=0;
@@ -105,7 +105,7 @@ void decoder_t::decoder_timestep(unsigned long decoder_ID){
 unsigned long decoder_t::decoder_avail(void){
   decoder_unit_t* _decoder;
   for(unsigned long i=0; i<(this->num_decoders);i++){
-    _decooder=this->decoder_set[i];
+    _decoder=this->decoder_set[i];
     if (_decoder->unit_active==0){
       return i;
     }
@@ -123,13 +123,13 @@ void decoder_t::init_decoder(unsigned long decoder_ID, unsigned long transaction
   int decoding_left=0;
   int comp_ID=0;
   _decoder->next_open=0;
-  _decoder->transaction_slots[next_open]=transaction_ID;
+  _decoder->transaction_slots[_decoder->next_open]=transaction_ID;
   _decoder->unit_active=1;
   _decoder->timer=(this->base_timer);
   //need to make sure the sequencer gets the component ID
   LL_FOREACH(comp_head,comp_temp){
     if(comp_temp->component_decoded==0){
-      _decoder->component_ID=com_ID;
+      _decoder->component_ID=comp_ID;
       comp_temp->component_decoded=1;
       break;
     }
@@ -138,7 +138,7 @@ void decoder_t::init_decoder(unsigned long decoder_ID, unsigned long transaction
 
   //take care of the buffer entry if it is no longer needed
   LL_FOREACH(comp_head,comp_temp){
-    if(comp_temp->components_decoded==0){
+    if(comp_temp->component_decoded==0){
       decoding_left=1;
     }
   }

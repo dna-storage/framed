@@ -18,49 +18,44 @@ typedef struct{
   struct list_entry_t* seq_dec_buffer;
   struct list_entry_t* prep_seq_buffer;
   system_sim_t* _system;
-} sequencer_params_t;
+} sequencer_params_t; //bundled sequencer parameters
 
 
 class sequencer_unit_t: public system_unit_t{
  public:
-  //max number of strands the sequencer can handle
-  unsigned long max_strands;
-  //number of strands currently used on the current sequencing runs 
-  unsigned long used_strands;
-  //strands that are wasted, function of policy of sequencing (e.g sequence whole pool/sequencing efficiency)
-  unsigned long wasted_strands;
-
-  
-  //measure of each sequencers utilization at a given time step (used_strands-wasted)/max_strands
-  float utilization;
-
-  //constructor for base class and sequencer class
+  unsigned long max_strands; //max number of reads for the sequencer 
+  unsigned long used_strands; //number of strands used up on the sequencer 
+  unsigned long wasted_strands; //junk strands that we are not interested in
   sequencer_unit_t(unsigned long max_sequencing, unsigned long num_channels);
 };
 
 
 //logical sequencer unit that envelopes all of the sequencers in the system
 class sequencer_t{
-
  public:
-  sequencer_unit_t** sequencer_set;
-  unsigned long num_sequencers;
-  system_sim_t* _system;
-  struct list_entry_t* seq_dec_buffer;
-  struct list_entry_t* prep_seq_buffer;
-  unsigned long seq_dec_buffer_size;
-  unsigned long prep_seq_buffer_size;
-  unsigned long base_timer;
-  unsigned long base_timeout;
   sequencer_t(sequencer_params_t sequencer_params);
   ~sequencer_t();
+  void sequencer_stage(void);//top level interface to the system simulator
+ private:
+  sequencer_unit_t** sequencer_set; //set of sequencers in the system
+  unsigned long num_sequencers; //number of sequencers in the system
+  system_sim_t* _system; //pointer to the system simulator
+  struct list_entry_t* seq_dec_buffer; //seq_dec_buffer pointer
+  struct list_entry_t* prep_seq_buffer; // pointer to the prep_seq_buffer
+  unsigned long seq_dec_buffer_size; //size of the seq_dec_buffer
+  unsigned long prep_seq_buffer_size; //size of the prep_seq_buffer
+  unsigned long base_timer; //time value used to refresh sequencer run times
+  unsigned long base_timeout; //time value used to refresh the timeout timers
 
-  
-
-  //top level sequencer functions to be called by the top level simulator
   void sequencer_backend(void);//this function will check sequencers and put transactions into the seq_dec_buffer
-  void sequencer_frontend(void);
-
+  void sequencer_frontend(void); //move transactions from the prep_seq_buffer to an open sequencer
+  void sequencer_kickoff(void); //function that checks to see if sequencers are ready to be started
+  void sequencer_timeoutstep(void); //timestep the the timeout counter
+  void sequencer_submit(unsigned long transaction_ID, unsigned long sequencer_ID); //submit a transaction to the sequencer
+  int sequencer_avail(unsigned long transaction_ID); //check for an available sequencer
+  void sequencer_complete(unsigned long sequencer_ID); //complete a finished sequencer
+  int get_seqdec(unsigned long transaction_ID); //look for an open seq_dec_buffer entry
+  void sequencer_timestep(unsigned long sequencer_ID); //decrement the sequencer's timer
 };
 
 
