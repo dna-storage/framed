@@ -1,19 +1,28 @@
 .PHONY: clean help .depend
+BUILD_DIR=../dnastorage/system_sim/build
+EXE_DIR=../dnastorage/system_sim/bin
+SOURCE_DIR=../dnastorage/system_sim/src
 
-EXE=system_sim
+
 SOURCES=$(wildcard ../dnastorage/system_sim/src/*.cpp)
-OBJECTS=$(SOURCES:.cpp=.o)
-INCLUDES=../dnastorage/system_sim/headers
+OBJECTS=$(patsubst $(SOURCE_DIR)/%,$(BUILD_DIR)/%,$(SOURCES:.cpp=.o))
 
-CFLAGS=-O3 -std=c++11 -I$(INCLUDES) -I../dnastorage/system_sim/utils
 
-all: $(EXE)
 
-$(EXE):$(OBJECTS)
+
+INCLUDE_DIR=../dnastorage/system_sim/include
+UTILS_DIR=../dnastorage/system_sim/utils
+CFLAGS=-O3 -std=c++11 -I$(INCLUDE_DIR) -I$(UTILS_DIR)
+
+all: $(EXE_DIR)/system_sim
+
+$(EXE_DIR)/system_sim:$(OBJECTS)
+	mkdir -p $(EXE_DIR)
 	$(CXX) $(CFLAGS) $^ -o $@
 
-%.o: %.cpp
+$(BUILD_DIR)/%.o: $(SOURCE_DIR)/%.cpp
+	mkdir -p $(BUILD_DIR)
 	$(CXX) $(CFLAGS) -c $< -o $@
 
 clean:
-	rm -f $(OBJECTS) $(EXE)
+	rm -r $(EXE_DIR) $(BUILD_DIR)  
