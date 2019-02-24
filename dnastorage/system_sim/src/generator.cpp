@@ -18,22 +18,18 @@ generator_t::generator_t(generator_params_t generator_params)
   this->unique_pools=generator_params.unique_pools;
   this->random_seed=generator_params.random_seed;
   this->_system=generator_params._system;
-  srand(this->random_seed);//set the random generator seed
   gen=&generator_t::gen_poisson;
-  
   //set up random number generators
-  this->poisson_transactions = new std::poisson_distribution<int>(rate);
-  this->rand_pois = new std::default_random_engine();
-  this->rand_file = new std::default_random_engine();
-  this->rand_pool = new std::default_random_engine();
-  this->rand_file.min(min_file_size);
-  this->rand_file.max(max_file_size);
-  this->rand_pool.min(0);
-  this->rand_pool.max(this->unique_pools);
+  this->poisson_transactions = new std::poisson_distribution<unsigned long>(rate);
+  this->rand_tool = new std::default_random_engine(this->random_seed);
+
+  this->rand_pool= new std::uniform_int_distribution<unsigned long>(0,this->unique_pools-1);
+  this->rand_file= new std::uniform_int_distribution<unsigned long>(this->min_file_size,this->max_file_size);
+  
 }
 
 generator_t::~generator_t(){
-  delete this->rand_pois;
+  delete this->rand_tool;
   delete this->rand_file;
   delete this->rand_pool;
   delete this->poisson_transactions;
@@ -41,23 +37,28 @@ generator_t::~generator_t(){
 
 
 void generator_t::generator_stage(void){
-  this->gen();
+  (this->*gen)();
 }
 
 //model transaction generation as a poisson process
 void generator_t::gen_poisson(void){
-  int number_transactions;
+  unsigned long number_transactions;
   trace_t* trace_transaction;
+  std::default_random_engine def=*(this->rand_tool);
+  std::poisson_distribution<unsigned long> _trans=*(this->poisson_transactions);
+  std::uniform_int_distribution<unsigned long> _file=*(this->rand_file);
+  std::uniform_int_distribution<unsigned long> _pool=*(this->rand_pool);
+  
   //create some number of transactions based on the poisson process
-  number_transactions=this->poisson_transactions(this->rand_pois);
+  number_transactions=_trans(def);
 
   //create number_transactions trace_t objects
   for(int i=0; i<number_transactions; i++){
     //initialize the transactions
     trace_transaction=(trace_t*)malloc(sizeof(trace_t));
-    trace_transaction->pool_ID=this->rand_pool();
+    trace_transaction->pool_ID=_pool(def);
     trace_transaction->time_stamp=_system->timer_tick;
-    trace_transaction->file_size=this->rand_file();
+    trace_transaction->file_size=_file(def);
     //add the transaction to the queue
     _system->queue_append(trace_transaction);
   }

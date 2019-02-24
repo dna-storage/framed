@@ -28,8 +28,8 @@ scheduler_t::scheduler_t(scheduler_params_t scheduler_params){
 
 //top level function called by the system sim
 void scheduler_t::schedule_stage(void){
-  this->reorder(); //this function reorders I/O in the system_queue
-  this->scheduler(); //this function injects transactions into prep stations 
+  (this->*reorder)(); //this function reorders I/O in the system_queue
+  (this->*scheduler)(); //this function injects transactions into prep stations 
 }
 
 
@@ -46,7 +46,6 @@ void scheduler_t::scheduler_anypool(void){
   system_sim_t* _system=this->_system;
   transaction_t* _window=_system->window;
   system_storage_t* _storage=this->_storage;
-  trace_t* temp;
   trace_t* head;
   unsigned long desired_strands_sequenced;
   unsigned long undesired_strands_sequenced;
@@ -66,8 +65,8 @@ void scheduler_t::scheduler_anypool(void){
     //loop until we can no longer batch anymore transactions
     //each transaction needs to calculate out its strands, and then be accumulated with the top level transaction indicated by transaction_ID and then added to the component linked list
     for(int i=0; i<this->batch_size; i++){
-      if(*(this->system_queue==NULL)) break; //break if nothing left on the queue
-      this->strand_calculator(desired_strands_sequenced,undesired_strands_sequenced,
+      if(*(this->system_queue)==NULL) break; //break if nothing left on the queue
+      (this->*strand_calculator)(desired_strands_sequenced,undesired_strands_sequenced,
 			      head->file_size, head->pool_ID, this->efficiency,
 			      this->bytes_per_strand, this->sequencing_depth);
       _system->window_componentadd(transaction_ID, undesired_strands_sequenced,

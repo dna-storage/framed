@@ -84,10 +84,24 @@ class system_sim_t{
   
    system_sim_t(system_sim_params_t system_sim_params);
   ~system_sim_t();
-  void simulate(void); //top level simulation function
+  void queue_pop(void); //take a request from the head of the system queue
+  void queue_append(trace_t* new_trans); //append a request to the system queue
+  void simulate(void); //top level call for main
+  void cleanup_active_list(void); //cleanup the window
+  int window_full(void); //check to see if the window is full
+  void window_pop(void); //pop a transaction from the window
+  unsigned long window_add(void); //add a transaction to the window
+  void window_componentadd(unsigned long transaciton_ID,
+			   unsigned long undesired_strands_sequenced,
+			   unsigned long desired_strands_sequenced,
+			   unsigned long pool_ID,
+			   unsigned long digital_data_size); //add a component to the transaction_ID
+  void window_init(unsigned long transaction_ID); // initialize the window entry at transaction_ID
+
+  unsigned long timer_tick; //current time of the simulator
+
  private:
   unsigned long sim_time; //denotes the maximum amount of time the simulator should run for
-  unsigned long timer_tick; //current time of the simulator
   trace_t* system_queue; //system_queue used at the front end of the system for scheduling
   unsigned long window_size; //max size of the window
   unsigned long window_length; //number of active items in the window
@@ -103,6 +117,10 @@ class system_sim_t{
   list_entry_t* seq_dec_buffer; //buffer between the sequencing stage and the decode stage
   unsigned long prep_seq_buffer_size; //size of the prep_seq_buffer
   unsigned long seq_dec_buffer_size; //size of the seq_dec_buffer
+
+ 
+
+
 };
 
 

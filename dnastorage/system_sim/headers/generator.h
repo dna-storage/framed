@@ -25,10 +25,10 @@ class generator_t{//class that implements the generator, places transactions int
   void generator_stage(void); //interface with the top level simulator
   
  private:
-  std::default_random_engine* rand_pois; //used to help the poisson distrubution function
-  std::poisson_distribution<int>* poisson_transactions; //used to generate poisson random numbers
-  std::default_random_engine* rand_file; //used to generate constrained random file sizes
-  std::default_random_engine* rand_pool; //used to generate constrained random pool IDs
+  std::default_random_engine* rand_tool; //used to help the poisson distrubution function
+  std::poisson_distribution<unsigned long>* poisson_transactions; //used to generate poisson random numbers
+  std::uniform_int_distribution<unsigned long>* rand_pool;//uniform distributions for pools
+  std::uniform_int_distribution<unsigned long>* rand_file;//uniform distribtion for file sizes
   FILE* trace_file; //trace file pointer in case the generator is reading from a trace
   float rate; //rate at which transactions will be generated
   int random_seed; //seed for the request generator

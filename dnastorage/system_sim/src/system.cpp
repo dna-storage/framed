@@ -25,7 +25,6 @@ system_sim_t::system_sim_t(system_sim_params_t system_sim_params){
   this->window_tail=0;
   this->window_length=0;
   this->system_queue=NULL;
-  this->trace_exhausted=0;
   //initialize lists
   for(int i=0; i<system_sim_params.prep_seq_buffer_size; i++){
     this->prep_seq_buffer[i].used=0;
@@ -37,7 +36,7 @@ system_sim_t::system_sim_t(system_sim_params_t system_sim_params){
   //create windows and buffers
   this->prep_seq_buffer_size=system_sim_params.prep_seq_buffer_size;
   this->seq_dec_buffer_size=system_sim_params.seq_dec_buffer_size;
-  this->window_size=system_sim_params.window_size
+  this->window_size=system_sim_params.window_size;
     
   this->window=(transaction_t*)malloc((this->window_size+1)*sizeof(transaction_t));
   this->prep_seq_buffer=(list_entry_t*)malloc(this->prep_seq_buffer_size*sizeof(list_entry_t));
@@ -50,7 +49,7 @@ system_sim_t::system_sim_t(system_sim_params_t system_sim_params){
   storage_params.bytes_per_strand=system_sim_params.bytes_per_strand;
   storage_params.pool_copies=system_sim_params.pool_copies;
   storage_params.pool_write_time=system_sim_params.pool_write_time;
-  stprage_params.pool_wait_time=system_sim_params.pool_wait_time;
+  storage_params.pool_wait_time=system_sim_params.pool_wait_time;
   
 
   //instantiate the storage model
@@ -70,10 +69,10 @@ system_sim_t::system_sim_t(system_sim_params_t system_sim_params){
   decoder_params.num_channels=1;
   decoder_params.buffer_size=system_sim_params.seq_dec_buffer_size;
   decoder_params.seq_dec_buffer=this->seq_dec_buffer;
-  decoder_params.num_decoders=system_simparams.num_decoders
+  decoder_params.num_decoders=system_sim_params.num_decoders;
 
   //setup sequencer parameters
-  sequencer_params=system_sim_params.seq_time;
+  sequencer_params.timer=system_sim_params.seq_time;
   sequencer_params.max_strands=system_sim_params.max_strands_sequencer;
   sequencer_params.num_channels=system_sim_params.seq_channels;
   sequencer_params.base_timeout=system_sim_params.sequencer_timeout;
@@ -132,8 +131,8 @@ system_sim_t::~system_sim_t(){
 
 
 //constructor for the system_unit parent class
-system_unit_t::system_unit_t(unsigned long timer, unsigned long num_channels){
-  this->timer=timer;
+system_unit_t::system_unit_t(unsigned long num_channels){
+  this->timer=0;
   this->num_channels=num_channels;
   this->unit_active=0;
   this->next_open=0;
@@ -206,7 +205,7 @@ void system_sim_t::cleanup_active_list(void){
 int system_sim_t::window_full(void){
   unsigned long _tail;
   _tail=(this->window_tail+1)%(this->window_size+1);
-  return _tail==this->head; //check whether the head is the next position if so it is full
+  return _tail==this->window_head; //check whether the head is the next position if so it is full
 }
 
 //remove element from the window
@@ -250,7 +249,7 @@ void system_sim_t::window_componentadd(unsigned long transaction_ID,
 //initialize a entry in the window
 void system_sim_t::window_init(unsigned long transaction_ID){
   this->window[transaction_ID].cracked_count=1;
-  this->window[transaction_ID].strands_to_sequencer=0;
+  this->window[transaction_ID].strands_to_sequence=0;
   this->window[transaction_ID].undesired_strands_sequenced=0;
   this->window[transaction_ID].desired_strands_sequenced=0;
   this->window[transaction_ID].transaction_finished=0;

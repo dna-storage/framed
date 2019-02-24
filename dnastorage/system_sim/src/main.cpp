@@ -7,6 +7,7 @@
 #include "sequencer.h"
 #include "utlist.h"
 #include "json/include/rapidjson/document.h"
+#include "json/include/rapidjson/filereadstream.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <assert.h>

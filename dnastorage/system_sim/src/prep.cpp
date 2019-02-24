@@ -8,7 +8,7 @@
 #include "utlist.h"
 #include "utlist.h"
 #include <stdlib.h>
-prep_unit_t::prep_unit_t(unsigned long timer, unsigned long num_channels) : system_unit_t(num_channels){}
+prep_unit_t::prep_unit_t(unsigned long num_channels) : system_unit_t(num_channels){}
 
 //constructor for the prep component of the system
 prep_t::prep_t(prep_params_t prep_params){
@@ -21,7 +21,7 @@ prep_t::prep_t(prep_params_t prep_params){
   this->base_timer=prep_params.timer;
   //make the list of prep units
   this->prep_set=(prep_unit_t**)malloc(sizeof(prep_unit_t*)*this->num_preps);
-  for(int i=0; i<this->num_preps; i++) this->prep_set[i]=new prep_unit_t(num_channels);
+  for(int i=0; i<this->num_preps; i++) this->prep_set[i]=new prep_unit_t(prep_params.num_channels);
 }
 
 
@@ -55,7 +55,7 @@ void prep_t::prep_backend(void){
 
 //looks to see if there is a prep station that will accept the pool indicated by pool_ID
 int prep_t::prep_stationavail(void){
-  prep_unit_t _prep;
+  prep_unit_t* _prep;
   //iterate through the prep units
   for(int i=0; i<this->num_preps;i++){
     _prep=this->prep_set[i];
@@ -69,7 +69,7 @@ int prep_t::prep_stationavail(void){
 
 //submit a transaction to the specifiec station
 void prep_t::prep_stationsubmit(unsigned long prep_ID, unsigned long transaction_ID){
-  prep_t* _prep=this->prep_set[prep_ID];
+  prep_unit_t* _prep=this->prep_set[prep_ID];
   _prep->timer=this->base_timer-1;
   _prep->unit_active=1;
   _prep->transaction_slots[_prep->next_open]=transaction_ID;
@@ -107,7 +107,7 @@ int prep_t::get_prepseq(unsigned long transaction_ID){
   list_entry_t* _p_s=this->prep_seq_buffer;
 
   //find an open prep_seq_buffer location
-  for(int i=0; i<QUEUE_SIZE; i++){
+  for(int i=0; i<this->buffer_size; i++){
     if(_p_s[i].used==0) return i; //return an unused list entry
   }
   return -1; //did not find an unused entry

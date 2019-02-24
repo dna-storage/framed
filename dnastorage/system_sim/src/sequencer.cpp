@@ -7,12 +7,10 @@
 #include "sequencer.h"
 #include "utlist.h"
 #include <stdlib.h>
-sequencer_unit_t::sequencer_unit_t(unsigned long timer,unsigned long max_sequencing,
-				   unsigned long num_channels):system_unit_t(num_channels){
+sequencer_unit_t::sequencer_unit_t(unsigned long max_sequencing,unsigned long num_channels):system_unit_t(num_channels){
   this->max_strands=max_sequencing;
   this->used_strands=0;
   this->wasted_strands=0;
-  this->utilization=0;
   this->timeout=0;
 }
 
@@ -22,12 +20,21 @@ sequencer_t:: sequencer_t(sequencer_params_t sequencer_params){
   this->_system=sequencer_params._system;
   this->seq_dec_buffer=sequencer_params.seq_dec_buffer;
   this->prep_seq_buffer=sequencer_params.prep_seq_buffer;
-  this->buffer_size=sequencer_params.buffer_size;
+  this->seq_dec_buffer_size=sequencer_params.seq_dec_buffer_size;
+  this->prep_seq_buffer_size=sequencer_params.prep_seq_buffer_size;
   this->base_timer=sequencer_params.timer;
   this->base_timeout=sequencer_params.base_timeout;
   //allocate sequencer units
   this->sequencer_set=(sequencer_unit_t**)malloc(sizeof(sequencer_unit_t*)*this->num_sequencers);
-  for(int i=0; i<this->num_sequencers; i++) this->sequencer_set[i]=new sequencer_unit_t(max_strands,0);
+  for(int i=0; i<this->num_sequencers; i++) this->sequencer_set[i]=new sequencer_unit_t(sequencer_params.max_strands,1);
+}
+
+sequencer_t::~sequencer_t(){
+  //free up the sequencer list
+  for(int i=0; i<this->num_sequencers; i++) delete this->sequencer_set[i];
+  free(this->sequencer_set);
+
+
 }
 
 
@@ -67,12 +74,12 @@ void sequencer_t::sequencer_frontend(void){
   list_entry_t* _p_s=this->prep_seq_buffer;
   unsigned long transaction_ID;
   //iterate over all of the transactions in the prep_seq_buffer
-  for(int i=0; i<QUEUE_SIZE; i++){
+  for(int i=0; i<this->prep_seq_buffer_size; i++){
     if(_p_s[i].used){
-      transaction_ID=_p_s.transaction_index;
+      transaction_ID=_p_s[i].transaction_index;
       int sequencer_ID=this->sequencer_avail(transaction_ID);
       if(sequencer_ID>=0){
-	this->sequencer_submit(transaction_ID,sequencer_ID); //submit the transaction to the sequencer
+	this->sequencer_submit(transaction_ID,sequencer_ID,i); //submit the transaction to the sequencer
       }
     }
   }
@@ -95,9 +102,9 @@ void sequencer_t::sequencer_kickoff(void){
 }
 
 void sequencer_t::sequencer_timeoutstep(void){
-  sequencer_t* _sequencer;
+  sequencer_unit_t* _sequencer;
   //decrement timeout timers for sequencers
-  for(int i=0; i<this->num_sequencer;i++){
+  for(int i=0; i<this->num_sequencers;i++){
     _sequencer=this->sequencer_set[i];
     if(_sequencer->timeout>0) _sequencer->timeout--;
   }
@@ -106,38 +113,42 @@ void sequencer_t::sequencer_timeoutstep(void){
 
 
 //function to place a transaction into a sequencer
-void sequencer_t::sequencer_submit(unsigned long transaction_ID, unsigned long sequencer_ID){
-  	//found a sequencer that works with the transaction, need to place the transaction in that sequencer
-	_sequencer=this->sequencer_set[sequencer_ID];
-	transaction_strands=_window[transaction_ID].strands_to_sequence;
-	if(transaction_strands>(_sequencer->max_strands-_sequencer->used_strands)){
-	  //have more transaction strands than whats available in the sequencer
-	  _sequencer->used_strands=_sequencer->max_strands;
-	  _window[transaction_ID].strands_to_sequence-=(_sequencer->max_strands-_sequencer->used_strands);
-
-	  //put the undesired strands in the sequencer 
-	  if(_window[transaction_ID].undesired_strands_sequenced>0){
-	    if(_window[transaction_ID].undesired_strands_sequenced>_sequencer->max_strands-_sequencer->used_strands){
-	      _window[transaction_ID].undesired_strands-=(_sequencer->max_strands-_sequencer->used_strands);
-	      _sequencer->wasted_strands+=(_sequencer->max_strands-_sequencer->used_strands);
-	    }
-	    else{
-	      _sequencer->wasted_strands+=_window[transaction_ID].undesired_strands;
-	      _window[transaction_ID].undesired_strands=0;
-	    }
-	  }
-	  _window[transaction_ID].cracked++; //split transaction up and take note of it
-	}
-	else{
-	  //transaction will fit in the remaining sequencer
-	  _sequencer->used_strands+=_window[transaction_ID].strands_to_sequence;
-	  _sequencer->wasted_strands+=_window[transaction_ID].undesired_strands_sequenced;
-	  //free up the _p_s entry
-	  _p_s[i].used=0;
-	}
-     	//make some changes to the and add the transactions to the sequencer
-	_sequencer->transaction_slots[_sequencer->next_open]=transaction_ID;
-	if(_sequencer->next_open==0) _sequencer->timeout=this->base_timeout; //set the timeout counter for the sequencer that just got its first transaction 
+void sequencer_t::sequencer_submit(unsigned long transaction_ID, unsigned long sequencer_ID, unsigned long prep_seq_buffer_index){
+  sequencer_unit_t* _sequencer;
+  unsigned long transaction_strands;
+  transaction_t* _window=this->_system->window;
+  list_entry_t* _p_s=this->prep_seq_buffer;
+  //found a sequencer that works with the transaction, need to place the transaction in that sequencer
+  _sequencer=this->sequencer_set[sequencer_ID];
+  transaction_strands=_window[transaction_ID].strands_to_sequence;
+  if(transaction_strands>(_sequencer->max_strands-_sequencer->used_strands)){
+    //have more transaction strands than whats available in the sequencer
+    _sequencer->used_strands=_sequencer->max_strands;
+    _window[transaction_ID].strands_to_sequence-=(_sequencer->max_strands-_sequencer->used_strands);
+    
+    //put the undesired strands in the sequencer 
+    if(_window[transaction_ID].undesired_strands_sequenced>0){
+      if(_window[transaction_ID].undesired_strands_sequenced>_sequencer->max_strands-_sequencer->used_strands){
+	_window[transaction_ID].undesired_strands_sequenced-=(_sequencer->max_strands-_sequencer->used_strands);
+	_sequencer->wasted_strands+=(_sequencer->max_strands-_sequencer->used_strands);
+      }
+      else{
+	_sequencer->wasted_strands+=_window[transaction_ID].undesired_strands_sequenced;
+	_window[transaction_ID].undesired_strands_sequenced=0;
+      }
+    }
+    _window[transaction_ID].cracked_count++; //split transaction up and take note of it
+  }
+  else{
+    //transaction will fit in the remaining sequencer
+    _sequencer->used_strands+=_window[transaction_ID].strands_to_sequence;
+    _sequencer->wasted_strands+=_window[transaction_ID].undesired_strands_sequenced;
+    //free up the _p_s entry
+    _p_s[prep_seq_buffer_index].used=0;
+  }
+  //make some changes to the and add the transactions to the sequencer
+  _sequencer->transaction_slots[_sequencer->next_open]=transaction_ID;
+  if(_sequencer->next_open==0) _sequencer->timeout=this->base_timeout; //set the timeout counter for the sequencer that just got its first transaction 
 	_sequencer->next_open++;
 }
 
@@ -171,6 +182,7 @@ void sequencer_t::sequencer_complete(unsigned long sequencer_ID){
   sequencer_unit_t* _sequencer=this->sequencer_set[sequencer_ID];
   list_entry_t* _s_d=this->seq_dec_buffer;
   transaction_t* _window=this->_system->window;
+  int seq_dec_index;
   
   for(_sequencer->transaction_pointer;
       _sequencer->transaction_pointer < number_transactions;
@@ -178,13 +190,13 @@ void sequencer_t::sequencer_complete(unsigned long sequencer_ID){
     
     unsigned long i=_sequencer->transaction_pointer;
     unsigned long transaction_number=_sequencer->transaction_slots[i];
-    int seq_dec_index= this->get_seqdec(transaction_number);
+    seq_dec_index= this->get_seqdec(transaction_number);
     if(seq_dec_index==-1) return; //no more buffer spots 
     
     if(seq_dec_index>=0){ //need a new buffer spot
       //put the transactions that can fit into the seq_dec_buffer, and mark it used
       _s_d[seq_dec_index].used=1;
-      _s_d[seq_dex_index].transaction_index=transaction_number;
+      _s_d[seq_dec_index].transaction_index=transaction_number;
       _window[transaction_number].cracked_count--;
     }
     else{
@@ -211,11 +223,11 @@ int sequencer_t::get_seqdec(unsigned long transaction_ID){
   
   
   //make sure that the seq_dec_buffer does not already have the transaction, do not want to double place transactions
-  for(int i=0; i<QUEUE_SIZE;i++){
+  for(int i=0; i<this->seq_dec_buffer_size;i++){
     if(transaction_ID==_s_d[i].transaction_index && _s_d[i].used) return -9999;
   }
   //find an open seq_dec_buffer location
-  for(int i=0; i<QUEUE_SIZE;i++){
+  for(int i=0; i<seq_dec_buffer_size;i++){
     if(_s_d[i].used==0) return i; // return an unused list_entry
   }
   return -1;

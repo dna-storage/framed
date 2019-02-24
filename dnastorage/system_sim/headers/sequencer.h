@@ -51,7 +51,7 @@ class sequencer_t{
   void sequencer_frontend(void); //move transactions from the prep_seq_buffer to an open sequencer
   void sequencer_kickoff(void); //function that checks to see if sequencers are ready to be started
   void sequencer_timeoutstep(void); //timestep the the timeout counter
-  void sequencer_submit(unsigned long transaction_ID, unsigned long sequencer_ID); //submit a transaction to the sequencer
+  void sequencer_submit(unsigned long transaction_ID, unsigned long sequencer_ID, unsigned long prep_seq_buffer_index); //submit a transaction to the sequencer
   int sequencer_avail(unsigned long transaction_ID); //check for an available sequencer
   void sequencer_complete(unsigned long sequencer_ID); //complete a finished sequencer
   int get_seqdec(unsigned long transaction_ID); //look for an open seq_dec_buffer entry
