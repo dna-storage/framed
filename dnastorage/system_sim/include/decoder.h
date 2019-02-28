@@ -3,7 +3,7 @@
 
 class system_unit_t;
 class system_sim_t;
-struct list_entry_t;
+class buffer_t;
 
 
 typedef struct{
@@ -11,7 +11,7 @@ typedef struct{
   unsigned long num_channels;
   unsigned long buffer_size;
   unsigned long num_decoders;
-  struct list_entry_t* seq_dec_buffer;
+  buffer_t* seq_dec_buffer;
   system_sim_t* _system;
 } decoder_params_t; //bundled decoder parameters
 
@@ -33,8 +33,7 @@ class decoder_t{
   decoder_unit_t** decoder_set; //array of decoder_unit_t pointers
   unsigned long num_decoders; //number of decoders in the system
   system_sim_t* _system; //pointer to the system simulator
-  struct list_entry_t* seq_dec_buffer; //buffer between the sequencer and the decoders
-  unsigned long buffer_size; //size of the seq_dec_buffer
+  buffer_t* seq_dec_buffer; //buffer between the sequencer and the decoders
   unsigned long base_timer; //initial value for decoder timers, used to refresh exhausted timer counters
   
   void decoder_backend(void); //remove finished transactions from decoders

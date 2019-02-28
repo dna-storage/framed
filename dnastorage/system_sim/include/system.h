@@ -12,6 +12,7 @@ class decoder_t;
 class system_storage_t;
 class scheduler_t;
 class generator_t;
+class buffer_t;
 
 
 typedef struct transaction_t{
@@ -30,10 +31,6 @@ typedef struct transaction_t{
 
 
 
-typedef struct list_entry_t{
-  unsigned long transaction_index; //index into the window[] 
-  int used; //indicates whether the entry is used or not
-} list_entry_t; //structure that defines each buffer's entry 
 
 
 typedef struct trace_t{
@@ -113,11 +110,8 @@ class system_sim_t{
   system_storage_t* dna_storage; //pointer to the dna storage unit
   scheduler_t* scheduler; //pointer to the scheduler
   generator_t* generator; //pointer to the generator 
-  list_entry_t* prep_seq_buffer; //buffer between the prep stage and the sequencing stage
-  list_entry_t* seq_dec_buffer; //buffer between the sequencing stage and the decode stage
-  unsigned long prep_seq_buffer_size; //size of the prep_seq_buffer
-  unsigned long seq_dec_buffer_size; //size of the seq_dec_buffer
-
+ 
+  buffer_t* buffers[2]; //array of buffers we create
  
 
 

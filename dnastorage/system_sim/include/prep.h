@@ -1,19 +1,18 @@
 #ifndef PREP
 #define PREP
 
+//forward declarations
 class system_unit_t;
 class system_sim_t;
 class system_storage_t;
-
-struct list_entry_t;
+class buffer_t;
 
 
 typedef struct{
   unsigned long timer;
   unsigned long num_channels;
-  unsigned long buffer_size;
   unsigned long num_preps;
-  struct list_entry_t* prep_seq_buffer;
+  buffer_t* prep_seq_buffer;
   system_sim_t* _system;
   system_storage_t* dna_storage;
 } prep_params_t; //bundled prep parameters
@@ -40,8 +39,7 @@ class prep_t{
   prep_unit_t** prep_set;
   unsigned long num_preps; //number of prep stations in the system
   system_sim_t* _system; //pointer to the top level simulator
-  struct list_entry_t* prep_seq_buffer; //pointer to the prep_seq_buffer 
-  unsigned long buffer_size; //size of the prep_seq_buffer
+  buffer_t* prep_seq_buffer; //pointer to buffer used between prep and sequencing 
   unsigned long base_timer; //initial value of the timer for each prep station 
   system_storage_t* dna_storage;
   void prep_backend(void); //function that will remove jobs from prep stations and place them into the prep_seq_buffer

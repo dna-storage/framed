@@ -6,6 +6,7 @@
 #include "storage_system.h"
 #include "sequencer.h"
 #include "utlist.h"
+#include "buffer.h"
 #include <stdio.h>
 #include <stdlib.h>
 decoder_unit_t::decoder_unit_t(unsigned long num_channels) : system_unit_t(num_channels){}
@@ -16,7 +17,6 @@ decoder_t::decoder_t(decoder_params_t decoder_params)
   this->num_decoders=decoder_params.num_decoders;
   this->_system=decoder_params._system;
   this->seq_dec_buffer=decoder_params.seq_dec_buffer;
-  this->buffer_size=decoder_params.buffer_size;
   this->base_timer=decoder_params.timer;
   
   //allocate the decoder set
@@ -62,17 +62,18 @@ void decoder_t::decoder_backend(void){
 
 //need to fill up non-active decoders with transactions in the seq_dec_buffer
 void decoder_t::decoder_frontend(void){
-  list_entry_t* _s_d;
+  buffer_t _s_d=*(this->seq_dec_buffer);
   transaction_t* _window=this->_system->window;
+  list_entry_t* seq_buffer;
   
-  
-  for(unsigned long i=0; i<(this->buffer_size);i++){
-    if(_s_d[i].used && _window[_s_d[i].transaction_index].cracked_count==0){
+  for(_s_d.iter_start();_s_d()!=NULL;++_s_d){
+    seq_buffer=_s_d();
+    if(seq_buffer->used && _window[seq_buffer->transaction_index].cracked_count==0){
       //found a location in the buffer that is ready
       unsigned long decoder_ID=this->decoder_avail();
-      unsigned long transaction_ID=_s_d[i].transaction_index;
+      unsigned long transaction_ID=seq_buffer->transaction_index;
       if(decoder_ID==-1) break; //no decoder avilable, stop looking through the seq_dec_buffer
-      this->init_decoder(decoder_ID,transaction_ID,i); //initialize the decoder found thats available
+      this->init_decoder(decoder_ID,transaction_ID,_s_d.get_iterator()); //initialize the decoder found thats available
     }
   }
 }
@@ -119,7 +120,6 @@ void decoder_t::init_decoder(unsigned long decoder_ID, unsigned long transaction
   transaction_t* comp_head=_window[transaction_ID].components;
   transaction_t* comp_temp;
   decoder_unit_t* _decoder=this->decoder_set[decoder_ID];
-  list_entry_t* _s_d=this->seq_dec_buffer;
   int decoding_left=0;
   int comp_ID=0;
   _decoder->next_open=0;
@@ -144,7 +144,5 @@ void decoder_t::init_decoder(unsigned long decoder_ID, unsigned long transaction
   }
 
   //free up buffer
-  if(!decoding_left){
-    _s_d[seq_dec_index].used=0;
-  }  
+  if(!decoding_left) this->seq_dec_buffer->free_entry(seq_dec_index);
 }

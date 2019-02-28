@@ -6,6 +6,7 @@
 #include "storage_system.h"
 #include "sequencer.h"
 #include "utlist.h"
+#include "buffer.h"
 #include <stdlib.h>
 #include <stdio.h>
 
@@ -18,6 +19,8 @@ system_sim_t::system_sim_t(system_sim_params_t system_sim_params){
   scheduler_params_t scheduler_params;
   generator_params_t generator_params;
   decoder_params_t decoder_params;
+ 
+  
   //initialize the system class members
   this->timer_tick=0;
   this->window_size=system_sim_params.window_size;
@@ -25,22 +28,13 @@ system_sim_t::system_sim_t(system_sim_params_t system_sim_params){
   this->window_tail=0;
   this->window_length=0;
   this->system_queue=NULL;
-  //initialize lists
-  for(int i=0; i<system_sim_params.prep_seq_buffer_size; i++){
-    this->prep_seq_buffer[i].used=0;
-  }
-  for(int i=0; i<system_sim_params.seq_dec_buffer_size; i++){
-    this->seq_dec_buffer[i].used=0;
-  }
-
-  //create windows and buffers
-  this->prep_seq_buffer_size=system_sim_params.prep_seq_buffer_size;
-  this->seq_dec_buffer_size=system_sim_params.seq_dec_buffer_size;
-  this->window_size=system_sim_params.window_size;
-    
+ 
+  //create the window
+  this->window_size=system_sim_params.window_size;  
   this->window=(transaction_t*)malloc((this->window_size+1)*sizeof(transaction_t));
-  this->prep_seq_buffer=(list_entry_t*)malloc(this->prep_seq_buffer_size*sizeof(list_entry_t));
-  this->seq_dec_buffer=(list_entry_t*)malloc(this->seq_dec_buffer_size*sizeof(list_entry_t));
+  
+  this->buffers[0]=new buffer_t(system_sim_params.prep_seq_buffer_size);
+  this->buffers[1]=new buffer_t(system_sim_params.seq_dec_buffer_size);
 
   //setup storage parameters
   storage_params.sequencing_efficiency=system_sim_params.seq_efficiency;
@@ -58,8 +52,7 @@ system_sim_t::system_sim_t(system_sim_params_t system_sim_params){
   //setup prep parameters
   prep_params.timer=system_sim_params.prep_time;
   prep_params.num_channels=system_sim_params.prep_channels;
-  prep_params.buffer_size=system_sim_params.prep_seq_buffer_size;
-  prep_params.prep_seq_buffer=this->prep_seq_buffer;
+  prep_params.prep_seq_buffer=this->buffers[0];
   prep_params._system=this;
   prep_params.dna_storage=this->dna_storage;
   prep_params.num_preps=system_sim_params.num_preps;
@@ -67,8 +60,7 @@ system_sim_t::system_sim_t(system_sim_params_t system_sim_params){
   //setup decoder parameters
   decoder_params.timer=system_sim_params.dec_time;
   decoder_params.num_channels=1;
-  decoder_params.buffer_size=system_sim_params.seq_dec_buffer_size;
-  decoder_params.seq_dec_buffer=this->seq_dec_buffer;
+  decoder_params.seq_dec_buffer=this->buffers[1];
   decoder_params.num_decoders=system_sim_params.num_decoders;
 
   //setup sequencer parameters
@@ -76,11 +68,9 @@ system_sim_t::system_sim_t(system_sim_params_t system_sim_params){
   sequencer_params.max_strands=system_sim_params.max_strands_sequencer;
   sequencer_params.num_channels=system_sim_params.seq_channels;
   sequencer_params.base_timeout=system_sim_params.sequencer_timeout;
-  sequencer_params.seq_dec_buffer_size=system_sim_params.seq_dec_buffer_size;
-  sequencer_params.prep_seq_buffer_size=system_sim_params.prep_seq_buffer_size;
   sequencer_params.num_sequencers=system_sim_params.num_sequencers;
-  sequencer_params.seq_dec_buffer=seq_dec_buffer;
-  sequencer_params.prep_seq_buffer=prep_seq_buffer;
+  sequencer_params.seq_dec_buffer=this->buffers[1];
+  sequencer_params.prep_seq_buffer=this->buffers[0];;
   sequencer_params._system=this;
 
 
@@ -124,8 +114,9 @@ system_sim_t::~system_sim_t(){
   delete this->generator;
   delete this->scheduler;
   free(this->window);
-  free(this->seq_dec_buffer);
-  free(this->prep_seq_buffer);
+  for(int i=0;i<2;i++){
+    delete this->buffers[i]; //free the created buffers
+  }
 }
 
 

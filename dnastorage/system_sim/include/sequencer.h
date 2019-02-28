@@ -4,19 +4,16 @@
 //forward declaration
 class system_unit_t;
 class system_sim_t;
-
-struct list_entry_t;
+class buffer_t;
 
 typedef struct{
   unsigned long timer;
   unsigned long max_strands;
   unsigned long num_channels;
   unsigned long base_timeout;
-  unsigned long seq_dec_buffer_size;
-  unsigned long prep_seq_buffer_size;
   unsigned long num_sequencers;
-  struct list_entry_t* seq_dec_buffer;
-  struct list_entry_t* prep_seq_buffer;
+  buffer_t* seq_dec_buffer;
+  buffer_t* prep_seq_buffer;
   system_sim_t* _system;
 } sequencer_params_t; //bundled sequencer parameters
 
@@ -40,10 +37,8 @@ class sequencer_t{
   sequencer_unit_t** sequencer_set; //set of sequencers in the system
   unsigned long num_sequencers; //number of sequencers in the system
   system_sim_t* _system; //pointer to the system simulator
-  struct list_entry_t* seq_dec_buffer; //seq_dec_buffer pointer
-  struct list_entry_t* prep_seq_buffer; // pointer to the prep_seq_buffer
-  unsigned long seq_dec_buffer_size; //size of the seq_dec_buffer
-  unsigned long prep_seq_buffer_size; //size of the prep_seq_buffer
+  buffer_t* seq_dec_buffer; //seq_dec_buffer pointer
+  buffer_t* prep_seq_buffer; // pointer to the prep_seq_buffer
   unsigned long base_timer; //time value used to refresh sequencer run times
   unsigned long base_timeout; //time value used to refresh the timeout timers
 

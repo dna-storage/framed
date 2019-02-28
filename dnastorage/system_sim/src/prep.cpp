@@ -6,7 +6,7 @@
 #include "storage_system.h"
 #include "sequencer.h"
 #include "utlist.h"
-#include "utlist.h"
+#include "buffer.h"
 #include <stdlib.h>
 prep_unit_t::prep_unit_t(unsigned long num_channels) : system_unit_t(num_channels){}
 
@@ -16,7 +16,6 @@ prep_t::prep_t(prep_params_t prep_params){
   this->num_preps=prep_params.num_preps;
   this->_system=prep_params._system;
   this->prep_seq_buffer=prep_params.prep_seq_buffer;
-  this->buffer_size=prep_params.buffer_size;
   this->dna_storage=prep_params.dna_storage;
   this->base_timer=prep_params.timer;
   //make the list of prep units
@@ -80,7 +79,6 @@ void prep_t::prep_stationsubmit(unsigned long prep_ID, unsigned long transaction
 void prep_t::prep_complete(unsigned long prep_ID){
   unsigned long number_transactions=this->prep_set[prep_ID]->next_open;
   prep_unit_t* _prep=this->prep_set[prep_ID];
-  list_entry_t* _p_s=this->prep_seq_buffer;
   transaction_t* _window=this->_system->window;
   for(_prep->transaction_pointer;
       _prep->transaction_pointer < number_transactions;
@@ -88,31 +86,18 @@ void prep_t::prep_complete(unsigned long prep_ID){
 
     unsigned long i = _prep->transaction_pointer;
     unsigned long transaction_number=_prep->transaction_slots[i];
-    int prep_seq_index=this->get_prepseq(transaction_number);
+    int prep_seq_index=this->prep_seq_buffer->get_free();
     if(prep_seq_index==-1) return; //no more buffer spots
     if(prep_seq_index>=0){
-      _p_s[prep_seq_index].used=1;
-      _p_s[prep_seq_index].transaction_index=transaction_number;
+      this->prep_seq_buffer->init_entry(transaction_number,prep_seq_index);
     }
   }
   //relinquish the prep unit
   _prep->unit_active=0;
   _prep->next_open=0;
   _prep->transaction_pointer=0;
-
 }
 
-//find an open spot in the prep_seq_buffer
-int prep_t::get_prepseq(unsigned long transaction_ID){
-  list_entry_t* _p_s=this->prep_seq_buffer;
-
-  //find an open prep_seq_buffer location
-  for(int i=0; i<this->buffer_size; i++){
-    if(_p_s[i].used==0) return i; //return an unused list entry
-  }
-  return -1; //did not find an unused entry
-
-}
 
 
 //timestep the given prep unit
