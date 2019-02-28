@@ -1,4 +1,6 @@
-#include"buffer.h"
+#include "buffer.h"
+#include "stats.h"
+#include "parameters.h"
 #include<stdlib.h>
 
 buffer_t::buffer_t(unsigned long buffer_size){

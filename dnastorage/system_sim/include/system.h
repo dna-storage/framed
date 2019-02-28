@@ -2,7 +2,6 @@
 #define DNA_STORE_SYS
 #include <stdlib.h>
 #include <stdio.h>
-#define FILE_UNIT 1024 //scale for the file size 1024 = 1 KB
 
 
 //forward declarations for classes 

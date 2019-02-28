@@ -7,6 +7,8 @@
 #include "sequencer.h"
 #include "utlist.h"
 #include "buffer.h"
+#include "parameters.h"
+#include "stats.h"
 #include <stdlib.h>
 #include <stdio.h>
 

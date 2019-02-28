@@ -6,6 +6,8 @@
 #include "storage_system.h"
 #include "sequencer.h"
 #include "utlist.h"
+#include "parameters.h"
+#include "stats.h"
 #include "json/include/rapidjson/document.h"
 #include "json/include/rapidjson/filereadstream.h"
 #include <stdlib.h>

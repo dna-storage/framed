@@ -7,6 +7,8 @@
 #include "sequencer.h"
 #include "utlist.h"
 #include "buffer.h"
+#include "parameters.h"
+#include "stats.h"
 #include <stdio.h>
 #include <stdlib.h>
 decoder_unit_t::decoder_unit_t(unsigned long num_channels) : system_unit_t(num_channels){}

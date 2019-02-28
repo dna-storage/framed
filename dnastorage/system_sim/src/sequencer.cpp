@@ -7,6 +7,8 @@
 #include "sequencer.h"
 #include "utlist.h"
 #include "buffer.h"
+#include "parameters.h"
+#include "stats.h"
 #include <stdlib.h>
 sequencer_unit_t::sequencer_unit_t(unsigned long max_sequencing,unsigned long num_channels):system_unit_t(num_channels){
   this->max_strands=max_sequencing;

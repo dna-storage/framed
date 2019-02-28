@@ -7,6 +7,8 @@
 #include "sequencer.h"
 #include "utlist.h"
 #include "buffer.h"
+#include "parameters.h"
+#include "stats.h"
 #include <stdlib.h>
 prep_unit_t::prep_unit_t(unsigned long num_channels) : system_unit_t(num_channels){}
 
