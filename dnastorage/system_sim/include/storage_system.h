@@ -1,6 +1,7 @@
 #ifndef STORAGE
 #define STORAGE
 
+class stats_t;
 
 
 typedef struct{
@@ -26,6 +27,7 @@ typedef struct{
   unsigned long pool_write_time;
   unsigned long pool_wait_time;
   unsigned long number_reads;
+  stats_t* stats;
 } storage_params_t; //bundled storage parameters
 
 
@@ -49,7 +51,7 @@ class system_storage_t{
   unsigned long pool_write_time;//time it takes to replenish pool after using all of its reads
   unsigned long pool_wait_time;//time it takes for a pool to be available after using it
   pool_model_t* pools; //array of unique pools in the system
-  
+  stats_t* stats;
 };
 
 

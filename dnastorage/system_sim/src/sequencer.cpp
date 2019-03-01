@@ -25,6 +25,7 @@ sequencer_t:: sequencer_t(sequencer_params_t sequencer_params){
   this->prep_seq_buffer=sequencer_params.prep_seq_buffer;
   this->base_timer=sequencer_params.timer;
   this->base_timeout=sequencer_params.base_timeout;
+  this->stats=sequencer_params.stats;
   //allocate sequencer units
   this->sequencer_set=(sequencer_unit_t**)malloc(sizeof(sequencer_unit_t*)*this->num_sequencers);
   for(int i=0; i<this->num_sequencers; i++) this->sequencer_set[i]=new sequencer_unit_t(sequencer_params.max_strands,1);

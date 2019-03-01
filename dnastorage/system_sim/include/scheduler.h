@@ -4,6 +4,7 @@
 class system_storage_t;
 class prep_t;
 class system_sim_t;
+class stats_t;
 struct transaction_t;
 struct trace_t;
 
@@ -16,6 +17,7 @@ typedef struct{
   float bytes_per_strand;
   unsigned long sequencing_depth;
   float efficiency;
+  stats_t* stats;
 }scheduler_params_t;
 
 
@@ -35,6 +37,8 @@ class scheduler_t{
   unsigned long sequencing_depth; //depth of sequencing required
   float bytes_per_strand; //density of the encoding
   float efficiency; //denotes how many garbage strands will occur for a given file
+  stats_t* stats;
+  
   typedef void(scheduler_t::*reorder_policy)(void);//the idea of the reorder function is to reorder I/O operations in the system_queue
   typedef void(scheduler_t::*schedule_policy)(void); //the scheduler policy dictates how to group transactions together
   typedef void(scheduler_t::*calcstrands)(unsigned long&,unsigned long&, unsigned long,

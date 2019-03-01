@@ -12,7 +12,7 @@ class system_storage_t;
 class scheduler_t;
 class generator_t;
 class buffer_t;
-
+class stats_t;
 
 typedef struct transaction_t{
   unsigned long pool_ID; //pool_ID of the original transaction 
@@ -24,6 +24,8 @@ typedef struct transaction_t{
   unsigned long digital_data_size; //digital data size
   unsigned long time_stamp; //indicates the time a transaction or component became first available to the system
   int component_decoded; //inidicates if the component has been moved to decoding
+  unsigned long time_stamp_start; //time the request was generated
+  unsigned long time_stamp_end; //time when the transaction is finished
   struct transaction_t* components; // components of a single large transaction created at the scheduling point, this member is the head of a linked list of components for a transaction
   struct transaction_t* next;
 } transaction_t; //represents a transaction in the pipeline
@@ -60,6 +62,8 @@ typedef struct{
   unsigned long number_reads;
   unsigned long sequencer_timeout;
   FILE* trace_file;
+  FILE* phase_log;
+  FILE* stats_log;
   unsigned long window_size;
   unsigned long prep_seq_buffer_size;
   unsigned long seq_dec_buffer_size;
@@ -91,9 +95,10 @@ class system_sim_t{
 			   unsigned long undesired_strands_sequenced,
 			   unsigned long desired_strands_sequenced,
 			   unsigned long pool_ID,
-			   unsigned long digital_data_size); //add a component to the transaction_ID
+			   unsigned long digital_data_size,
+			   unsigned long time_stamp); //add a component to the transaction_ID
   void window_init(unsigned long transaction_ID); // initialize the window entry at transaction_ID
-
+  int window_empty(void); //check if the window is empty
   unsigned long timer_tick; //current time of the simulator
 
  private:
@@ -109,7 +114,7 @@ class system_sim_t{
   system_storage_t* dna_storage; //pointer to the dna storage unit
   scheduler_t* scheduler; //pointer to the scheduler
   generator_t* generator; //pointer to the generator 
- 
+  stats_t* stats; //pointer to the stats object
   buffer_t* buffers[2]; //array of buffers we create
  
 

@@ -20,7 +20,10 @@ int main(int argc, char** argv){
   system_sim_t* system_simulator;
   system_sim_params_t sim_params;
   FILE* config;
-
+  std::string phase_log;
+  std::string trace_file;
+  std::string stats_log;
+  
   if(argc<2){
     printf("Provide a configuration file\n");
     return 1;
@@ -39,7 +42,7 @@ int main(int argc, char** argv){
   config_doc.ParseStream(s);
 
   //go through the parsed json and get parameters
-
+  
   
 
 

@@ -6,7 +6,7 @@ class system_unit_t;
 class system_sim_t;
 class system_storage_t;
 class buffer_t;
-
+class stats_t;
 
 typedef struct{
   unsigned long timer;
@@ -15,6 +15,7 @@ typedef struct{
   buffer_t* prep_seq_buffer;
   system_sim_t* _system;
   system_storage_t* dna_storage;
+  stats_t* stats;
 } prep_params_t; //bundled prep parameters
 
 class prep_unit_t: public system_unit_t{
@@ -42,6 +43,7 @@ class prep_t{
   buffer_t* prep_seq_buffer; //pointer to buffer used between prep and sequencing 
   unsigned long base_timer; //initial value of the timer for each prep station 
   system_storage_t* dna_storage;
+  stats_t* stats;
   void prep_backend(void); //function that will remove jobs from prep stations and place them into the prep_seq_buffer
   void prep_complete(unsigned long prep_ID); //service a completed prep station
   int get_prepseq(unsigned long transaction_ID); //find an open spot in the prepseq buffer

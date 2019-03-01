@@ -5,6 +5,8 @@
 class system_unit_t;
 class system_sim_t;
 class buffer_t;
+class stats_t;
+
 
 typedef struct{
   unsigned long timer;
@@ -15,6 +17,7 @@ typedef struct{
   buffer_t* seq_dec_buffer;
   buffer_t* prep_seq_buffer;
   system_sim_t* _system;
+  stats_t* stats;
 } sequencer_params_t; //bundled sequencer parameters
 
 
@@ -41,7 +44,7 @@ class sequencer_t{
   buffer_t* prep_seq_buffer; // pointer to the prep_seq_buffer
   unsigned long base_timer; //time value used to refresh sequencer run times
   unsigned long base_timeout; //time value used to refresh the timeout timers
-
+  stats_t* stats;
   void sequencer_backend(void);//this function will check sequencers and put transactions into the seq_dec_buffer
   void sequencer_frontend(void); //move transactions from the prep_seq_buffer to an open sequencer
   void sequencer_kickoff(void); //function that checks to see if sequencers are ready to be started

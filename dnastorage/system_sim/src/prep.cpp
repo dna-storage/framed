@@ -20,6 +20,7 @@ prep_t::prep_t(prep_params_t prep_params){
   this->prep_seq_buffer=prep_params.prep_seq_buffer;
   this->dna_storage=prep_params.dna_storage;
   this->base_timer=prep_params.timer;
+  this->stats=prep_params.stats;
   //make the list of prep units
   this->prep_set=(prep_unit_t**)malloc(sizeof(prep_unit_t*)*this->num_preps);
   for(int i=0; i<this->num_preps; i++) this->prep_set[i]=new prep_unit_t(prep_params.num_channels);

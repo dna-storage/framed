@@ -20,6 +20,7 @@ generator_t::generator_t(generator_params_t generator_params)
   this->unique_pools=generator_params.unique_pools;
   this->random_seed=generator_params.random_seed;
   this->_system=generator_params._system;
+  this->stats=generator_params.stats;
   gen=&generator_t::gen_poisson;
   //set up random number generators
   this->poisson_transactions = new std::poisson_distribution<unsigned long>(rate);
@@ -39,7 +40,7 @@ generator_t::~generator_t(){
 
 
 void generator_t::generator_stage(void){
-  (this->*gen)();
+  if(!this->stop) (this->*gen)();
 }
 
 //model transaction generation as a poisson process
@@ -65,4 +66,8 @@ void generator_t::gen_poisson(void){
     _system->queue_append(trace_transaction);
   }
 
+}
+
+void generator_t::generator_stop(void){
+  this->stop=1;
 }

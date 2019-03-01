@@ -37,7 +37,8 @@ system_sim_t::system_sim_t(system_sim_params_t system_sim_params){
   
   this->buffers[0]=new buffer_t(system_sim_params.prep_seq_buffer_size);
   this->buffers[1]=new buffer_t(system_sim_params.seq_dec_buffer_size);
-
+  this->stats=new stats_t(system_sim_params.stats_log,system_sim_params.phase_log);
+  
   //setup storage parameters
   storage_params.sequencing_efficiency=system_sim_params.seq_efficiency;
   storage_params.average_pool_capacity=system_sim_params.average_pool_capacity;
@@ -46,7 +47,7 @@ system_sim_t::system_sim_t(system_sim_params_t system_sim_params){
   storage_params.pool_copies=system_sim_params.pool_copies;
   storage_params.pool_write_time=system_sim_params.pool_write_time;
   storage_params.pool_wait_time=system_sim_params.pool_wait_time;
-  
+  storage_params.stats=this->stats;
 
   //instantiate the storage model
   this->dna_storage=new system_storage_t(storage_params);
@@ -58,13 +59,15 @@ system_sim_t::system_sim_t(system_sim_params_t system_sim_params){
   prep_params._system=this;
   prep_params.dna_storage=this->dna_storage;
   prep_params.num_preps=system_sim_params.num_preps;
+  prep_params.stats=this->stats;
   
   //setup decoder parameters
   decoder_params.timer=system_sim_params.dec_time;
   decoder_params.num_channels=1;
   decoder_params.seq_dec_buffer=this->buffers[1];
   decoder_params.num_decoders=system_sim_params.num_decoders;
-
+  decoder_params.stats=this->stats;
+  
   //setup sequencer parameters
   sequencer_params.timer=system_sim_params.seq_time;
   sequencer_params.max_strands=system_sim_params.max_strands_sequencer;
@@ -74,7 +77,7 @@ system_sim_t::system_sim_t(system_sim_params_t system_sim_params){
   sequencer_params.seq_dec_buffer=this->buffers[1];
   sequencer_params.prep_seq_buffer=this->buffers[0];;
   sequencer_params._system=this;
-
+  sequencer_params.stats=this->stats;
 
   //instantiate the decoder, prep and sequencer
   this->decoder = new decoder_t(decoder_params);
@@ -91,7 +94,7 @@ system_sim_t::system_sim_t(system_sim_params_t system_sim_params){
   scheduler_params.bytes_per_strand=system_sim_params.bytes_per_strand;
   scheduler_params.sequencing_depth=system_sim_params.sequencing_depth;
   scheduler_params.efficiency=system_sim_params.seq_efficiency;
-  
+  scheduler_params.stats=this->stats;
 
   //setup the generator parameters
   generator_params.max_file_size=system_sim_params.max_file_size;
@@ -100,6 +103,7 @@ system_sim_t::system_sim_t(system_sim_params_t system_sim_params){
   generator_params.random_seed=system_sim_params.seed;
   generator_params._system=this;
   generator_params.rate=system_sim_params.rate;
+  generator_params.stats=this->stats;
   
   this->scheduler = new scheduler_t(scheduler_params);
   this->generator = new generator_t(generator_params);
@@ -158,8 +162,8 @@ void system_sim_t::queue_append(trace_t* new_trans){
 //this is the top level simulator, and calls the different system unit functions
 void system_sim_t::simulate(){
 
-  //run the simulator for the duration of the simulation time
-  while(this->timer_tick<=this->sim_time){
+  //run the simulator for the duration of the simulation time, and until both the system_queue and window are empty
+  while(this->timer_tick<=this->sim_time && this->system_queue!=NULL && !this->window_empty()){
     //clean up the active transaction list
     this->cleanup_active_list();
     this->decoder->decoder_stage();
@@ -168,6 +172,7 @@ void system_sim_t::simulate(){
     this->scheduler->schedule_stage();
     this->generator->generator_stage();
     this->timer_tick++;
+    inc_counter(time_step);
   }
 }
 
@@ -182,9 +187,12 @@ void system_sim_t::cleanup_active_list(void){
     if(this->window[start_point].transaction_finished){
       //deallocate space for the components of the transactions
       LL_FOREACH_SAFE(component_head,component_temp1,component_temp2){
+	add_counter(total_latency,(component_head->time_stamp_end-component_head->time_stamp_start));
 	LL_DELETE(component_head,component_head);
 	free(component_head);
+	inc_counter(finished_requests); //increment the number of requests finished
       }
+      add_counter(data_decoded,this->window[start_point].digital_data_size); //add to the total data decoded
       this->window_pop();
       start_point++;
     }
@@ -215,13 +223,19 @@ unsigned long system_sim_t::window_add(void){
   return out;
 }
 
+//return 1 if window is empty
+int system_sim_t::window_empty(void){
+  return this->window_head==this->window_tail;
+}
+
 
 //function that creates and inserts a component into a window element
 void system_sim_t::window_componentadd(unsigned long transaction_ID,
 				       unsigned long undesired_strands_sequenced,
 				       unsigned long desired_strands_sequenced,
 				       unsigned long pool_ID,
-				       unsigned long digital_data_size){
+				       unsigned long digital_data_size,
+				       unsigned long time_stamp){
   transaction_t* new_component;
   new_component=(transaction_t*)malloc(sizeof(transaction_t)); //allocate the space
   new_component->next=NULL;
@@ -230,6 +244,7 @@ void system_sim_t::window_componentadd(unsigned long transaction_ID,
   new_component->strands_to_sequence=desired_strands_sequenced+undesired_strands_sequenced;
   new_component->pool_ID=pool_ID;
   new_component->component_decoded=0;
+  new_component->time_stamp_start=time_stamp;
   LL_APPEND(this->window[transaction_ID].components,new_component); //append the component to the linked list
   //accumulate component values into the overall transaction
   this->window[transaction_ID].strands_to_sequence+=new_component->strands_to_sequence;

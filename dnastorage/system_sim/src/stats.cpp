@@ -35,7 +35,7 @@ stats_t::stats_t(FILE* stats_log, FILE* phase_log){
   DECLARE_COUNTER(this, pool_writes, dna_storage); //track the number of times a pool needs to be re-synthesized
   DECLARE_PHASE_COUNTER(this, pool_writes, dna_storage);
 
-  DECLARE_COUNTER(this, total_latency, dnastorage); //track the total latency of all finished requests... used for tracking average latency
+  DECLARE_COUNTER(this, total_latency, dna_storage); //track the total latency of all finished requests... used for tracking average latency
   DECLARE_PHASE_COUNTER(this, total_latency, dnastorage);
 
   

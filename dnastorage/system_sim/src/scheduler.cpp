@@ -25,7 +25,8 @@ scheduler_t::scheduler_t(scheduler_params_t scheduler_params){
   this->reorder=&scheduler_t::reorder_none;
   this->scheduler=&scheduler_t::scheduler_anypool;
   this->strand_calculator=&scheduler_t::calc_singlefile;
-  this->batch_size=scheduler_params.batch_size; 
+  this->batch_size=scheduler_params.batch_size;
+  this->stats=scheduler_params.stats;
 }
 
 //top level function called by the system sim
@@ -73,7 +74,7 @@ void scheduler_t::scheduler_anypool(void){
 			      this->bytes_per_strand, this->sequencing_depth);
       _system->window_componentadd(transaction_ID, undesired_strands_sequenced,
 				   desired_strands_sequenced, head->pool_ID,
-				   head->file_size);
+				   head->file_size, head->time_stamp);
       //need to take the request off the top of the queue and remove the space for it
       _system->queue_pop();
     }

@@ -20,7 +20,7 @@ decoder_t::decoder_t(decoder_params_t decoder_params)
   this->_system=decoder_params._system;
   this->seq_dec_buffer=decoder_params.seq_dec_buffer;
   this->base_timer=decoder_params.timer;
-  
+  this->stats=decoder_params.stats;
   //allocate the decoder set
   this->decoder_set=(decoder_unit_t**)malloc(sizeof(decoder_unit_t*)*this->num_decoders);
   for(int i=0; i<this->num_decoders; i++) this->decoder_set[i]=new decoder_unit_t(1);
@@ -92,7 +92,8 @@ void decoder_t::decoder_complete(unsigned long decoder_ID){
   _decoder->unit_active=0;
   comp_head=_window[_decoder->transaction_slots[0]].components;
   _window[_decoder->transaction_slots[0]].components[_decoder->component_ID].transaction_finished=1;
-
+  //find out when the component finished
+  _window[_decoder->transaction_slots[0]].components[_decoder->component_ID].time_stamp_end=counter(time_step);
   //check to see if all components are done
   LL_FOREACH(comp_head,temp){
     if(temp->transaction_finished!=1) batch_complete=0;

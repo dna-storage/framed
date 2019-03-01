@@ -17,9 +17,12 @@ Credit and Author: This code was adapted from Dr. Rotenberg's 721sim microarchit
 
 #define inc_counter(x)  stats->update_counter(#x,1)
 #define inc_counter_str(x)  stats->update_counter(x,1)
+#define add_counter(x,n) stats->update_counter(#x,n); //add abitrary amount to the counter
+#define sub_counter(x,n) stats->update_counter(#x,-n) //subtract arbitrary amount from counter
 #define dec_counter(x)  stats->update_counter(#x,-1)
 #define counter(x)      stats->get_counter(#x)
 #define knob(x)         stats->get_knob(#x)
+
 
 // Macro has been written this way to swallow semicolon
 #define DECLARE_COUNTER(stats,name,hierarchy) \

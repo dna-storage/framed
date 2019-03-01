@@ -19,6 +19,7 @@ system_storage_t:: system_storage_t(storage_params_t storage_params){
   this->number_reads=storage_params.number_reads;
   this->pool_write_time=storage_params.pool_write_time;
   this->average_pool_capacity=storage_params.average_pool_capacity;
+  this->stats=storage_params.stats;
   for(int i=0; i<this->number_pools;i++){
     this->pools[i].copies=(pool_char_t*)malloc(sizeof(pool_char_t)*this->pool_copies);
     //need to initialize the array of pool copies
@@ -62,6 +63,7 @@ void system_storage_t::storage_readmanage(unsigned long pool_ID, unsigned long p
     //used up all the reads, pool needs to be recovered in some way
     this->pools[pool_ID].copies[pool_copy_ID].in_use=1;
     this->pools[pool_ID].copies[pool_copy_ID].timer=this->pool_write_time-1;
+    inc_counter(pool_writes);
   }
   else{
     this->pools[pool_ID].copies[pool_copy_ID].in_use=1;

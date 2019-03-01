@@ -1,10 +1,11 @@
 #ifndef DEC
 #define DEC
 
+//forward declarations
 class system_unit_t;
 class system_sim_t;
 class buffer_t;
-
+class stats_t;
 
 typedef struct{
   unsigned long timer;
@@ -13,6 +14,7 @@ typedef struct{
   unsigned long num_decoders;
   buffer_t* seq_dec_buffer;
   system_sim_t* _system;
+  stats_t* stats;
 } decoder_params_t; //bundled decoder parameters
 
 
@@ -42,7 +44,7 @@ class decoder_t{
   void decoder_timestep(unsigned long decoder_ID); //decrement the timer counter for a decoder
   unsigned long decoder_avail(void); //check to see if there is a decoder free
   void init_decoder(unsigned long decoder_ID, unsigned long transaction_ID, unsigned long seq_dec_idnex);//setup a newly selected decoder
-  
+  stats_t* stats;
 };
 
 
