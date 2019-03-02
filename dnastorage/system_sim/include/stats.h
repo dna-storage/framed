@@ -22,7 +22,7 @@ Credit and Author: This code was adapted from Dr. Rotenberg's 721sim microarchit
 #define dec_counter(x)  stats->update_counter(#x,-1)
 #define counter(x)      stats->get_counter(#x)
 #define knob(x)         stats->get_knob(#x)
-
+#define dump()          stats->dump_final()
 
 // Macro has been written this way to swallow semicolon
 #define DECLARE_COUNTER(stats,name,hierarchy) \
@@ -116,9 +116,7 @@ class stats_t {
   void dump_rates();  
   void dump_phase_rates();  
   void dump_knobs();  
-  void dump_pc_histogram();  
-  void dump_br_histogram();  
-
+  void dump_final();
   //inline void set_histogram(bool val){histogram_enabled = val;}
 
  private:

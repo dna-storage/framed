@@ -72,6 +72,7 @@ typedef struct{
   unsigned long min_file_size;
   float rate;
   int seed;
+  unsigned long sim_time;
   unsigned long sequencing_depth;
   
 } system_sim_params_t; //bundled system parameters

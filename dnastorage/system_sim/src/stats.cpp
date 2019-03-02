@@ -274,4 +274,14 @@ void stats_t::dump_knobs(){
 }
 
 
-
+//do a final dump of stats
+void stats_t::dump_final(){
+  //dump phase stuff
+  phase_id++;
+  update_rates();
+  dump_phase_counters();
+  dump_phase_rates();
+  dump_counters();
+  dump_rates();
+  fflush(0);
+}

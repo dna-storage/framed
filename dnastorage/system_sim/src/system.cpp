@@ -30,7 +30,7 @@ system_sim_t::system_sim_t(system_sim_params_t system_sim_params){
   this->window_tail=0;
   this->window_length=0;
   this->system_queue=NULL;
- 
+  this->sim_time=system_sim_params.sim_time;
   //create the window
   this->window_size=system_sim_params.window_size;  
   this->window=(transaction_t*)malloc((this->window_size+1)*sizeof(transaction_t));
@@ -174,6 +174,7 @@ void system_sim_t::simulate(){
     this->timer_tick++;
     inc_counter(time_step);
   }
+  dump(); //dump the final results to the phase and stats logs
 }
 
  
