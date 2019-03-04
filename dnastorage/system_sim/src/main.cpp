@@ -75,7 +75,7 @@ int main(int argc, char** argv){
   sim_params.seq_dec_buffer_size=config_doc["system"]["seq_dec_buffer_size"].GetUint64();
   sim_params.sim_time=config_doc["system"]["simulation_time"].GetUint64();
   phase_log=config_doc["phase_log"].GetString();
-  trace_file=config_doc["trace_file"].GetString();
+  if(!config_doc["trace_file"].IsNull())trace_file=config_doc["trace_file"].GetString();
   stats_log=config_doc["stats_log"].GetString();
 
   if(!config_doc["trace_file"].IsNull()) trace=fopen(trace_file.c_str(),"r");

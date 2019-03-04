@@ -37,6 +37,8 @@ system_sim_t::system_sim_t(system_sim_params_t system_sim_params){
   
   this->buffers[0]=new buffer_t(system_sim_params.prep_seq_buffer_size);
   this->buffers[1]=new buffer_t(system_sim_params.seq_dec_buffer_size);
+
+  
   this->stats=new stats_t(system_sim_params.stats_log,system_sim_params.phase_log);
   
   //setup storage parameters
@@ -67,6 +69,7 @@ system_sim_t::system_sim_t(system_sim_params_t system_sim_params){
   decoder_params.seq_dec_buffer=this->buffers[1];
   decoder_params.num_decoders=system_sim_params.num_decoders;
   decoder_params.stats=this->stats;
+  decoder_params._system=this;
   
   //setup sequencer parameters
   sequencer_params.timer=system_sim_params.seq_time;
@@ -140,7 +143,6 @@ system_unit_t::system_unit_t(unsigned long num_channels){
 
 system_unit_t::~system_unit_t(){
   free(transaction_slots);
-  printf("Destructor of parent units\n");
 }
 
 
@@ -161,9 +163,8 @@ void system_sim_t::queue_append(trace_t* new_trans){
 
 //this is the top level simulator, and calls the different system unit functions
 void system_sim_t::simulate(){
-
   //run the simulator for the duration of the simulation time, and until both the system_queue and window are empty
-  while(this->timer_tick<=this->sim_time && this->system_queue!=NULL && !this->window_empty()){
+  while(this->timer_tick<=this->sim_time || this->system_queue!=NULL || !this->window_empty()){
     //clean up the active transaction list
     this->cleanup_active_list();
     this->decoder->decoder_stage();
@@ -172,6 +173,7 @@ void system_sim_t::simulate(){
     this->scheduler->schedule_stage();
     this->generator->generator_stage();
     this->timer_tick++;
+    if(this->timer_tick>=this->sim_time) this->generator->generator_stop();
     inc_counter(time_step);
   }
   dump(); //dump the final results to the phase and stats logs
@@ -184,18 +186,22 @@ void system_sim_t::cleanup_active_list(void){
   transaction_t* component_head;
   transaction_t* component_temp1;
   transaction_t* component_temp2;
-  while(start_point!=this->window_length){
+  unsigned long end;
+  end=(this->window_length+start_point)%(this->window_size+1);
+  while(start_point!=end){
     if(this->window[start_point].transaction_finished){
+      component_head=this->window[start_point].components;
       //deallocate space for the components of the transactions
       LL_FOREACH_SAFE(component_head,component_temp1,component_temp2){
 	add_counter(total_latency,(component_head->time_stamp_end-component_head->time_stamp_start));
 	LL_DELETE(component_head,component_head);
 	free(component_head);
 	inc_counter(finished_requests); //increment the number of requests finished
+	printf("finished request: %i\n",counter(finished_requests));
       }
       add_counter(data_decoded,this->window[start_point].digital_data_size); //add to the total data decoded
       this->window_pop();
-      start_point++;
+      start_point=(start_point+1)%(this->window_size+1);
     }
     else break;
   }

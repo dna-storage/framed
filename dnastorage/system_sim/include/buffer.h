@@ -15,8 +15,8 @@ class buffer_t{ //class that implements support for connecting buffers
   
   buffer_t(unsigned long);
   ~buffer_t();
-  void operator++(void);
-  list_entry_t* operator()(void);
+  void iter_next(void);
+  list_entry_t* iter_get(void);
   void iter_start(void);
   void init_entry(unsigned long transaction_ID, unsigned long buff_index);
   int get_free(void);

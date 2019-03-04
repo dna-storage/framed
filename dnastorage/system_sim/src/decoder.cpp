@@ -58,24 +58,24 @@ void decoder_t::decoder_backend(void){
       this->decoder_complete(i); //complete the transaction within the decoder
       done_count++;
     }
-    else this->decoder_timestep(i); //decrease the time on the decoder
+    else if(active && timer>0) this->decoder_timestep(i); //decrease the time on the decoder
   }
 }
 
 //need to fill up non-active decoders with transactions in the seq_dec_buffer
 void decoder_t::decoder_frontend(void){
-  buffer_t _s_d=*(this->seq_dec_buffer);
+  buffer_t* _s_d=this->seq_dec_buffer;
   transaction_t* _window=this->_system->window;
   list_entry_t* seq_buffer;
   
-  for(_s_d.iter_start();_s_d()!=NULL;++_s_d){
-    seq_buffer=_s_d();
+  for(_s_d->iter_start();_s_d->iter_get()!=NULL;_s_d->iter_next()){
+    seq_buffer=_s_d->iter_get();
     if(seq_buffer->used && _window[seq_buffer->transaction_index].cracked_count==0){
       //found a location in the buffer that is ready
       unsigned long decoder_ID=this->decoder_avail();
       unsigned long transaction_ID=seq_buffer->transaction_index;
       if(decoder_ID==-1) break; //no decoder avilable, stop looking through the seq_dec_buffer
-      this->init_decoder(decoder_ID,transaction_ID,_s_d.get_iterator()); //initialize the decoder found thats available
+      this->init_decoder(decoder_ID,transaction_ID,_s_d->get_iterator()); //initialize the decoder found thats available
     }
   }
 }
@@ -94,6 +94,7 @@ void decoder_t::decoder_complete(unsigned long decoder_ID){
   _window[_decoder->transaction_slots[0]].components[_decoder->component_ID].transaction_finished=1;
   //find out when the component finished
   _window[_decoder->transaction_slots[0]].components[_decoder->component_ID].time_stamp_end=counter(time_step);
+  //printf("decoder_ID %i complete\n",decoder_ID);
   //check to see if all components are done
   LL_FOREACH(comp_head,temp){
     if(temp->transaction_finished!=1) batch_complete=0;
@@ -103,6 +104,7 @@ void decoder_t::decoder_complete(unsigned long decoder_ID){
 
 void decoder_t::decoder_timestep(unsigned long decoder_ID){
   (this->decoder_set[decoder_ID])->timer--;
+  //printf("decoder %i timer %i\n",decoder_ID,(this->decoder_set[decoder_ID])->timer);
 }
 
 //search for deactivated decoders

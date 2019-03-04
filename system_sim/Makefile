@@ -12,7 +12,7 @@ OBJECTS=$(patsubst $(SOURCE_DIR)/%,$(BUILD_DIR)/%,$(SOURCES:.cpp=.o))
 
 INCLUDE_DIR=../dnastorage/system_sim/include
 UTILS_DIR=../dnastorage/system_sim/utils
-CFLAGS=-O3 -std=c++11 -I$(INCLUDE_DIR) -I$(UTILS_DIR)
+CFLAGS=-g -O3 -std=c++11 -I$(INCLUDE_DIR) -I$(UTILS_DIR)
 
 all: $(EXE_DIR)/system_sim
 

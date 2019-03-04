@@ -31,7 +31,7 @@ int buffer_t::get_free(void){
 
 }
 
-void buffer_t::operator++(){
+void buffer_t::iter_next(){
   this->iterator++;
 }
 
@@ -39,7 +39,7 @@ void buffer_t::iter_start(void){
   iterator=0;
 }
 
-list_entry_t* buffer_t::operator() (){
+list_entry_t* buffer_t::iter_get(){
   if(this->iterator==this->buffer_size)return NULL;
   else return &(this->buff[this->iterator]);
 }

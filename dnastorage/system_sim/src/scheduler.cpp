@@ -54,14 +54,17 @@ void scheduler_t::scheduler_anypool(void){
   unsigned long undesired_strands_sequenced;
   unsigned long strands_to_sequence;
   prep_t* _prep=this->_prep;
-  while((prep_ID=_prep->prep_stationavail()>0) && *(this->system_queue)!=NULL && !_system->window_full()){
+  //printf("station avail %i, queue_head %i, window_full %i\n",_prep->prep_stationavail(),*(this->system_queue),_system->window_full());
+  while(((prep_ID=_prep->prep_stationavail())>=0) && *(this->system_queue)!=NULL && !_system->window_full()){
     head=*(this->system_queue);
+    printf("pool_ID of head: %i, availability %i\n",head->pool_ID,_storage->storage_poolavailable(head->pool_ID));
     //keep going while there are things on the system queue and there are prep stations available
-    if(!_storage->storage_poolavailable(head->pool_ID)) break;
+    if(_storage->storage_poolavailable(head->pool_ID)==-1) break;
 
     //get a spot on the window
     transaction_ID=_system->window_add();
-    
+
+    printf("Window ID:%i\n",transaction_ID);
     //set up the transaction_t structure at window_head
     _system->window_init(transaction_ID);
 

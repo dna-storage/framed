@@ -47,23 +47,23 @@ void generator_t::generator_stage(void){
 void generator_t::gen_poisson(void){
   unsigned long number_transactions;
   trace_t* trace_transaction;
-  std::default_random_engine def=*(this->rand_tool);
-  std::poisson_distribution<unsigned long> _trans=*(this->poisson_transactions);
-  std::uniform_int_distribution<unsigned long> _file=*(this->rand_file);
-  std::uniform_int_distribution<unsigned long> _pool=*(this->rand_pool);
+  std::default_random_engine* def=this->rand_tool;
+  std::poisson_distribution<unsigned long>* _trans=this->poisson_transactions;
+  std::uniform_int_distribution<unsigned long>* _file=this->rand_file;
+  std::uniform_int_distribution<unsigned long>* _pool=this->rand_pool;
   
   //create some number of transactions based on the poisson process
-  number_transactions=_trans(def);
-
+  number_transactions=(*_trans)(*def);
   //create number_transactions trace_t objects
   for(int i=0; i<number_transactions; i++){
     //initialize the transactions
     trace_transaction=(trace_t*)malloc(sizeof(trace_t));
-    trace_transaction->pool_ID=_pool(def);
+    trace_transaction->pool_ID=(*_pool)(*def);
     trace_transaction->time_stamp=_system->timer_tick;
-    trace_transaction->file_size=_file(def);
+    trace_transaction->file_size=(*_file)(*def);
     //add the transaction to the queue
     _system->queue_append(trace_transaction);
+    printf("Generated transaction pool:%i time_stamp:%i file_size:%i\n",trace_transaction->pool_ID,trace_transaction->time_stamp,trace_transaction->file_size);
   }
 
 }

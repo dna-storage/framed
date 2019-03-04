@@ -47,7 +47,7 @@ stats_t::stats_t(FILE* stats_log, FILE* phase_log){
   DECLARE_RATE(this, IOPH, dna_storage, finished_requests, time_step, ((float)STEP_PER_HOUR)); //track the I/O operations per hour
   DECLARE_PHASE_RATE(this, IOPH, dna_storage, finished_requests, time_step, ((float)STEP_PER_HOUR));
 
-  DECLARE_RATE(this, BW, dna_storage, data_decoded, time_step, ((float)FILE_UNIT*(float)STEP_PER_HOUR)); //track the raw data bandwidth: units -> Bytes/Hour
+  DECLARE_RATE(this, BW_(Bytes/Hour), dna_storage, data_decoded, time_step, ((float)FILE_UNIT*(float)STEP_PER_HOUR)); //track the raw data bandwidth: units -> Bytes/Hour
   DECLARE_PHASE_RATE(this, BW, dna_storage, data_decoded, time_step, ((float)FILE_UNIT*(float)STEP_PER_HOUR));
 
   
@@ -58,6 +58,8 @@ stats_t::stats_t(FILE* stats_log, FILE* phase_log){
   DECLARE_RATE(this, average_latency, dna_storage, total_latency, finished_requests,1.0); //track the average latency for a request in hours
   DECLARE_PHASE_RATE(this, average_latency, dna_storage, total_latency, finished_requests,1.0/((float)STEP_PER_HOUR));
 
+  DECLARE_RATE(this,average_file_size,dna_storage,data_decoded,finished_requests,1.0); //track the average file size
+  DECLARE_PHASE_RATE(this,average_file_size,dna_storage,data_decoded,finished_requests,1.0);
 
   
 
@@ -178,8 +180,8 @@ void stats_t::register_knob(const char* name, const char* hierarchy, unsigned in
 void stats_t::update_counter(const char* name,unsigned int inc){
   // If the counter has been declared and initialized
   if(counter_map.find(name) != counter_map.end()){
-    counter_map[name]->count++;
-    counter_map[name]->phase_count++;
+    counter_map[name]->count=counter_map[name]->count+inc;
+    counter_map[name]->phase_count=counter_map[name]->phase_count+inc;
   }
   // Tick the phase check mechanism if updating the 
   // counter on which phases are based on. Normally this
