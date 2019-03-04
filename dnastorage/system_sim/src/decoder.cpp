@@ -89,12 +89,21 @@ void decoder_t::decoder_complete(unsigned long decoder_ID){
   transaction_t* comp_head;
   transaction_t* _window=this->_system->window;
   int batch_complete=1;
+  int component_counter=0;
   _decoder->unit_active=0;
   comp_head=_window[_decoder->transaction_slots[0]].components;
-  _window[_decoder->transaction_slots[0]].components[_decoder->component_ID].transaction_finished=1;
-  //find out when the component finished
-  _window[_decoder->transaction_slots[0]].components[_decoder->component_ID].time_stamp_end=counter(time_step);
-  //printf("decoder_ID %i complete\n",decoder_ID);
+
+  printf("decoder_ID %i complete\n",decoder_ID);
+
+  //find the correct component and set variables 
+  LL_FOREACH(comp_head,temp){
+    if(component_counter==_decoder->component_ID){
+      temp->transaction_finished=1;
+      //find out when the component finished
+      temp->time_stamp_end=counter(time_step);
+    }
+  }
+
   //check to see if all components are done
   LL_FOREACH(comp_head,temp){
     if(temp->transaction_finished!=1) batch_complete=0;
@@ -104,7 +113,7 @@ void decoder_t::decoder_complete(unsigned long decoder_ID){
 
 void decoder_t::decoder_timestep(unsigned long decoder_ID){
   (this->decoder_set[decoder_ID])->timer--;
-  //printf("decoder %i timer %i\n",decoder_ID,(this->decoder_set[decoder_ID])->timer);
+  printf("decoder %i timer %i\n",decoder_ID,(this->decoder_set[decoder_ID])->timer);
 }
 
 //search for deactivated decoders
