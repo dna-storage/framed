@@ -1,6 +1,6 @@
 # dnastorage
 
-Python module to support modeling and simulation of a DNA-based information storage system.
+Python modules and C++ tools to support modeling and simulation of a DNA-based information storage system.
 
 ## Getting Started
 
@@ -14,7 +14,7 @@ To use this software, you need:
 
 Linux computers have this software by default. Macs and Windows may not have them. (There are a variety of ways to get Python, more details coming soon.)
 
-### Installation steps
+### Installation Steps for Python Tools
 
 1. Clone or download the repository into a working directory
 
@@ -34,3 +34,21 @@ Linux computers have this software by default. Macs and Windows may not have the
 4. Run tests to make sure it works okay. (Note, still adding more meaningful tests.  This may pass even though something isn't installed properly.)
 
       - make test
+
+### Installation steps for C++ DNA Storage System Simulator
+
+1. Run the makefile in system_sim directory to get simulator dependencies.
+
+    1. cd system_sim (resulting path should be "/full/path/to/some/directory/dnastorage/system_sim")
+    2. make init
+
+2. Run the makefile in system_sim directory to compile the simulator
+   2. make
+
+3. To delete the executable and object files run the makefile in the system_sim directory
+   1. make clean
+
+
+The compiled executable will be in the directory "/full/path/to/some/directory/dnastorage/dnastorage/system_sim/bin" with the name "system_sim".
+The compiled object files will be in the directory "/full/path/to/some/directory/dnastorage/dnastorage/system_sim/build".
+The source code for the system simulator can be found in the directory "/full/path/to/some/directory/dnastorage/dnastorage/system_sim/src".
