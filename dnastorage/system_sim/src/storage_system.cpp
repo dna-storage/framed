@@ -59,7 +59,9 @@ void system_storage_t::storage_readmanage(unsigned long pool_ID, unsigned long p
   unsigned long remaining_reads;
   this->pools[pool_ID].copies[pool_copy_ID].remaining_reads--;
   remaining_reads=this->pools[pool_ID].copies[pool_copy_ID].remaining_reads;
+  //printf("remaining reads %i \n",remaining_reads);
   if(remaining_reads==0){
+    //printf("write time\n");
     //used up all the reads, pool needs to be recovered in some way
     this->pools[pool_ID].copies[pool_copy_ID].in_use=1;
     this->pools[pool_ID].copies[pool_copy_ID].timer=this->pool_write_time-1;
@@ -87,6 +89,7 @@ void system_storage_t::storage_poolrestore(void){
 	  this->pools[i].copies[j].remaining_reads=this->number_reads; //restore the number of reads to the original value
 	}
       }
+      else if(this->pools[i].copies[j].timer!=0 && this->pools[i].copies[j].in_use==1) this->pools[i].copies[j].timer--;
     }
   }
 }

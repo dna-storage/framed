@@ -97,7 +97,7 @@ void sequencer_t::sequencer_kickoff(void){
   for(int i=0; i<this->num_sequencers; i++){
     _sequencer=this->sequencer_set[i];
     if(!_sequencer->unit_active && ((_sequencer->timeout==0 && _sequencer->next_open!=0) || _sequencer->used_strands==_sequencer->max_strands || _sequencer->next_open==_sequencer->num_channels)){
-      printf("kickoff sequencer %i\n",i);
+      //printf("kickoff sequencer %i\n",i);
       _sequencer->unit_active=1; //activate the unit
       _sequencer->timer=this->base_timer-1; //initialize the timer for the sequencer
     }
@@ -110,7 +110,7 @@ void sequencer_t::sequencer_timeoutstep(void){
   for(int i=0; i<this->num_sequencers;i++){
     _sequencer=this->sequencer_set[i];
     if(_sequencer->timeout>0 && !_sequencer->unit_active && _sequencer->next_open!=0) _sequencer->timeout--;
-    if(_sequencer->timeout>0 && !_sequencer->unit_active && _sequencer->next_open!=0) printf("sequencer_ID %i, sequencer_timeout %i\n",i,_sequencer->timeout);
+    //if(_sequencer->timeout>0 && !_sequencer->unit_active && _sequencer->next_open!=0) printf("sequencer_ID %i, sequencer_timeout %i\n",i,_sequencer->timeout);
   }
   
 }
@@ -217,5 +217,5 @@ void sequencer_t::sequencer_complete(unsigned long sequencer_ID){
 void sequencer_t::sequencer_timestep(unsigned long sequencer_ID){
   sequencer_unit_t* _sequencer=this->sequencer_set[sequencer_ID];
   _sequencer->timer--;
-  printf("sequencer_ID %i, sequencer timer %i\n",sequencer_ID,_sequencer->timer);
+  //printf("sequencer_ID %i, sequencer timer %i\n",sequencer_ID,_sequencer->timer);
 }

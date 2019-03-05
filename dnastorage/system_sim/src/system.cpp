@@ -49,6 +49,7 @@ system_sim_t::system_sim_t(system_sim_params_t system_sim_params){
   storage_params.pool_copies=system_sim_params.pool_copies;
   storage_params.pool_write_time=system_sim_params.pool_write_time;
   storage_params.pool_wait_time=system_sim_params.pool_wait_time;
+  storage_params.number_reads=system_sim_params.number_reads;
   storage_params.stats=this->stats;
 
   //instantiate the storage model
@@ -172,6 +173,7 @@ void system_sim_t::simulate(){
     this->prep->prep_stage();
     this->scheduler->schedule_stage();
     this->generator->generator_stage();
+    this->dna_storage->storage_poolrestore();
     this->timer_tick++;
     if(this->timer_tick>=this->sim_time) this->generator->generator_stop();
     inc_counter(time_step);
@@ -197,7 +199,7 @@ void system_sim_t::cleanup_active_list(void){
 	LL_DELETE(component_head,component_head);
 	free(component_head);
 	inc_counter(finished_requests); //increment the number of requests finished
-	printf("finished request: %i\n",counter(finished_requests));
+	//printf("finished request: %i\n",counter(finished_requests));
       }
       add_counter(data_decoded,this->window[start_point].digital_data_size); //add to the total data decoded
       this->window_pop();

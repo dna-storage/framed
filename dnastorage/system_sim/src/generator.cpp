@@ -63,7 +63,7 @@ void generator_t::gen_poisson(void){
     trace_transaction->file_size=(*_file)(*def);
     //add the transaction to the queue
     _system->queue_append(trace_transaction);
-    printf("Generated transaction pool:%i time_stamp:%i file_size:%i\n",trace_transaction->pool_ID,trace_transaction->time_stamp,trace_transaction->file_size);
+    //printf("Generated transaction pool:%i time_stamp:%i file_size:%i\n",trace_transaction->pool_ID,trace_transaction->time_stamp,trace_transaction->file_size);
   }
 
 }

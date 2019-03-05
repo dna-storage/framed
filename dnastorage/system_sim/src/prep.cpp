@@ -107,6 +107,6 @@ void prep_t::prep_complete(unsigned long prep_ID){
 void prep_t::prep_timestep(unsigned long prep_ID){
   prep_unit_t* _prep=this->prep_set[prep_ID];
   _prep->timer--;
-  printf("prep time %i\n",_prep->timer);
+  //printf("prep time %i\n",_prep->timer);
 
 }
