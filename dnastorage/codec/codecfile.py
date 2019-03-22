@@ -8,13 +8,13 @@ class EncodePacketizedFile:
     """
     Partition the file into key,value packets for encoding. This is an iterable
     object for convenient encoding. If a CodecObj is provided, the iterator
-    returns the packets after they pass through the CodecObj. 
+    returns the packets after they pass through the CodecObj.
 
     For simple encoders and decoders that operate on one strand at a time, you can simply
     override the _encode function to alter how encoding is done before the CodecObj is invoked.
 
     For customized keys, you need to override the class and alter how keys are
-    generated. 
+    generated.
 
     """
 
@@ -30,7 +30,7 @@ class EncodePacketizedFile:
     @property
     def bytes_encoded(self):
         return self._packetizedFile.bytes_read
-         
+
     # Derived classes should override only this method, unless other
     # functionality also needs to be altered
     # returns key, value
@@ -66,7 +66,7 @@ class EncodePacketizedFile:
             return packet
         else:
             self._iterating = False
-            raise StopIteration()        
+            raise StopIteration()
 
 class DecodePacketizedFile:
     def __init__(self,packetizedFile,CodecObj=None):
@@ -76,7 +76,7 @@ class DecodePacketizedFile:
             self._Codec = BaseCodec()
         else:
             self._Codec = CodecObj
-        
+
     def has_key(self,key):
         return self._data.has_key(key)
 
@@ -84,13 +84,13 @@ class DecodePacketizedFile:
     #    self._data[key] = value
     #def __getitem__(self,key):
     #    return self._data[key]
-        
+
     def writeToFile(self,key,value):
         # make sure value is a string
         if (type(value) is list) and (type(value[0]) is int or type(value[0]) is long):
-            value = "".join([chr(x) for x in value])        
+            value = "".join([chr(x) for x in value])
         assert type(value) is str
-        self._packetizedFile[key] = value    
+        self._packetizedFile[key] = value
 
     # Ideally, derived classes will only override this implementation
     def _decode(self,key,value):
@@ -103,12 +103,12 @@ class DecodePacketizedFile:
             key=input_key
             val=input_value
         self._decode(key,val)
-        
+
 
     @property
     def complete(self):
         return self._packetizedFile.complete
-    
+
     def write(self):
         self._packetizedFile.write()
 
@@ -121,7 +121,7 @@ if __name__ == "__main__":
     import sys
     from random import randint
     packetFile = ReadPacketizedFile(sys.argv[1])
-    
+
     out = WritePacketizedFile("output.d",packetFile.size,120)
 
     assert out.complete==False
@@ -130,8 +130,6 @@ if __name__ == "__main__":
     for p in packetFile:
         out[i] = p
         i += 1
-    
+
     assert out.complete==True
     out.write()
-
-

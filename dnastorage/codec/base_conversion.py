@@ -6,7 +6,7 @@ bases = ['A', 'C', 'G', 'T']
 
 values = { 'A' : 0 ,
            'C' : 1 ,
-           'G' : 2 ,  
+           'G' : 2 ,
            'T' : 3   }
 
 def randomTernary(length):
@@ -78,11 +78,11 @@ ibases = ['A', 'C', 'T']
 
 ivalues = { 'A' : 0 ,
            'C' : 1 ,
-           'G' : 3 ,  
+           'G' : 3 ,
            'T' : 2   }
 
 def encodeWithExclusionHelper(dec,s,excluded):
-    if len(s) < len(excluded): 
+    if len(s) < len(excluded):
         b = len(excluded[len(s)])
         m = dec % b
         q = dec / b

@@ -15,7 +15,7 @@ class WritePacketizedFilestream:
         self.size = size
         self.__set_packetSize(packetSize)
         self.__data = {}
-        
+
     def has_key(self,key):
         return self.__data.has_key(key)
     def __setitem__(self,key,value):
@@ -31,7 +31,7 @@ class WritePacketizedFilestream:
             return self.size / self.packetSize + 1
         else:
             return self.size / self.packetSize
-        
+
     # packet property
     def __set_packetSize(self,val):
         self.__packetSize = val
@@ -68,7 +68,7 @@ class WritePacketizedFilestream:
                     i+=1
             i+=1
         return missing
-        
+
 
     ## Warning: requires buffering the whole file!
     def write(self):
@@ -78,7 +78,7 @@ class WritePacketizedFilestream:
         emptyString = '\x00'*self.packetSize
         for key,value in items:
             if i < key:
-                while i < key:                    
+                while i < key:
                     self.__fd.write(emptyString)
                     i+=1
             if i == self.numberOfPackets-1:
@@ -88,7 +88,7 @@ class WritePacketizedFilestream:
             i+=1
         if self.__fd != sys.stdout:
             self.__fd.close()
-    
+
     def dummy_write(self):
         items = self.__data.items()
         items.sort(cmp=lambda x,y: cmp(x[0],y[0]))
@@ -99,7 +99,7 @@ class WritePacketizedFilestream:
             if value is not type(str):
                 value2="".join(value)
             if i < key:
-                while i < key:                    
+                while i < key:
                     output_data+=emptyString
                     i+=1
             if i == self.numberOfPackets-1:
@@ -113,7 +113,7 @@ class WritePacketizedFilestream:
         return output_data
 
 
-            
+
 class WritePacketizedFile(WritePacketizedFilestream):
     def __init__(self,filename,size,packetSize):
         WritePacketizedFilestream.__init__(self,open(filename,"wb"),size,packetSize)
@@ -127,11 +127,11 @@ than packetSize, it's padded with zeros. Clients are guaranteed all packets are 
 size.
 
 This is an iterable object. Packets can be read using the iterator or by requesting
-a specific index between 0 and size/packetSize. 
+a specific index between 0 and size/packetSize.
 
 This class expects a file descriptor. There is a derived class that accepts a filename.
 """
-class ReadPacketizedFilestream:    
+class ReadPacketizedFilestream:
     def __init__(self,fd):
         self.__fd = fd
         self.__set_packetSize(120)
@@ -144,7 +144,7 @@ class ReadPacketizedFilestream:
         #only pad out if it is not RS, RS encodes by blocks so padding may lead to many useless strands
         if b and len(b) != self.packetSize and not self._RS:
             b = b.ljust(self.packetSize,'\x00')
-            
+
         return b
 
     # packet property
@@ -165,28 +165,28 @@ class ReadPacketizedFilestream:
         if b:
             return b
         else:
-            raise StopIteration()        
-    
+            raise StopIteration()
+
     def __getitem__(self,key):
         self.__fd.seek(key*self.packetSize)
-        return self.read()        
-       
+        return self.read()
+
     @property
     def size(self):
         return os.fstat(self.__fd.fileno()).st_size
     @property
     def bytes_read(self):
         return self.__read_size
-        
+
     @property
     def numberOfPackets(self):
         if (self.size % self.packetSize)==0:
             return self.size / self.packetSize
         else:
             return self.size / self.packetSize + 1
-            
 
-class ReadPacketizedFile(ReadPacketizedFilestream):    
+
+class ReadPacketizedFile(ReadPacketizedFilestream):
     def __init__(self,filename):
         ReadPacketizedFilestream.__init__(self,open(filename,"rb"))
         self.__filename = filename
@@ -200,7 +200,7 @@ if __name__ == "__main__":
     import sys
     from random import randint
     packetFile = ReadPacketizedFile(sys.argv[1])
-    
+
     out = WritePacketizedFile("output.d",packetFile.size,120)
 
     assert out.complete==False
@@ -209,6 +209,6 @@ if __name__ == "__main__":
     for p in packetFile:
         out[i] = p
         i += 1
-    
+
     assert out.complete==True
     out.write()

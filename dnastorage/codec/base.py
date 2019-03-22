@@ -1,3 +1,5 @@
+from dnastorage.codec.base_conversion import convertIntToBytes,convertBytesToInt
+
 class BaseCodec:
     def __init__(self,CodecObj=None):
         self._Obj = CodecObj
@@ -16,3 +18,39 @@ class BaseCodec:
             return self._Obj.decode(s)
         else:
             return s
+
+class TableCodec(BaseCodec):
+    def __init__(self,CodecObj=None,keyEncWidth=20,keyDecWidth=4,cwEncWidth=5,cwDecWidth=1):
+        BaseCodec.__init__(self,CodecObj)
+        self._keyEncWidth = keyEncWidth
+        self._keyDecWidth = keyDecWidth
+        self._cwEncWidth = cwEncWidth
+        self._cwDecWidth = cwDecWidth
+        assert keyEncWidth % cwEncWidth == 0
+        assert keyEncWidth / cwEncWidth == keyDecWidth
+
+    def _enctab(self, val):
+        assert 0 and "not implemented"
+
+    def _dectab(self, seq):
+        assert 0 and "not implemented"
+
+    def _encode(self, s):
+        key = convertIntToBytes(s[0],self._keyDecWidth)
+        payload = bytearray(s[1])
+        enc = []
+        for i in range(0,len(key),self._cwDecWidth):
+            enc.append( self._enctab( convertBytesToInt(key[i:i+self._cwDecWidth])) )
+        for i in range(0,len(payload),self._cwDecWidth):
+            enc.append( self._enctab( convertBytesToInt(payload[i:i+self._cwDecWidth])))
+        return "".join(enc)
+
+    def _decode(self, s):
+        bytes = []
+        for i in range(0,len(s),self._cwEncWidth):
+            val = self._dectab(s[i:i+self._cwEncWidth])
+            val = convertIntToBytes(val,self._cwDecWidth)
+            bytes = bytes + val
+        key = convertBytesToInt(bytes[0:self._keyDecWidth])
+        bytes = [ chr(b) for b in bytes[self._keyDecWidth:] ]
+        return [key,bytearray(bytes)]

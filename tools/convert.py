@@ -1,6 +1,7 @@
 #!/usr/bin/python
 
 from dnastorage.codec import dense
+from dnastorage.codec import norepeatscodec
 from dnastorage.codec import commafreecodec
 from dnastorage.codec import illinois
 from dnastorage.codec import binary
@@ -13,7 +14,7 @@ import sys
 import os
 
 
-def build_encode_architecture(arch, pf, primer5, primer3):    
+def build_encode_architecture(arch, pf, primer5, primer3):
     if arch == "UW+MSv1":
         h = huffman.RotateCodec(huffman.HuffmanCodec(21,Checksum()))
         p = StrandPrimers(primer5, primer3, h)
@@ -41,28 +42,45 @@ def build_encode_architecture(arch, pf, primer5, primer3):
         h = huffman.RotateCodec(huffman.HuffmanCodec(23,Checksum()))
         p = StrandPrimers(primer5, primer3, h)
         pf.packetSize = 22
-        enc = EncodeFountainStrand(pf,1.5,p)    
+        enc = EncodeFountainStrand(pf,1.5,p)
         return enc
 
     elif arch == 'Binary':
         b = binary.BinaryRotateCodec(binary.BinaryCodec(Checksum()))
+        #b = binary.BinaryCodec(Checksum())
         p = StrandPrimers(primer5, primer3, b)
         pf.packetSize = 17
         enc = EncodeNaiveStrand(pf,p)
         return enc
 
+    elif arch == 'Dense':
+        #b = dense.RandomizeDenseCodec(dense.DenseCodec(Checksum()))
+        b = dense.DenseCodec(Checksum())
+        p = StrandPrimers(primer5, primer3, b)
+        pf.packetSize = 34
+        enc = EncodeNaiveStrand(pf,p)
+        return enc
+
+    elif arch == 'NRDense':
+        b = norepeatscodec.NoRepeatCodec(Checksum(2))
+        #b = dense.RandomizeDenseCodec(dense.DenseCodec(Checksum()))
+        p = StrandPrimers(primer5, primer3, b)
+        pf.packetSize = 28
+        enc = EncodeNaiveStrand(pf,p)
+        return enc
+
     elif arch == 'RS+CFC8':
-    
+
         b = commafreecodec.CommaFreeCodec(13,None,2)
         p = StrandPrimers(primer5, primer3, b)
         enc = ReedSolomonInnerOuterEncoder(pf,p,k_datastrand=9,e_inner=2,k_index=2)
         return enc
-    
+
     elif arch == 'RS+ROT':
         h = huffman.RotateCodec(huffman.HuffmanCodec(11,None,11,99))
         p = StrandPrimers(primer5, primer3, h)
         enc = ReedSolomonInnerOuterEncoder(pf,p,k_datastrand=9,e_inner=2,k_index=2)
-        return enc        
+        return enc
 
 def build_decode_architecture(arch, pf, primer5, primer3, fountain_table=None):
     if arch == "UW+MSv1":
@@ -88,17 +106,32 @@ def build_decode_architecture(arch, pf, primer5, primer3, fountain_table=None):
 
     elif arch == 'Binary':
         b = binary.BinaryRotateCodec(binary.BinaryCodec(Checksum()))
+        #b = binary.BinaryCodec(Checksum())
         p = StrandPrimers(primer5, primer3, b)
         pf.packetSize = 17
         enc = DecodeNaiveStrand(pf,p)
         return enc
+
+    elif arch == 'Dense':
+        b = dense.DenseCodec(Checksum())
+        p = StrandPrimers(primer5, primer3, b)
+        pf.packetSize = 34
+        dec = DecodeNaiveStrand(pf,p)
+        return dec
+
+    elif arch == 'NRDense':
+        b = norepeatscodec.NoRepeatCodec(Checksum(2))
+        p = StrandPrimers(primer5, primer3, b)
+        pf.packetSize = 28
+        dec = DecodeNaiveStrand(pf,p)
+        return dec
 
     elif arch == 'Fountain':
         #assert False and "Not fully implemented"
         h = huffman.RotateCodec(huffman.HuffmanCodec(23,Checksum()))
         p = StrandPrimers(primer5, primer3, h)
         pf.packetSize = 22
-        enc = DecodeFountainStrand(pf,fountain_table,p)    
+        enc = DecodeFountainStrand(pf,fountain_table,p)
         return enc
 
     elif arch == 'NCState':
@@ -115,13 +148,15 @@ def build_decode_architecture(arch, pf, primer5, primer3, fountain_table=None):
         h = huffman.RotateCodec(huffman.HuffmanCodec(11,None,11,99))
         p = StrandPrimers(primer5, primer3, h)
         enc = ReedSolomonInnerOuterDecoder(pf,p,k_datastrand=9,e_inner=2,k_index=2)
-        return enc     
+        return enc
 
 
 def read_header(dec_file):
     f = dec_file
     header = {}
     while True:
+        # ugly hack to restore seek position if we fail to match a header line
+        tell = f.tell()
         l = f.readline()
         if l.startswith('%') and 'bytes encoded' in l:
             words = l[1:].split(' ')
@@ -137,6 +172,7 @@ def read_header(dec_file):
             words = l[1:].split(' ')
             header['primer3'] = words[0]
         elif not l.startswith('%'):
+            f.seek(tell) # restore position to beginning of previous read
             break
 
     return header
@@ -147,18 +183,18 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description="Create primers with high likelihood of false binding.")
 
-    parser.add_argument('--o',nargs='?', type=argparse.FileType('w'), default=sys.stdout, help="Output file.")    
-    parser.add_argument('--encode',dest="encode",action="store_true",default=False,help="Encode input file into DNA.")    
-    parser.add_argument('--decode',dest="decode",action="store_true",default=False,help="Decode input file from DNA into original binary form.")    
+    parser.add_argument('--o',nargs='?', type=argparse.FileType('w'), default=sys.stdout, help="Output file.")
+    parser.add_argument('--encode',dest="encode",action="store_true",default=False,help="Encode input file into DNA.")
+    parser.add_argument('--decode',dest="decode",action="store_true",default=False,help="Decode input file from DNA into original binary form.")
 
-    parser.add_argument('--arch',required=True,choices=['UW+MSv1','Illinois','Binary','Goldman','Fountain','RS+CFC8','RS+ROT'])
+    parser.add_argument('--arch',required=True,choices=['UW+MSv1','Illinois','Binary','Dense','NRDense','Goldman','Fountain','RS+CFC8','RS+ROT'])
     parser.add_argument('--filesize',type=int,dest="filesize",action="store",default=0, help="Size of file to decode.")
 
     parser.add_argument('--primer5',dest="primer5",action="store",default="", help="Beginning primer.")
     parser.add_argument('--primer3',dest="primer3",action="store",default="", help="Ending primer.")
     parser.add_argument('input_file', nargs='?', type=argparse.FileType('r'), default=sys.stdin, help='file to be converted')
     args = parser.parse_args()
-    
+
     # Debbuging: did I get the args?
     #print args.o
     #print args.input_file
@@ -167,7 +203,7 @@ if __name__ == "__main__":
     if args.encode and args.decode:
         print "Can't encode and decode at the same time."
         print "Assuming encode and continuing."
-    
+
     if args.encode:
         packetizedFile = ReadPacketizedFilestream(args.input_file)
         enc = build_encode_architecture(args.arch, packetizedFile, args.primer5, args.primer3)
@@ -185,7 +221,7 @@ if __name__ == "__main__":
         else:
             ofile.write("%{} - bytes encoded\n".format(packetizedFile.size))
         ofile.write("%{} - primer 5' end\n".format(args.primer5))
-        ofile.write("%{} - primer 3' end\n".format(args.primer3))        
+        ofile.write("%{} - primer 3' end\n".format(args.primer3))
         for s in strands:
             ofile.write("{}\n".format(s))
         ofile.close()
@@ -201,11 +237,12 @@ if __name__ == "__main__":
                 entries = ",".join(entries)
                 tablefile.wriemate("{},{}\n".format(x,entries))
             tablefile.close()
-                            
+
     elif args.decode:
+
         if args.input_file != sys.stdin:
             h = read_header(args.input_file)
- 
+
         if args.filesize == 0:
             if h.has_key('size'):
                 args.filesize = h['size']
@@ -213,21 +250,21 @@ if __name__ == "__main__":
                 print "Please provide the file's size."
                 sys.exit(-1)
 
-        if args.primer3 == None: 
+        if args.primer3 == None:
             if h.has_key('primer3'):
                 args.primer3 = h['primer3']
             else:
                 print "Please provide primer3."
                 sys.exit(-1)
-                
+
         if args.primer5 == None:
             if h.has_key('primer5'):
                 args.primer5 = h['primer5']
             else:
                 print "Please provide primer3."
-                sys.exit(-1)                
+                sys.exit(-1)
 
-        table = []        
+        table = []
         if args.arch == 'Fountain':
             if args.input_file == sys.stdin:
                 tfile = open("default.table","r")
@@ -235,7 +272,7 @@ if __name__ == "__main__":
                 tfile = open(args.input_file.name+".table","r")
             if tfile == None:
                 print "Please fountain table."
-                sys.exit(-1)                                            
+                sys.exit(-1)
             while True:
                 l = tfile.readline()
                 if l == "":
@@ -258,7 +295,7 @@ if __name__ == "__main__":
             s = s.strip()
             if s.startswith('%'):
                 continue
-            Decoder.decode(s)  
+            Decoder.decode(s)
 
         if args.o == sys.stdout:
             print "".join([ '-' for _ in range(0,80) ])
@@ -267,6 +304,3 @@ if __name__ == "__main__":
 
         if args.o == sys.stdout:
            print ""
-        
-
-

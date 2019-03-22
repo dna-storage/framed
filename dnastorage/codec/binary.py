@@ -6,7 +6,7 @@ def binary_encode(packet):
     array = bytearray(packet)
     strand = []
     for b in array:
-        strand.append( convertBase(2,b,8) )    
+        strand.append( convertBase(2,b,8) )
     return "".join(strand)
 
 
@@ -25,11 +25,11 @@ def binary_decode(strand):
 def binary_rotate_encode(strand,prev='A'):
     values = { 'A' : 0 ,
                'C' : 1 ,
-               'G' : 2 ,  
+               'G' : 2 ,
                'T' : 3   }
     complement = { 'A' : 'T' ,
                'C' : 'G' ,
-               'G' : 'C' ,  
+               'G' : 'C' ,
                'T' : 'A'   }
     counts = { 'A':0, 'G':0,'C':0, 'T':0}
     l = [s for s in strand]
@@ -46,17 +46,17 @@ def binary_rotate_encode(strand,prev='A'):
         else:
             counts[l[i]] += 1
             prev = l[i]
-    print("".join(l))
+    #print("".join(l))
     return "".join(l)
 
 def binary_unrotate_decode(strand):
     values = { 'A' : 0 ,
                'C' : 1 ,
-               'G' : 2 ,  
+               'G' : 2 ,
                'T' : 3   }
     complement = { 'A' : 'A' ,
                'C' : 'C' ,
-               'G' : 'C' ,  
+               'G' : 'C' ,
                'T' : 'A'   }
 
     l = [s for s in strand]

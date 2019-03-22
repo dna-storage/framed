@@ -13,22 +13,25 @@ from dnastorage.util.file_support import *
 from copy import *
 
 class Checksum(BaseCodec):
-    def __init__(self):
+    def __init__(self,nbytes=1):
         BaseCodec.__init__(self,None)
+        self._nbytes = nbytes
 
     def _encode(self,packet):
         key = packet[0]
         value = [x for x in bytearray(packet[1])]
-        chk = sum(value) % 256
-        value.append(chk)
+        chk = convertIntToBytes(sum(value) % 256, self._nbytes)
+        value = value + chk
+        # double check to make sure decoder will work
+        assert convertBytesToInt(value[-self._nbytes:]) == sum(value[:-self._nbytes])% 256
         value = str(bytearray(value))
         return (key,value)
 
     def _decode(self,s):
         key = s[0]
         value = [x for x in bytearray(s[1])]
-        if value[-1] == sum(value[:-1])% 256:        
-            return (key,str(bytearray(value[:-1])))
+        if convertBytesToInt(value[-self._nbytes:]) == sum(value[:-self._nbytes])% 256:
+            return (key,str(bytearray(value[:-self._nbytes])))
         #dont break on a mismatching checksum
         else:
             return None,None
@@ -43,7 +46,7 @@ class StrandPrimers(BaseCodec):
     def _encode(self,packet):
         assert isinstance(packet,str)
         s = self.begin_primer + packet  + self.rc_end_primer
-        return s    
+        return s
     def _decode(self,strand):
         assert isinstance(strand,str)
         if not (self.begin_primer in strand[0:len(self.begin_primer)]):
@@ -57,7 +60,7 @@ class EncodeNaiveStrand(EncodePacketizedFile):
         assert CodecObj!=None
         EncodePacketizedFile.__init__(self,packetizedFile,CodecObj)
         self.index = 0
-        
+
     def __iter__(self):
         EncodePacketizedFile.__iter__(self)
         self.index = 0
@@ -75,7 +78,7 @@ class EncodeNaiveStrand(EncodePacketizedFile):
 class DecodeNaiveStrand(DecodePacketizedFile):
     def __init__(self,packetizedFile,CodecObj):
         assert CodecObj!=None
-        DecodePacketizedFile.__init__(self,packetizedFile,CodecObj)    
+        DecodePacketizedFile.__init__(self,packetizedFile,CodecObj)
 
     def _decode(self, key, value):
         # pass key,value to file writer
@@ -86,7 +89,7 @@ class EncodeGoldmanStrand(EncodePacketizedFile):
         EncodePacketizedFile.__init__(self,packetizedFile,CodecObj)
         self.index = 0
         self._overlap = overlap
-        
+
     def __iter__(self):
         self.index = 0
         return self
@@ -110,13 +113,13 @@ class DecodeGoldmanStrand(DecodePacketizedFile):
     def __init__(self,packetizedFile,overlap,CodecObj):
         DecodePacketizedFile.__init__(self,packetizedFile,CodecObj)
         self._overlap = overlap
-        
+
 
     def _decode(self, key, value):
         self._data[key] = value
         packetSize = self._packetizedFile.packetSize
         mod = self._packetizedFile.numberOfPackets
-        for i in range (self._overlap):            
+        for i in range (self._overlap):
             if not self._packetizedFile.has_key((key+i)%mod):
                 self._packetizedFile[(key+i)%mod] = value[i*packetSize:(i+1)*packetSize]
 
@@ -131,7 +134,7 @@ class EncodeXORStrand(EncodePacketizedFile):
     def __init__(self,packetizedFile,CodecObj):
         EncodePacketizedFile.__init__(self,packetizedFile,CodecObj)
         self.index = 0
-        
+
     def __iter__(self):
         self.index = 0
         return self
@@ -153,7 +156,7 @@ class EncodeXORStrand(EncodePacketizedFile):
         else:
             s1 = self._packetizedFile[self.index/2]
             s2 = self._packetizedFile[self.index/2+1]
-            l = [x^y for x,y in zip(bytearray(s1),bytearray(s2))]            
+            l = [x^y for x,y in zip(bytearray(s1),bytearray(s2))]
         key = self.index
         self.index+=1
         return (key,str(bytearray(l)))
@@ -163,7 +166,7 @@ class DecodeXORStrand(DecodePacketizedFile):
         DecodePacketizedFile.__init__(self,packetizedFile,CodecObj)
         self._num_XOR_used=0
     def _decode(self, key, value):
-        if key % 2 == 0:        
+        if key % 2 == 0:
             #self.decode(key,value)
             self._data[key] = value
             self._packetizedFile[key/2] = value
@@ -173,7 +176,7 @@ class DecodeXORStrand(DecodePacketizedFile):
     def assemble(self,m1,m2):
         s1 = self._data[m1]
         s2 = self._data[m2]
-        l = [x^y for x,y in zip(bytearray(s1),bytearray(s2))]  
+        l = [x^y for x,y in zip(bytearray(s1),bytearray(s2))]
         return str(bytearray(l))
 
     def write(self):
@@ -184,7 +187,7 @@ class DecodeXORStrand(DecodePacketizedFile):
                 missing = self._packetizedFile.getMissingKeys()
                 missing = [ 2*m for m in missing ]
                 for m in missing:
-                    assert self._data.has_key(m)==False                
+                    assert self._data.has_key(m)==False
                     # strategy one: check m-1 and m-2
                     if self._data.has_key(m-1) and self._data.has_key(m-2):
                         changes=True
@@ -202,7 +205,7 @@ class DecodeXORStrand(DecodePacketizedFile):
             assert self._packetizedFile.complete
         DecodePacketizedFile.write(self)
 
-    
+
     #dummy writes are needed for all architectures to be evaluated by FI tools
     def dummy_write(self):
         changes=True
@@ -212,7 +215,7 @@ class DecodeXORStrand(DecodePacketizedFile):
                 missing = self._packetizedFile.getMissingKeys()
                 missing = [ 2*m for m in missing ]
                 for m in missing:
-                    assert self._data.has_key(m)==False                
+                    assert self._data.has_key(m)==False
                     # strategy one: check m-1 and m-2
                     if self._data.has_key(m-1) and self._data.has_key(m-2):
                         changes=True
@@ -229,7 +232,7 @@ class DecodeXORStrand(DecodePacketizedFile):
                         self._num_XOR_used+=1
                 #print self._num_XOR_used
         return(DecodePacketizedFile.dummy_write(self))
-        
+
 
 class EncodeFountainStrand(EncodePacketizedFile):
     def __init__(self,packetizedFile,factor,CodecObj):
@@ -244,18 +247,18 @@ class EncodeFountainStrand(EncodePacketizedFile):
 
     def getTable(self):
         return self.fountain.getTable()
-        
+
     def next(self):
         if self.fountain.numStrands >= self._packetizedFile.numberOfPackets:
-            can = self.fountain.canDecode() 
-            if can and self.fountain.numStrands >= self.maxStrands:            
+            can = self.fountain.canDecode()
+            if can and self.fountain.numStrands >= self.maxStrands:
                 raise StopIteration()
         packet = self.encode()
         return packet
 
     def _encode(self):
         assert False
-        
+
     def encode(self):
         fails = 1
         while True:
@@ -285,10 +288,10 @@ class EncodeFountainStrand(EncodePacketizedFile):
     def tryEncode(self):
         strands = []
         if self.fountain.numStrands >= self._packetizedFile.numberOfPackets:
-            if not self.fountain.canDecode():        
+            if not self.fountain.canDecode():
                 m = self.fountain.getMissing()
                 if len(m) > 0:
-                    strands = m[0:1] 
+                    strands = m[0:1]
             else:
                 strands = self.fountain.next()
         else:
@@ -298,16 +301,16 @@ class EncodeFountainStrand(EncodePacketizedFile):
         if len(strands) > 1:
             for s in strands[1:]:
                 l2 = self._packetizedFile[ s ]
-                xor = [x^y for x,y in zip(bytearray(l),bytearray(l2))]            
+                xor = [x^y for x,y in zip(bytearray(l),bytearray(l2))]
                 l = bytearray(xor)
-        
+
         return (self.index,str(bytearray(l))),strands
 
 class DecodeFountainStrand(DecodePacketizedFile):
     def __init__(self,packetizedFile,table,CodecObj):
         DecodePacketizedFile.__init__(self,packetizedFile,CodecObj)
         self._lookup = { x[0] : copy(x[1]) for x in table}
-    
+
     def _updateAllData(self):
         visit = [ i for i in range(self._packetizedFile.numberOfPackets) ]
         while len(visit)>0:
@@ -326,7 +329,7 @@ class DecodeFountainStrand(DecodePacketizedFile):
                     if i == index:
                         val = bytearray(self._data[item[0]])
                         val2 = bytearray(value)
-                        xor = [x^y for x,y in zip(bytearray(val),bytearray(val2))]            
+                        xor = [x^y for x,y in zip(bytearray(val),bytearray(val2))]
                         self._data[item[0]] = bytearray(xor)
                         item[1].remove(i)
                 if len(item[1])==1:
@@ -336,7 +339,7 @@ class DecodeFountainStrand(DecodePacketizedFile):
         return visited
 
     def _decode(self, key, value):
-        self._data[key] = value        
+        self._data[key] = value
         assert self._lookup.has_key(key)
         l = self._lookup[key]
         if len(l)==1:
@@ -353,15 +356,15 @@ class DecodeFountainStrand(DecodePacketizedFile):
 if __name__ == "__main__":
     import os
     import sys
-    from random import randint    
-    
+    from random import randint
+
 
     illini = illinois.IllinoisCodec('AGGTCGGACAACGCCTTAAG',150,Checksum())
 
     d = dense.DenseCodec(Checksum())
     #h = huffman.HuffmanRotateCodec(huffman.HuffmanCodec(23,Checksum()))
 
-    #enc = EncodeFountainStrand(sys.argv[1],22,1.5,h)    
+    #enc = EncodeFountainStrand(sys.argv[1],22,1.5,h)
 
     b = binary.BinaryRotateCodec(binary.BinaryCodec(Checksum()))
     h = huffman.HuffmanRotateCodec(huffman.HuffmanCodec(21,Checksum()))
@@ -380,7 +383,7 @@ if __name__ == "__main__":
     for s in enc:
         strands.append(s)
         print "{}. ({}) - {}".format(i,len(s),s)
-        #if i % 5 != 0 or i == 0 or i > 500:            
+        #if i % 5 != 0 or i == 0 or i > 500:
         #    dec.decodeStrand(s)
         i += 1
 
@@ -389,8 +392,8 @@ if __name__ == "__main__":
         dec.decode(s)
     dec.write()
 
-    #enc = EncodeXORHuffmanStrand(sys.argv[1],136)    
-    #enc1 = EncodeXORHuffmanStrand("out.d",136)        
+    #enc = EncodeXORHuffmanStrand(sys.argv[1],136)
+    #enc1 = EncodeXORHuffmanStrand("out.d",136)
     #i = 0
     #for x,y in zip(enc,enc1):
     #    if x != y:
