@@ -1,6 +1,7 @@
 from dnastorage.fi import fault_injector
 from dnastorage.codec import dense
 from dnastorage.codec import commafreecodec
+from dnastorage.codec import norepeatscodec
 from dnastorage.codec import illinois
 from dnastorage.codec import binary
 from dnastorage.codec import huffman
@@ -52,12 +53,19 @@ def build_decode_architecture(arch, pf, primer5, primer3, fountain_table=None):
         h = huffman.RotateCodec(huffman.HuffmanCodec(23,Checksum()))
         p = StrandPrimers(primer5, primer3, h)
         pf.packetSize = 22
-        enc = DecodeFountainStrand(pf,fountain_table,p)    
+        enc = DecodeFountainStrand(pf,fountain_table,p)
         return enc
 
     elif arch == 'NCState':
         assert False and "Not fully implemented"
         return None
+
+    elif arch == 'NRDense':
+        b = norepeatscodec.NoRepeatCodec(Checksum(2))
+        p = StrandPrimers(primer5, primer3, b)
+        pf.packetSize = 28
+        dec = DecodeNaiveStrand(pf,p)
+        return dec
 
     elif arch == 'RS+CFC8':
         b = commafreecodec.CommaFreeCodec(13,None,2)
@@ -68,7 +76,7 @@ def build_decode_architecture(arch, pf, primer5, primer3, fountain_table=None):
         h = huffman.RotateCodec(huffman.HuffmanCodec(11,None,11,99))
         p = StrandPrimers(primer5, primer3, h)
         enc = ReedSolomonInnerOuterDecoder(pf,p,k_datastrand=9,e_inner=2,k_index=2)
-        return enc     
+        return enc
 
 
 def read_header(dec_file):
@@ -95,8 +103,8 @@ def read_header(dec_file):
     return header
 
 #function that will add arguments to args by reading the header if needed, also returns a clean packetizedFile, clean Decoder object and a set of clean strands
-#required for determining correctness when compared to faulty runs   
-def clean_run(args): 
+#required for determining correctness when compared to faulty runs
+def clean_run(args):
     if args.input_file != sys.stdin:
         h = read_header(args.input_file)
 
@@ -107,7 +115,7 @@ def clean_run(args):
             print "Please provide the file's size."
             sys.exit(-1)
 
-    if args.primer3 == None: 
+    if args.primer3 == None:
         if h.has_key('primer3'):
             args.primer3 = h['primer3']
         else:
@@ -119,9 +127,9 @@ def clean_run(args):
             args.primer5 = h['primer5']
         else:
             print "Please provide primer3."
-            sys.exit(-1)                
+            sys.exit(-1)
 
-    table = []        
+    table = []
     if args.arch == 'Fountain':
         if args.input_file == sys.stdin:
             tfile = open("default.table","r")
@@ -129,7 +137,7 @@ def clean_run(args):
             tfile = open(args.input_file.name+".table","r")
         if tfile == None:
             print "Please fountain table."
-            sys.exit(-1)                                            
+            sys.exit(-1)
         while True:
             l = tfile.readline()
             if l == "":
@@ -140,11 +148,11 @@ def clean_run(args):
         #print table
 
     clean_packetizedFile = WritePacketizedFilestream(args.o,args.filesize,20)
-    
+
     clean_Decoder = build_decode_architecture(args.arch, clean_packetizedFile, args.primer5, args.primer3,table)
 
     ii = 0
-    #initial_strands will hold the initial strands of the input file before fault injection 
+    #initial_strands will hold the initial strands of the input file before fault injection
     initial_strands=[]
     while not clean_Decoder.complete:
         s = args.input_file.readline()
@@ -154,12 +162,12 @@ def clean_run(args):
         s = s.strip()
         if s.startswith('%'):
             continue
-        
+
         initial_strands.append(s)
-        clean_Decoder.decode(s)  
+        clean_Decoder.decode(s)
 
     clean_file=clean_Decoder.dummy_write()
-    
+
     return clean_file,initial_strands,clean_Decoder
 
 
@@ -200,26 +208,26 @@ def build_strand_handler(strand_handler,Codec):
 
 
 
-#function to wrap the process of running many strand_fault and missing_strand fault model simulations 
+#function to wrap the process of running many strand_fault and missing_strand fault model simulations
 def run_monte_MS(args,desired_faulty_count,clean_strands,clean_file,data_keeper,strand_handler,fault_model,desired_faults_per_strand=None):
     #run many simulations to perform statistical analysis
     table=[]
-    
+
     if desired_faults_per_strand is not None:
         fault_model.set_faults_per_strand(desired_faults_per_strand)
 
-        
+
     for sim_number in range(0,args.num_sims):
-      
+
         #build a "dirty" decoder and packetizedFile for each run
         dirty_packetizedFile= WritePacketizedFilestream(args.o,args.filesize,20)
         dirty_Decoder = build_decode_architecture(args.arch, dirty_packetizedFile, args.primer5, args.primer3,table)
-        
-        
+
+
         #get a new pool of strands based on the negative binomial distribution
         multiple_strand_pool,pool_size=distribute_reads(clean_strands,read_randomizer)
 
-        
+
         # make sure we do not select more strands than pool size
         if pool_size<desired_faulty_count:
             fault_model.set_faulty_missing(pool_size,pool_size)
@@ -233,7 +241,7 @@ def run_monte_MS(args,desired_faulty_count,clean_strands,clean_file,data_keeper,
         #print len(strands_after_faults)
         #call the strand handler, will return either key,value pairs or strands
         processed_strands=strand_handler.process_tuple(strands_after_faults)
-        
+
         #Hand the processed strands off to decoding
         for proc in processed_strands:
             if type(proc) is tuple:
@@ -263,27 +271,27 @@ def run_monte_MS(args,desired_faulty_count,clean_strands,clean_file,data_keeper,
 
 
 
-#function for running monte carlo simulations for a fixed rate fault model 
+#function for running monte carlo simulations for a fixed rate fault model
 def run_monte_rate(args,clean_strands,clean_file,data_keeper,strand_handler,fault_model,error_rate):
     #run many simulations to perform statistical analysis
     table=[]
     dist=[]
     fault_model.set_fault_rate(error_rate)
     for sim_number in range(0,args.num_sims):
-      
+
         #build a "dirty" decoder and packetizedFile for each run
         dirty_packetizedFile= WritePacketizedFilestream(args.o,args.filesize,20)
         dirty_Decoder = build_decode_architecture(args.arch, dirty_packetizedFile, args.primer5, args.primer3,table)
         #get a new pool of strands based on the negative binomial distribution
         multiple_strand_pool,dist=distribute_reads(clean_strands,read_randomizer,False)
-        
+
         #set the fault_model's library to the new strand pool
         fault_model.set_library(multiple_strand_pool)
         strands_after_faults=fault_model.Run()
-        
+
         #call the strand handler, will return either key,value pairs or strands
         processed_strands=strand_handler.process(strands_after_faults)
-        
+
         #Hand the processed strands off to decoding
         for proc in processed_strands:
             if type(proc) is tuple:
@@ -305,9 +313,9 @@ def run_monte_rate(args,clean_strands,clean_file,data_keeper,strand_handler,faul
     prob=data_keeper.get_probability_value()
     data_keeper.insert_probability_point((error_rate,prob))
     data_keeper.clear_probability_results()
-    
 
- 
+
+
 '''
 Main file for injecting faults into an input DNA file, 3 available options are available
 
@@ -330,29 +338,29 @@ if __name__ == "__main__":
     parser.add_argument('--fault_rate_file', dest="fault_file",action="store", default=None, help='file to have fault rate per nucleotide')
     parser.add_argument('--fault_model',required=True,choices=['miss_strand','strand_fault','combo','fixed_rate'])
     parser.add_argument('--run',action="store_true",help="Should strand_fault faults be in a run")
-    parser.add_argument('--faulty_count',dest="faulty",action="store",default='10-10',help="range to sweep the number of faulty/missing strands")    
+    parser.add_argument('--faulty_count',dest="faulty",action="store",default='10-10',help="range to sweep the number of faulty/missing strands")
     parser.add_argument('--fail_count',dest="fails",action="store",default='2-2',help="range to sweep the number of nucleotide errors ")
     parser.add_argument('--faulty_step',dest="faulty_step",action="store",type=int,default=1,help="Step size through strand range")
     parser.add_argument('--fail_step',dest="fails_step",type=int,action="store",default=1,help="Step size through nucleotide range")
     parser.add_argument('--fault_rate',dest="rate",action="store",default='0.001-0.001',help="range to sweep the fault rate")
     parser.add_argument('--rate_step',dest="rate_step",type=float,action="store",default=0.001,help="Step size through fault rate range")
-    
+
 
     parser.add_argument('--filesize',type=int,dest="filesize",action="store",default=0, help="Size of file to decode.")
     parser.add_argument('--primer5',dest="primer5",action="store",default=None, help="Beginning primer.")
     parser.add_argument('--primer3',dest="primer3",action="store",default=None, help="Ending primer.")
-    parser.add_argument('--primer1_length',dest="p1",action="store",type=int,default=20,help="Length of primer1 (total, so if hierarchy set to 40 instead of 20)")    
-    parser.add_argument('--primer2_length',dest="p2",action="store",type=int,default=20,help="Length of primer2, for all our experiments this will be set to 20")    
-    parser.add_argument('--seq_mean',dest="mean",action="store",type=float,default=0,help="Mean of the sequencing distribution,set to 0 to deactivate distribution")    
-    parser.add_argument('--seq_var',dest="var",action="store",type=float,default=4.3,help="Variance of the sequencing distribution, set to 0 to deactivate distribution") 
-    parser.add_argument('--simulation_runs',dest="num_sims",action="store",type=int,default=10000,help="Number of simulations to run")    
-    parser.add_argument('--o',nargs='?', type=argparse.FileType('w'), default=sys.stdout, help="Output file.")    
-    parser.add_argument('--arch',required=True,choices=['UW+MSv1','Illinois','Binary','Goldman','Fountain','RS+CFC8','RS+ROT'])
-    parser.add_argument('input_file', nargs='?', type=argparse.FileType('r'), default=sys.stdin, help='Clean strands file') 
+    parser.add_argument('--primer1_length',dest="p1",action="store",type=int,default=20,help="Length of primer1 (total, so if hierarchy set to 40 instead of 20)")
+    parser.add_argument('--primer2_length',dest="p2",action="store",type=int,default=20,help="Length of primer2, for all our experiments this will be set to 20")
+    parser.add_argument('--seq_mean',dest="mean",action="store",type=float,default=0,help="Mean of the sequencing distribution,set to 0 to deactivate distribution")
+    parser.add_argument('--seq_var',dest="var",action="store",type=float,default=4.3,help="Variance of the sequencing distribution, set to 0 to deactivate distribution")
+    parser.add_argument('--simulation_runs',dest="num_sims",action="store",type=int,default=10000,help="Number of simulations to run")
+    parser.add_argument('--o',nargs='?', type=argparse.FileType('w'), default=sys.stdout, help="Output file.")
+    parser.add_argument('--arch',required=True,choices=['UW+MSv1','Illinois','Binary','Goldman','Fountain','RS+CFC8','RS+ROT','NRDense'])
+    parser.add_argument('input_file', nargs='?', type=argparse.FileType('r'), default=sys.stdin, help='Clean strands file')
     parser.add_argument('--strand_handler',required=True,choices=['simple','data_vote_simple','nuc_vote_simple'])
     parser.add_argument('--fileID',action="store",default='1',help="ID for the input file")
-    
-    
+
+
     args = parser.parse_args()
 
     #Parse the ranges for the nucleotide errors count and number of strands to be selected
@@ -367,7 +375,7 @@ if __name__ == "__main__":
     rate_lower,rate_upper=args.rate.split('-')
     rate_lower=float(rate_lower)
     rate_upper=float(rate_upper)+args.rate_step
-    
+
     model_name= args.fault_model
 
     #set up fault injection arguments, note this is just to initialize some variables in the fault model object
@@ -388,7 +396,7 @@ if __name__ == "__main__":
         print "Couldn't run fault model '%s'. Class '%s' doesn't exist in fault_injector.py" % \
         (args.fault_model, model_name)
         sys.exit(1)
-    
+
     #clean_Decoder will buffer the clean_packetizedFile we will use to compare with the faulty file
     clean_file,clean_strands,clean_Decoder=clean_run(args)
 
@@ -409,7 +417,7 @@ if __name__ == "__main__":
         #initialize the data helper object
         data_keeper=data_helper(args.fileID,args.arch,args.strand_handler,args.mean,args.var,args.fault_model,args.num_sims,strand_range=args.faulty,nuc_range=args.fails,rate_range=args.rate)
         for n in range(nuc_lower,nuc_upper,args.fails_step):
-            for s in range(strand_lower,strand_upper,args.faulty_step): 
+            for s in range(strand_lower,strand_upper,args.faulty_step):
                 run_monte_MS(args,s,clean_strands,clean_file,data_keeper,strand_handler,fault_model,n)
 
     elif args.fault_model == "fixed_rate":
@@ -417,5 +425,5 @@ if __name__ == "__main__":
         data_keeper=data_helper(args.fileID,args.arch,args.strand_handler,args.mean,args.var,args.fault_model,args.num_sims,strand_range=args.faulty,nuc_range=args.fails,rate_range=args.rate)
         for error_rate in np.arange(rate_lower,rate_upper,args.rate_step):
              run_monte_rate(args,clean_strands,clean_file,data_keeper,strand_handler,fault_model,error_rate)
-        
+
     data_keeper.dump()
