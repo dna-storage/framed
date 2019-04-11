@@ -3,10 +3,15 @@ import Levenshtein as lv
 import numpy as np
 import matplotlib.pyplot as plt
 import operator
-#this cluster analysis technique tries to come up with a way to extract the correct strand using the context of all the other strands in the cluster. The idea is to try to understand what edits need to be done to transform a strand to the original strand.
+'''
+This is a edit-distance based reconstruction technique that uses the edit operations
+returned from the edit distance algorithm in order to reconstruct the original strand using
+an aggregation of information from all other strands within the cluster. This is a totally global
+approach that calculates the edit distance for the whole strand.
+'''    
 def cluster_analyze_ed(strand_cluster,rate,expected_length,iterations):
 
-    thresh=10#len(strand_cluster)*(1-rate**2*expected_length)
+    thresh=40#len(strand_cluster)*(1-rate**2*expected_length)
     _strand_cluster=strand_cluster
     for i in range(0,iterations):
         _strand_cluster_new=[]
@@ -54,7 +59,12 @@ def cluster_analyze_ed(strand_cluster,rate,expected_length,iterations):
         _strand_cluster=list(_strand_cluster_new)
 
 
-def cluster_analyze_majority(strand_cluster,strand_length):
+'''
+This is a simple implementation of BMA using only local information surrounding a suspeciting error.
+Local information is aggregated from strands who were in the majority at a certain step, and this
+aggregate information is used to determine what the out-of-majority strand should do
+'''     
+def cluster_analyze_majority(strand_cluster,strand_length): 
     final_strand=[]
     pointer_list=[0]*len(strand_cluster)
     majority_vote={"A":0,"G":0,"C":0,"T":0}
@@ -100,6 +110,77 @@ def cluster_analyze_majority(strand_cluster,strand_length):
                 pointer_list[cluster_strand_index]=min(len(cluster_strand)-1,pointer_list[cluster_strand_index]+1)
     return "".join(final_strand)
 
+'''
+This is a reconstruction technique that combines both the idea of BMA where pointers are kept for each strand,
+but when a strand is no longer in the majority try to use a longer scope to determine the error. That is, utilize the 
+edit distance calculation, but only on out-of-majority strands and only calculate edit distance on small chunks.
+This aims to utilize the simplicity of BMA, but the precision of the trace through and edit operation matrix.
+'''
+
+def cluster_analyze_majority_ed(strand_cluster,strand_length):
+    final_strand=[]
+    pointer_list=[0]*len(strand_cluster)
+    majority_vote={"A":0,"G":0,"C":0,"T":0}
+    fix_error={"del":0,"inser":0,"sub":0}
+    lookahead=5 #the number of bses to consider when doing an alignment adjustment
+    for final_strand_index in range(0,strand_length):
+        majority_vote["A"]=0
+        majority_vote["G"]=0
+        majority_vote["C"]=0
+        majority_vote["T"]=0
+        for cluster_strand_index, cluster_strand in enumerate(strand_cluster):
+            majority_vote[cluster_strand[pointer_list[cluster_strand_index]]]+=1 #sum up across all the current pointers
+
+        #apply the majority vote
+        majority_base=max(majority_vote.iteritems(), key=operator.itemgetter(1))[0];
+        final_strand.append(majority_base)
+        for cluster_strand_index, cluster_strand in enumerate(strand_cluster):
+            if cluster_strand[pointer_list[cluster_strand_index]]!=majority_base:
+                fix_error["del"]=0
+                fix_error["inser"]=0
+                fix_error["sub"]=0
+                #instead of lookng at global info, look ahead and apply edit distance at a small local distance
+                for cluster_strand_index_fix, cluster_strand_fix in enumerate(strand_cluster):
+                    fix_max_index=min(len(cluster_strand_fix),pointer_list[cluster_strand_index_fix]+lookahead)
+                    cluster_max_index=min(len(cluster_strand),pointer_list[cluster_strand_index]+lookahead)                    
+                    if cluster_strand_fix[pointer_list[cluster_strand_index_fix]]==majority_base:
+                        eds=lv.editops(cluster_strand[pointer_list[cluster_strand_index]:cluster_max_index],cluster_strand_fix[pointer_list[cluster_strand_index_fix]:fix_max_index])
+                        for edit in eds:
+                            if edit[1]==0:
+                                edit_type=edit[0]
+                                #print edit_type
+                                #print cluster_strand[pointer_list[cluster_strand_index]:cluster_max_index]
+                                #print cluster_strand_fix[pointer_list[cluster_strand_index_fix]:fix_max_index]
+                                if edit_type=='insert':
+                                    fix_error["del"]+=1
+                                elif edit_type=='delete':
+                                    fix_error["inser"]+=1
+                                elif edit_type=='replace':
+                                    fix_error["sub"]+=1
+                majority_fix=max(fix_error.iteritems(), key=operator.itemgetter(1))[0]
+                if majority_fix=="inser":
+                    pointer_list[cluster_strand_index]=min(len(cluster_strand)-1,pointer_list[cluster_strand_index]+2)
+                elif majority_fix=="sub":
+                    pointer_list[cluster_strand_index]=min(len(cluster_strand)-1,pointer_list[cluster_strand_index]+1)
+            else:
+                #just increment if it is in the majority
+                pointer_list[cluster_strand_index]=min(len(cluster_strand)-1,pointer_list[cluster_strand_index]+1)
+    return "".join(final_strand)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
         
 if __name__=="__main__":
@@ -125,7 +206,7 @@ if __name__=="__main__":
     fault_model=eval('fault_injector.'+"fixed_rate"+"(injector_args)")
     data_set={}
     
-    for strand_count_step in range(60,80,5):
+    for strand_count_step in range(5,30,5):
         if strand_count_step not in data_set:
             data_set[str(strand_count_step)+"_strands"]=[]
         base_set=[base_strand for i in range(0,strand_count_step)]
@@ -144,6 +225,8 @@ if __name__=="__main__":
                     return_strand=cluster_analyze_ed(error_set,rate_step,200,1)
                 elif args.cluster_type=="BMA":
                     return_strand=cluster_analyze_majority(error_set,200)
+                elif args.cluster_type=="BMA_ED":
+                    return_strand=cluster_analyze_majority_ed(error_set,200)
                 distance_after=lv.distance(return_strand,base_strand)
                 if distance_after==0:
                     correct_count+=1
