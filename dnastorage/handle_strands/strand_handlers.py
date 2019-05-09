@@ -17,10 +17,10 @@ class data_vote_simple:
     def process(self,strands):
         key_value={}
         key_val_array=[]
-        print "processing strands"
+        #print "processing strands"
         #seperare the strands up to their indexes
         for s in strands:
-            print "get key,value for strand {}".format(s)
+            #print "get key,value for strand {}".format(s)
             key,value=self._Codec.decode(s)
             #print value
             if key not in key_value and key is not None and value is not None:
@@ -28,11 +28,11 @@ class data_vote_simple:
                 key_value[key].append(value)
             elif key is not None and value is not None:
                 key_value[key].append(value)
-            print "stored key,value"
+            #print "stored key,value"
         #go through each index and figure out the majority data
         for key in key_value:
             data=[]
-            print "processing key values"
+            #print "processing key values"
             for x in range(0,len(key_value[key][0])):
                 #get a list of values that belong to the same location
                 same_position_values=[data_strand[x] for data_strand in key_value[key]]
@@ -109,9 +109,9 @@ class clustering_handler:
                 s=cluster_analyze_ed(strand_cluster,200,2)
             corrected_strand_array.append(s)
             strand_cluster=self._cluster_algorithm.get_cluster()
-        print "analyzing corrected strands"
+        #print "analyzing corrected strands"
         key_value_data=self._data_vote.process(corrected_strand_array)
-        print key_value_data
+        #print key_value_data
         return key_value_data
  
 

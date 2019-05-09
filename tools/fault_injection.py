@@ -288,6 +288,7 @@ def run_monte_rate(args,clean_strands,clean_file,data_keeper,strand_handler,faul
     table=[]
     dist=[]
     fault_model.set_fault_rate(error_rate)
+    print "Running Monte Carlo sim for error rate {}".format(error_rate)
     for sim_number in range(0,args.num_sims):
         print "Monte Carlo Sim: {}".format(sim_number)
         #build a "dirty" decoder and packetizedFile for each run
