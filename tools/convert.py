@@ -1,7 +1,6 @@
 #!/usr/bin/python
-
-from dnastorage.codec import dense
 from dnastorage.codec import norepeatscodec
+from dnastorage.codec import dense
 from dnastorage.codec import commafreecodec
 from dnastorage.codec import illinois
 from dnastorage.codec import binary

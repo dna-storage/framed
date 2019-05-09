@@ -9,9 +9,9 @@ returned from the edit distance algorithm in order to reconstruct the original s
 an aggregation of information from all other strands within the cluster. This is a totally global
 approach that calculates the edit distance for the whole strand.
 '''    
-def cluster_analyze_ed(strand_cluster,rate,expected_length,iterations):
+def cluster_analyze_ed(strand_cluster,expected_length,iterations):
 
-    thresh=40#len(strand_cluster)*(1-rate**2*expected_length)
+    thresh=40
     _strand_cluster=strand_cluster
     for i in range(0,iterations):
         _strand_cluster_new=[]
@@ -122,7 +122,7 @@ def cluster_analyze_majority_ed(strand_cluster,strand_length):
     pointer_list=[0]*len(strand_cluster)
     majority_vote={"A":0,"G":0,"C":0,"T":0}
     fix_error={"del":0,"inser":0,"sub":0}
-    lookahead=5 #the number of bses to consider when doing an alignment adjustment
+    lookahead=20 #the number of bses to consider when doing an alignment adjustment
     for final_strand_index in range(0,strand_length):
         majority_vote["A"]=0
         majority_vote["G"]=0
@@ -171,18 +171,6 @@ def cluster_analyze_majority_ed(strand_cluster,strand_length):
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-        
 if __name__=="__main__":
     base_strand="ATCCTACTCCAGCGGGATCTTTTATCTAAAGACGATGAGAGGAGTATTCGTCAGGCCACATAGCTTTCATGTTCTGATCGGAACGATCGTTGGCGCCCGACCCTCGGATTCCGTAGTGAGTTCTTTGTCCGAGCCATTGTATGCGAGATCGGTAGACTGATAGGGGATGCAGTATATCCCTGGATGCAATAGACGGACAG"
 
@@ -206,7 +194,7 @@ if __name__=="__main__":
     fault_model=eval('fault_injector.'+"fixed_rate"+"(injector_args)")
     data_set={}
     
-    for strand_count_step in range(5,30,5):
+    for strand_count_step in range(30,40,5):
         if strand_count_step not in data_set:
             data_set[str(strand_count_step)+"_strands"]=[]
         base_set=[base_strand for i in range(0,strand_count_step)]
@@ -215,14 +203,14 @@ if __name__=="__main__":
             hist_fig, hist_axes=plt.subplots(nrows=1, ncols=1)
             distance_after_array=[]
             distance_before_array=[]
-            for trial_number in range(0,100):
+            for trial_number in range(0,10000):
                 fault_model.set_fault_rate(rate_step)
                 fault_model.set_library(base_set)
                 error_set=fault_model.Run()
                 distance_before=lv.distance(error_set[0],base_strand)
                 distance_before_array.append(distance_before)
                 if args.cluster_type=="ed":
-                    return_strand=cluster_analyze_ed(error_set,rate_step,200,1)
+                    return_strand=cluster_analyze_ed(error_set,200,1)
                 elif args.cluster_type=="BMA":
                     return_strand=cluster_analyze_majority(error_set,200)
                 elif args.cluster_type=="BMA_ED":
@@ -241,7 +229,7 @@ if __name__=="__main__":
             hist_fig.savefig("hist_after_rate_"+str(rate_step)+".png")
 
             
-            percent_correct=100.0*(float(correct_count)/100.0)
+            percent_correct=100.0*(float(correct_count)/10000.0)
             data_set[str(strand_count_step)+"_strands"].append(percent_correct)
             
     rate_array=np.arange(0.01,0.07,0.01)

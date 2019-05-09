@@ -11,9 +11,9 @@ from dnastorage.arch.strand import *
 from dnastorage.primer.primer_util import *
 from dnastorage.util.neg_binomial_gen import *
 from dnastorage.handle_strands.strand_handlers import *
+from dnastorage.handle_strands.cluster import *
 from dnastorage.util.data_fi import *
 import numpy as np
-
 import sys
 import os
 import time
@@ -145,7 +145,7 @@ def clean_run(args):
             x = [int(y) for y in l.split(',')]
             table.append( [x[0],x[1:]] )
         tfile.close()
-        #print table
+
 
     clean_packetizedFile = WritePacketizedFilestream(args.o,args.filesize,20)
 
@@ -199,11 +199,23 @@ def distribute_reads(strands,neg_bin_randomizer,tuple_format=True):
             pool_size+=strand[1]
         return new_pool,pool_size
 
-def build_strand_handler(strand_handler,Codec):
+#builds the correct class for handling a set of dirty strands
+def build_strand_handler(strand_handler,Codec,cluster_algorithm):
     if strand_handler == "data_vote_simple":
         return data_vote_simple(Codec)
+    elif strand_handler == "cluster_BMA":
+        return clustering_handler(Codec,"BMA",cluster_algorithm)
+    elif strand_handler=="cluster_BMA_ED":
+        return clustering_handler(Codec,"BMA_ED",cluster_algorithm)
+    elif strand_handler=="cluster_ED":
+        return clustering_handler(Codec,"ED",cluster_algorithm)
 
-
+#builds the class used by strand handlers that contains the interfaces
+#to the clustering algorithms
+def build_cluster_algorithm(cluster_algorithm):
+    if cluster_algorithm=="starcode_MP":
+        return starcode("MP")
+    
 
 
 
@@ -252,8 +264,7 @@ def run_monte_MS(args,desired_faulty_count,clean_strands,clean_file,data_keeper,
         bad_file=dirty_Decoder.dummy_write()
         percent_correct=data_keeper.calculate_correctness(bad_file,clean_file)
         data_keeper.insert_correctness_result(percent_correct)
-
-
+        
     #grab an example of the distribution that was used
     data_keeper.set_distribution(multiple_strand_pool)
     #keep track of correctness results
@@ -278,7 +289,7 @@ def run_monte_rate(args,clean_strands,clean_file,data_keeper,strand_handler,faul
     dist=[]
     fault_model.set_fault_rate(error_rate)
     for sim_number in range(0,args.num_sims):
-
+        print "Monte Carlo Sim: {}".format(sim_number)
         #build a "dirty" decoder and packetizedFile for each run
         dirty_packetizedFile= WritePacketizedFilestream(args.o,args.filesize,20)
         dirty_Decoder = build_decode_architecture(args.arch, dirty_packetizedFile, args.primer5, args.primer3,table)
@@ -298,6 +309,7 @@ def run_monte_rate(args,clean_strands,clean_file,data_keeper,strand_handler,faul
                 dirty_Decoder.decode(None,bypass=True,input_key=proc[0],input_value=proc[1])
             else:
                 dirty_Decoder.decode(proc)
+        print "Finished decoding erroneous file"
         #perform a dummy write
         bad_file=dirty_Decoder.dummy_write()
         percent_correct=data_keeper.calculate_correctness(bad_file,clean_file)
@@ -325,7 +337,7 @@ fixed_rate --- fixed fault rate applied to each nucleotide in each strand.
 
 Combo fault mode will not be supported immediately for fault injection due to the current run-time constraints
 
-miss_strand will eventually be supported, as will the fault rate file miss strand mode
+miss_strand will eventually be supported
 
 
 '''
@@ -344,8 +356,6 @@ if __name__ == "__main__":
     parser.add_argument('--fail_step',dest="fails_step",type=int,action="store",default=1,help="Step size through nucleotide range")
     parser.add_argument('--fault_rate',dest="rate",action="store",default='0.001-0.001',help="range to sweep the fault rate")
     parser.add_argument('--rate_step',dest="rate_step",type=float,action="store",default=0.001,help="Step size through fault rate range")
-
-
     parser.add_argument('--filesize',type=int,dest="filesize",action="store",default=0, help="Size of file to decode.")
     parser.add_argument('--primer5',dest="primer5",action="store",default=None, help="Beginning primer.")
     parser.add_argument('--primer3',dest="primer3",action="store",default=None, help="Ending primer.")
@@ -357,7 +367,8 @@ if __name__ == "__main__":
     parser.add_argument('--o',nargs='?', type=argparse.FileType('w'), default=sys.stdout, help="Output file.")
     parser.add_argument('--arch',required=True,choices=['UW+MSv1','Illinois','Binary','Goldman','Fountain','RS+CFC8','RS+ROT','NRDense'])
     parser.add_argument('input_file', nargs='?', type=argparse.FileType('r'), default=sys.stdin, help='Clean strands file')
-    parser.add_argument('--strand_handler',required=True,choices=['simple','data_vote_simple','nuc_vote_simple'])
+    parser.add_argument('--strand_handler',required=True,choices=['data_vote_simple','cluster_BMA','cluster_BMA_ED','cluster_ED'])
+    parser.add_argument('--cluster_algorithm',required=False,choices=['starcode_MP'],default=None)
     parser.add_argument('--fileID',action="store",default='1',help="ID for the input file")
 
 
@@ -396,22 +407,22 @@ if __name__ == "__main__":
         print "Couldn't run fault model '%s'. Class '%s' doesn't exist in fault_injector.py" % \
         (args.fault_model, model_name)
         sys.exit(1)
-
     #clean_Decoder will buffer the clean_packetizedFile we will use to compare with the faulty file
     clean_file,clean_strands,clean_Decoder=clean_run(args)
-
     # instantiate a fault model object
     fault_model = eval('fault_injector.'+model_name+'(injector_args)')
-
     #instantiate the negative binomial random number generator, used for distributing the number of reads
     if(args.mean !=0 and args.var !=0):
         read_randomizer=neg_bin(args.mean,args.var)
     else:
         read_randomizer=None
-
+    #instantiate the clustering algorithm
+    clustering_algorithm=build_cluster_algorithm(args.cluster_algorithm)
     #instantiate the strand handler
-    strand_handler=build_strand_handler(args.strand_handler,clean_Decoder._Codec)
+    strand_handler=build_strand_handler(args.strand_handler,clean_Decoder._Codec, clustering_algorithm)   
 
+    
+    
     #determine which model to run
     if args.fault_model == "strand_fault" and args.fault_file is None:
         #initialize the data helper object
@@ -423,7 +434,7 @@ if __name__ == "__main__":
     elif args.fault_model == "fixed_rate":
         #initialize the data helper object
         data_keeper=data_helper(args.fileID,args.arch,args.strand_handler,args.mean,args.var,args.fault_model,args.num_sims,strand_range=args.faulty,nuc_range=args.fails,rate_range=args.rate)
+        #run a set of simulations for each failure rate
         for error_rate in np.arange(rate_lower,rate_upper,args.rate_step):
              run_monte_rate(args,clean_strands,clean_file,data_keeper,strand_handler,fault_model,error_rate)
-
     data_keeper.dump()
