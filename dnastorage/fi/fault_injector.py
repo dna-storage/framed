@@ -234,7 +234,6 @@ class strand_fault(BaseModel):
         assert index>=0 and index<len(library)
         return index,_sum
         
-
     
     #inject the errors into the selected strands and nucleotides
     def inject_errors_tuple(self,inject_sites,input_library):
@@ -266,10 +265,7 @@ class strand_fault(BaseModel):
             out_list[strand_indexes]=(out_list[strand_indexes][0],out_list[strand_indexes][1]-1)
             #append the error strand to the output list
             out_list.append((error_strand,1))
-        return out_list
-
-
-        
+        return out_list        
 
     #These functions are used for testing code
     def get_fault_spread(self):
@@ -300,17 +296,14 @@ class strand_fault(BaseModel):
         self._del_rate=[]
         self._ins_rate=[]
         self._sub_rate=[]
-        
         time0=time.time()
         out_list=input_strands[:]
-       
         #inject faults throughout the input strands, no subset is chosen, unlike the other fault model, maybe add that in later if wanted?
         overall_error=[]
         del_giv_error=[]
         inser_giv_error=[]
         sub_giv_error=[]
         strand_index_start=self._args.p1
-        
         #go through the prob_data data structure and grab relevant data and scale to make it easier for random number generate
         for row_of_data in prob_data:
             #each row is a row from the input spreadsheet
@@ -321,11 +314,9 @@ class strand_fault(BaseModel):
             elif row_of_data[0] == "Del/Error":
                 del_giv_error=[int(float(prob)*1000) for prob in row_of_data[1+strand_index_start:len(row_of_data[1:])-self._args.p2+1]]
                 self._del_rate=del_giv_error
-
             elif row_of_data[0] == "Ins/Error":
                 inser_giv_error=[int(float(prob)*1000) for prob in row_of_data[1+strand_index_start:len(row_of_data[1:])-self._args.p2+1]]
                 self._ins_rate = inser_giv_error
-
             elif row_of_data[0] == "Sub/Error":
                 sub_giv_error=[int(float(prob)*1000) for prob in row_of_data[1+strand_index_start:len(row_of_data[1:])-self._args.p2+1]]
                 self._sub_rate = sub_giv_error
@@ -339,13 +330,11 @@ class strand_fault(BaseModel):
                 inject_error=random.randint(1,10000)
                 #should inject error 
                 if inject_error <= overall_error[nuc_index]:
-
                     #collect the amount of errors injected 
                     if nuc_index not in self._fault_spread:
                         self._fault_spread[nuc_index]=0
                     else:
                          self._fault_spread[nuc_index]=self._fault_spread[nuc_index]+1
-
                     del_boundary_lower=1
                     del_boundary_upper=del_giv_error[nuc_index]
                     inser_boundary_lower=del_boundary_upper+1
@@ -363,36 +352,26 @@ class strand_fault(BaseModel):
                             self._del_spread[nuc_index]=0
                         else:
                             self._del_spread[nuc_index]=self._del_spread[nuc_index]+1
-
                         out_list[strand_index]=out_list[strand_index][0:nuc_index]+out_list[strand_index][nuc_index+1:len(out_list[strand_index])]
-
                         
                     #inject insertion error
                     elif error_type >= inser_boundary_lower and error_type <= inser_boundary_upper:
-
                         #collect the amount of insertion errors injected 
                         if nuc_index not in self._ins_spread:
                             self._ins_spread[nuc_index]=0
                         else:
-                            self._ins_spread[nuc_index]=self._ins_spread[nuc_index]+1
-                        
+                            self._ins_spread[nuc_index]=self._ins_spread[nuc_index]+1           
                         insert_nucleotide=random.choice(nuc_list)
                         out_list[strand_index]=out_list[strand_index][0:nuc_index]+insert_nucleotide+out_list[strand_index][nuc_index:len(out_list[strand_index])]
-
-
                     #substitution error
                     elif error_type >= sub_boundary_lower and error_type <= sub_boundary_upper:
-
                         #collect the amount of substitution errors injected 
                         if nuc_index not in self._sub_spread:
                             self._sub_spread[nuc_index]=0
                         else:
                             self._sub_spread[nuc_index]=self._sub_spread[nuc_index]+1
-
                         sub_nucleotide=random.choice(sub_dict[out_list[strand_index][nuc_index]])
                         out_list[strand_index]= out_list[strand_index][0:nuc_index]+sub_nucleotide+out_list[strand_index][nuc_index+1:len(out_list[strand_index])]
-
-
                     else:
                         assert(0)
         return out_list

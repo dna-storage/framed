@@ -72,10 +72,10 @@ def convertIntToBytes(val,num_bytes):
         return l
 
 def convertBytesToInt(l):
-    sum = 0
+    _sum = 0
     for i,val in enumerate(l):
-        sum += val * (256**i)
-    return sum
+        _sum += val * (256**i)
+    return _sum
 
 ibases = ['A', 'C', 'T']
 
