@@ -73742,5 +73742,8 @@ class NoRepeatCodec(TableCodec):
    def _enctab(self, val):
        return self._etab[val]
 
-   def _dectab(self, s): 
-       return self._dtab[s]
+   def _dectab(self, s):
+       if self._dtab.has_key(s):
+           return self._dtab[s]
+       else:
+           return None

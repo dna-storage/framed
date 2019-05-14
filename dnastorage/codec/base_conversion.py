@@ -1,6 +1,6 @@
  #!/usr/bin/python
 from copy import copy
-import random
+from random import *
 
 bases = ['A', 'C', 'G', 'T']
 
@@ -65,8 +65,11 @@ def convertFromBase(base,s):
     return val
 
 def convertIntToBytes(val,num_bytes):
-    l = [(val & (0xff << pos*8)) >> pos*8 for pos in range(num_bytes)]
-    return l
+    if val == None:
+        return [-1 for _ in range(num_bytes)]
+    else:
+        l = [(val & (0xff << pos*8)) >> pos*8 for pos in range(num_bytes)]
+        return l
 
 def convertBytesToInt(l):
     sum = 0

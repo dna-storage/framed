@@ -14,7 +14,7 @@ def rs_encode(message,n,k):
         rs.init_tables(0x11d)
         rs_initialized = True
     assert k == len(message)
-    return rs.rs_encode_msg(message,n-k);            
+    return rs.rs_encode_msg(message,n-k);
 
 def rs_decode(message,n,k):
     global rs_initialized
@@ -29,9 +29,9 @@ def rs_decode(message,n,k):
 
 class ReedSolomonInnerCodec(BaseCodec):
     """
-    ReedSolomonInnerCodec takes a key,value pair as input to the _encode function and 
-    produces a Reed-Solomon encoded message as a byte array. Both key and value are 
-    protected. If the value is shorter than expected, it is padded to padWidth with 
+    ReedSolomonInnerCodec takes a key,value pair as input to the _encode function and
+    produces a Reed-Solomon encoded message as a byte array. Both key and value are
+    protected. If the value is shorter than expected, it is padded to padWidth with
     random data.
 
     This is an "Inner" Codec because it only can correct errors within a strand.
@@ -66,18 +66,18 @@ class ReedSolomonInnerCodec(BaseCodec):
         # pad the message (wish we didn't have to do this!)
         if len(message) < self._numberBytes:
             message += [ randint(0,10) for _ in range(self._numberBytes - len(message)) ]
-                        
+
         k = self._numberBytes
 
         # encoded the message using the RS library
-        mesecc = rs.rs_encode_msg(message, self._lengthMessage - len(message));            
+        mesecc = rs.rs_encode_msg(message, self._lengthMessage - len(message));
         # separate out key and value
         # convert mesecc into a string
         return packet[0],"".join([ chr(_) for _ in mesecc[3:]])
 
     """
-    This function expects a list of unsigned integers in GF(256). For now, erasures are 
-    denoted with -1. 
+    This function expects a list of unsigned integers in GF(256). For now, erasures are
+    denoted with -1.
     """
     def _decode(self,packet):
         l = base_conversion.convertIntToBytes(packet[0],3)
@@ -93,19 +93,19 @@ class ReedSolomonInnerCodec(BaseCodec):
 
 class ReedSolomonInnerOuterEncoder(EncodePacketizedFile):
     """
-    ReedSolomonInnerOuterCodec takes a key,value pair as input to the _encode 
-    function and produces a Reed-Solomon encoded message as a byte array. Both key 
-    and value are protected. If the value is shorter than expected, it is padded 
+    ReedSolomonInnerOuterCodec takes a key,value pair as input to the _encode
+    function and produces a Reed-Solomon encoded message as a byte array. Both key
+    and value are protected. If the value is shorter than expected, it is padded
     to padWidth with random data.
 
     This is an Inner-Outer Codec. It protects within strands and across strands.
 
     In this implementation, we specify the number of errors to correct accross
-    strands, e_outer, and the number within strands, e_inner. We add 2*e_outer 
-    error correction symbols for each 255-2*e_outer strands and 2*e_inner error 
+    strands, e_outer, and the number within strands, e_inner. We add 2*e_outer
+    error correction symbols for each 255-2*e_outer strands and 2*e_inner error
     correction bytes per strand.
 
-    This class is hard coded to use GF(256). This limits the error correction to 
+    This class is hard coded to use GF(256). This limits the error correction to
     255 length messages.
 
     Arguments:
@@ -128,7 +128,7 @@ class ReedSolomonInnerOuterEncoder(EncodePacketizedFile):
         self._k_index = k_index
         self._e_inner = e_inner
         self._k_outer = k_outer
-        self._e_outer = e_outer    
+        self._e_outer = e_outer
         self._packetizedFile.packetSize = k_outer*k_datastrand
         self._packetizedFile._RS=True;
         assert (k_datastrand + k_index + e_inner  <= 255) # required by GF(256)
@@ -151,13 +151,14 @@ class ReedSolomonInnerOuterEncoder(EncodePacketizedFile):
         if len(self.strands):
             return self._pop_strand()
 
-        # self._packetizedFile will pad it to match the requested packetSize.        
+        # self._packetizedFile will pad it to match the requested packetSize.
         raw = self._packetizedFile.next()
+        raw = [ _ for _ in raw ]
 
         #pad raw out to make sure we have enough data for strands
         while(len(raw)%self._k_strand != 0):
             raw.append('\x00')
-        
+
         matrix = []
 
         # distribute adjacent bytes in the file across strands to make loss of a strand
@@ -171,12 +172,12 @@ class ReedSolomonInnerOuterEncoder(EncodePacketizedFile):
             r = raw[x:x+self._k_strand]
             ind = base_conversion.convertIntToBytes(x/self._k_strand + self.index,self._k_index)
             message = ind + [x for x in bytearray(r)]
-            mesecc = rs.rs_encode_msg(message, self._e_inner);                    
+            mesecc = rs.rs_encode_msg(message, self._e_inner);
             matrix.append(mesecc)
 
 
         self.index += self._k_outer*self._k_strand/self._k_strand
-            
+
         num_real_strands=len(matrix)
         #pad out the matrix with dummy strands
         dummy_index=num_real_strands
@@ -187,13 +188,13 @@ class ReedSolomonInnerOuterEncoder(EncodePacketizedFile):
             dummy_mesecc=rs.rs_encode_msg(message,self._e_inner)
             matrix.append(dummy_mesecc)
             dummy_index+=1
-                
-    
+
+
         # number of error strands
         n_error_strands = int(ceil(self.strand_length * self._e_outer / float(self._k_strand)))
 
-        
-        # outer error codes 
+
+        # outer error codes
         error_codes = []
 
         # compute outer code over all bytes, including index
@@ -210,43 +211,43 @@ class ReedSolomonInnerOuterEncoder(EncodePacketizedFile):
         if len(error_codes) % self._k_strand != 0:
             pad = [ 0 for _ in range(int(self._k_strand - len(error_codes) % self._k_strand)) ]
             error_codes += pad
-        
+
         for i in range(n_error_strands):
             err = [ error_codes[j] for j in range(i,len(error_codes),n_error_strands) ]
             ind = base_conversion.convertIntToBytes(self.index,self._k_index)
-            message = ind + err            
-            mesecc = rs.rs_encode_msg(message, self._e_inner);                    
+            message = ind + err
+            mesecc = rs.rs_encode_msg(message, self._e_inner);
             #print "{} mesecc = {}".format(len(mesecc),mesecc)
             matrix.append(mesecc)
             self.index += 1
-        
+
         for i, m in enumerate(matrix):
-            #only append strands if they are real and are error correction strands 
+            #only append strands if they are real and are error correction strands
             if i<num_real_strands or i>=self._k_outer:
                 tup = (base_conversion.convertBytesToInt(m[:self._k_index]),m[self._k_index:])
                 #codecs expect a (index,value) tuple
                 self.strands.append(self._Codec.encode(tup))
-            
+
         return self._pop_strand()
 
-    
+
 
 class ReedSolomonInnerOuterDecoder(DecodePacketizedFile):
     """
-    ReedSolomonInnerOuterDecoder takes a key,value pair as input to the decode 
-    function and produces a Reed-Solomon decoded message as a byte array. Both key 
-    and value are protected. 
+    ReedSolomonInnerOuterDecoder takes a key,value pair as input to the decode
+    function and produces a Reed-Solomon decoded message as a byte array. Both key
+    and value are protected.
 
     This is an Inner-Outer Codec. It protects within strands and across strands. The parameters
     to the class must match the ReedSolomonInnerOuterEncoder exactly for decoding to correct
     errors.
 
     In this implementation, we specify the number of errors to correct accross
-    strands, e_outer, and the number within strands, e_inner. We add 2*e_outer 
-    error correction symbols for each 255-2*e_outer strands and 2*e_inner error 
+    strands, e_outer, and the number within strands, e_inner. We add 2*e_outer
+    error correction symbols for each 255-2*e_outer strands and 2*e_inner error
     correction bytes per strand.
 
-    This class is hard coded to use GF(256). This limits the error correction to 
+    This class is hard coded to use GF(256). This limits the error correction to
     255 length messages.
 
     Arguments:
@@ -271,7 +272,7 @@ class ReedSolomonInnerOuterDecoder(DecodePacketizedFile):
         self._k_index = k_index
         self._e_inner = e_inner
         self._k_outer = k_outer
-        self._e_outer = e_outer    
+        self._e_outer = e_outer
         self._packetizedFile.packetSize = k_outer*k_datastrand
         assert (k_datastrand + k_index + e_inner  <= 255) # required by GF(256)
         assert (k_outer + e_outer  <= 255) # required by GF(256)
@@ -284,7 +285,7 @@ class ReedSolomonInnerOuterDecoder(DecodePacketizedFile):
         self.outer_block = k_outer+self.n_error_strands
         self.decodedMap = {}
         self._build_dummy_strands()
-       
+
 
 
     #need to build and insert dummy strands into rsMap
@@ -315,11 +316,11 @@ class ReedSolomonInnerOuterDecoder(DecodePacketizedFile):
             dummy_message=dummy_index+[_ for _ in bytearray(dummy_data)]
             dummy_mesecc=rs.rs_encode_msg(dummy_message,self._e_inner)
             self._rsMap[index]=dummy_mesecc
-            
-        
-        
+
+
+
     def _get_base(self, index):
-        base = index/self.outer_block*self.outer_block 
+        base = index/self.outer_block*self.outer_block
         return base
 
     def _is_block_decoded(self,index):
@@ -358,14 +359,14 @@ class ReedSolomonInnerOuterDecoder(DecodePacketizedFile):
         collect = []
         es = []
         for e in error_strands:
-            collect += e[self._k_index:self._k_index+self._k_strand]        
-        assert len(collect) == self.n_error_strands * self._k_strand        
+            collect += e[self._k_index:self._k_index+self._k_strand]
+        assert len(collect) == self.n_error_strands * self._k_strand
         rearranged = []
         for i in range(self.strand_length):
             rearranged += [ collect[j] for j in range(i,len(collect),self._k_strand) ]
             es += [ collect[j] for j in range(i,len(collect),self._k_strand) ]
 
-        rearranged = [ es[i:i+self._e_outer] for i in range(0,self.strand_length*self._e_outer,self._e_outer) ] 
+        rearranged = [ es[i:i+self._e_outer] for i in range(0,self.strand_length*self._e_outer,self._e_outer) ]
 
         #print collect
         #print rearranged
@@ -380,11 +381,11 @@ class ReedSolomonInnerOuterDecoder(DecodePacketizedFile):
         return block
 
     def _decode_block(self,index):
-        base = self._get_base(index)        
+        base = self._get_base(index)
         matrix = []
         for x in range(base,base+self.outer_block-self.n_error_strands):
             matrix.append(self._rsMap[x])
-        
+
         # check for inner errors on all the strands
         #for m in matrix:
             # better way?
@@ -400,9 +401,9 @@ class ReedSolomonInnerOuterDecoder(DecodePacketizedFile):
             #if not self.is_error_free(s,self._e_inner):
              #   s = self.check_inner_strand(s)
             error_strands.append(s)
-        
+
         # check for outer errors on the block
-        #   - note: this could modify an index 
+        #   - note: this could modify an index
         error_codes = self._collect_error_codes(error_strands)
         #print error_codes
 
@@ -423,13 +424,13 @@ class ReedSolomonInnerOuterDecoder(DecodePacketizedFile):
             except Exception:
                 corrected_message=message[0:self._k_outer]
                 corrected_ecc=message[-self._e_outer:]
-                
+
             #print corrected_message
             for i in range(len(corrected_message)):
                 # correct the matrix
                 matrix[i][x] = corrected_message[i]
-                
-                        
+
+
         # got here, everything worked out!
         # form large packet
         key = self._getBlockIndex(index)
@@ -445,7 +446,7 @@ class ReedSolomonInnerOuterDecoder(DecodePacketizedFile):
         #value += "".join([ chr(_) for _ in m[self._k_index:self._k_index+self._k_strand] ])
 
         assert len(value) == self._packetizedFile.packetSize
-        self.writeToFile(key,value)                    
+        self.writeToFile(key,value)
         self.decodedMap[base] = True
 
     def _decode(self,key,value):
@@ -486,7 +487,7 @@ class ReedSolomonInnerOuterDecoder(DecodePacketizedFile):
                         erased = [-1 for _ in range(self.strand_length) ]
                         self._rsMap[x] = erased
                         found += 1
-                assert self._is_block_ready_to_decode(block)==True            
+                assert self._is_block_ready_to_decode(block)==True
             # try to decode block in either case
             self._decode_block(block)
 
@@ -517,7 +518,7 @@ if __name__ == "__main__":
         if randint(0,700) < 400:
             print "Alter strand!"
             t[randint(0,16)] = randint(0,255)
-            
+
         if randint(0,1000) < 10:
             print "Throw away strand!"
         else:
@@ -528,7 +529,7 @@ if __name__ == "__main__":
     dec.write()
 
     sys.exit(0)
-    pf = ReadPacketizedFile(sys.argv[1])    
+    pf = ReadPacketizedFile(sys.argv[1])
     pf.packetSize = 15
 
     r = ReedSolomonInnerCodec(18,20)

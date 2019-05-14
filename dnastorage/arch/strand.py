@@ -13,8 +13,8 @@ from dnastorage.util.file_support import *
 from copy import *
 
 class Checksum(BaseCodec):
-    def __init__(self,nbytes=1):
-        BaseCodec.__init__(self,None)
+    def __init__(self,nbytes=1,CodecObj=None):
+        BaseCodec.__init__(self,CodecObj)
         self._nbytes = nbytes
 
     def _encode(self,packet):
@@ -35,6 +35,31 @@ class Checksum(BaseCodec):
         #dont break on a mismatching checksum
         else:
             return None,None
+
+class CheckLength(BaseCodec):
+    def __init__(self,nbytes=1):
+        BaseCodec.__init__(self,None)
+        self._nbytes = nbytes
+
+    def _encode(self,packet):
+        key = packet[0]
+        value = [x for x in bytearray(packet[1])]
+        assert len(value)==self._nbytes
+        return packet
+
+    def _decode(self,s):
+        if s[1] == None: # check for end
+            return s
+        value = [x for x in bytearray(s[1])]
+        if len(value) > self._nbytes:
+            #JMT: Should we just truncate? or someting smarter?
+            value = value[0:self._nbytes]
+            return (s[0],str(bytearray(value)))
+        if len(value) < self._nbytes:
+            # JMT: fix me
+            # should we just take the first ones? or something smarter?
+            return (s[0],str(bytearray(value[0:self._nbytes])))
+        return s
 
 
 class StrandPrimers(BaseCodec):

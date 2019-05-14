@@ -8,6 +8,7 @@ from dnastorage.codec import huffman
 from dnastorage.codec import fountain
 from dnastorage.codec.rscodec import *
 from dnastorage.arch.strand import *
+from dnastorage.arch.builder import *
 from dnastorage.primer.primer_util import *
 from dnastorage.util.neg_binomial_gen import *
 from dnastorage.handle_strands.strand_handlers import *
@@ -19,7 +20,7 @@ import os
 import time
 #!/usr/bin/python
 
-def build_decode_architecture(arch, pf, primer5, primer3, fountain_table=None):
+def build_decode_xx_architecture(arch, pf, primer5, primer3, fountain_table=None):
     if arch == "UW+MSv1":
         h = huffman.RotateCodec(huffman.HuffmanCodec(21,Checksum()))
         p = StrandPrimers(primer5, primer3, h)
@@ -61,7 +62,8 @@ def build_decode_architecture(arch, pf, primer5, primer3, fountain_table=None):
         return None
 
     elif arch == 'NRDense':
-        b = norepeatscodec.NoRepeatCodec(Checksum(2))
+        #b = norepeatscodec.NoRepeatCodec(Checksum(2))
+        b = norepeatscodec.NoRepeatCodec(Checksum(2,CheckLength(28)))
         p = StrandPrimers(primer5, primer3, b)
         pf.packetSize = 28
         dec = DecodeNaiveStrand(pf,p)
@@ -355,7 +357,7 @@ if __name__ == "__main__":
     parser.add_argument('--seq_var',dest="var",action="store",type=float,default=4.3,help="Variance of the sequencing distribution, set to 0 to deactivate distribution")
     parser.add_argument('--simulation_runs',dest="num_sims",action="store",type=int,default=10000,help="Number of simulations to run")
     parser.add_argument('--o',nargs='?', type=argparse.FileType('w'), default=sys.stdout, help="Output file.")
-    parser.add_argument('--arch',required=True,choices=['UW+MSv1','Illinois','Binary','Goldman','Fountain','RS+CFC8','RS+ROT','NRDense'])
+    parser.add_argument('--arch',required=True,choices=available_file_architectures())
     parser.add_argument('input_file', nargs='?', type=argparse.FileType('r'), default=sys.stdin, help='Clean strands file')
     parser.add_argument('--strand_handler',required=True,choices=['simple','data_vote_simple','nuc_vote_simple'])
     parser.add_argument('--fileID',action="store",default='1',help="ID for the input file")
