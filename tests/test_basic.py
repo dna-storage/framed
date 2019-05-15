@@ -6,6 +6,7 @@ from .context import nupack
 from dnastorage.codec.base import *
 from dnastorage.codec.binary import *
 from dnastorage.codec.huffman import *
+from dnastorage.codec.huffman_table import *
 from dnastorage.codec.dense import *
 from dnastorage.codec.base_conversion import *
 
