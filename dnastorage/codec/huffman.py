@@ -18,13 +18,8 @@ class HuffmanEncTester(unittest.TestCase):
         ht3 = HuffmanTable(3, ['0','1', '2'], syms, w)
         enc,dec = ht3.get_tables()
 
-        k = 0
-        for i,j in zip(enc,huffman_enc_table):
-            assert i==j
-            assert huffman_dec_table[i]==k
-            assert dec[i]==k
-            k += 1
-
+        for k in range(256):
+            assert enc[k]==huffman_enc_table[k]
 
 _huffman_enc_map = { '0': 'A' ,
            '1': 'C' ,

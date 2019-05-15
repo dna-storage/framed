@@ -9,14 +9,14 @@ class HuffmanTableTests(unittest.TestCase):
         syms = [ x for x in range (16) ]    
         ht = HuffmanTable(2, ['0','1'], syms)
         enc,dec = ht.get_tables()
-        for e in enc:
+        for e in dec.keys():
             assert len(e) == 4
 
     def test_dense_9(self): 
         syms = [ x for x in range (9) ]    
         ht = HuffmanTable(3, ['0','1', '2'], syms)
         enc,dec = ht.get_tables()
-        for e in enc:
+        for e in dec.keys():
             assert len(e) == 2
 
 
@@ -76,10 +76,10 @@ class HuffmanTable:
 
         table.sort(cmp=lambda x,y: cmp(x[1],y[1]) )
 
-        enc_table = [ x[0] for x in table ]
-        dec_dict = { x[0] : x[1] for x in table } 
+        enc = { x[1] : x[0] for x in table }
+        dec = { x[0] : x[1] for x in table } 
 
-        return (enc_table, dec_dict)
+        return (enc, dec)
 
     def __init__(self, nbase, base_syms, symbols, weights=None):
         """ Build a huffman encoder/decoder table under the following assumptions:    """
