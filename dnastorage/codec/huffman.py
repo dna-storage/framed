@@ -19,6 +19,9 @@ class HuffmanEncTester(unittest.TestCase):
         enc,dec = ht3.get_tables()
 
         for k in range(256):
+            assert dec[ enc[k] ] == k
+
+        for k in range(256):
             assert enc[k]==huffman_enc_table[k]
 
 _huffman_enc_map = { '0': 'A' ,

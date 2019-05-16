@@ -6,3 +6,4 @@ statistics
 matplotlib
 numpy
 scipy
+PIL

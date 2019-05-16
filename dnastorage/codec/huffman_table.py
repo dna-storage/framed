@@ -46,8 +46,8 @@ class HuffmanTable:
                 self._enc = enc
                 for s,n in zip(bsyms,self._childlist):
                     n.assign_enc(bsyms,enc+s)
-            else:
-                print str(self)
+            #else:
+            #    print str(self)
                 
 
     def _build_tree(self):
@@ -81,6 +81,24 @@ class HuffmanTable:
 
         return (enc, dec)
 
+    def average_length(self):
+        L = 0.0
+        for n in self._nodes:
+            if n.symbol != None:
+                L += n.weight * len(n.enc)
+        return L
+
+    def histogram(self):
+        h = {}
+        #H = {}
+        for n in self._nodes:
+            if n.symbol != None:
+                l = len(n.enc)
+                h[l] = h.get(l,0) + 1
+                #H[l] = H.get(l,[]) + [ n.enc ]
+                #H[l].sort()
+        return h
+
     def __init__(self, nbase, base_syms, symbols, weights=None):
         """ Build a huffman encoder/decoder table under the following assumptions:    """
         """     nbase: number of symbols in codeword (4 for DNA, 2 for binary)        """
@@ -94,6 +112,9 @@ class HuffmanTable:
         self._nodes = []
         if weights == None:
             self._weights = [ 1.0 / len(symbols) for _ in range(len(symbols)) ]
+        else:
+            W = sum(weights)
+            self._weights = [ float(x) / W for x in weights ]
         assert nbase == len(base_syms)
         assert len(self._symbols) == len(self._weights)
         self._queue = []
@@ -126,6 +147,7 @@ if __name__ == "__main__":
     
     t = ht2.get_tables()
     print t
+    print ht2.average_length()
 
     # The following code produces encoder table and decoder dict equivalent to 
     # the ones defined manually in huffman.py
@@ -138,3 +160,8 @@ if __name__ == "__main__":
 
     ht3 = HuffmanTable(3, ['0','1', '2'], syms, w)
     print ht3.get_tables()
+    print ht3.average_length()
+    print ht3.histogram()[0]
+    print ht3.histogram()[1]
+
+    
