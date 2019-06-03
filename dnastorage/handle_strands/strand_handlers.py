@@ -4,7 +4,7 @@ from cluster import *
 from cluster_analyzers import *
 import faulthandler; faulthandler.enable(); 
 """
-data_vote_simple is a policy that collects data with the same index, and 
+data_vote_simple is a policy that collects data with the same index, and
 uses a majority voting policy in order to infer what the correct data is.
 The resulting key,value pairs will be passed to the upper level of the decoder
 e.g. for the RS decoder, the level that applies ECC codes to inner and outer
@@ -33,9 +33,18 @@ class data_vote_simple:
         for key in key_value:
             data=[]
             #print "processing key values"
-            for x in range(0,len(key_value[key][0])):
+            mx = max([len(data_strand) for data_strand in key_value[key]])
+            for x in range(0,mx):
                 #get a list of values that belong to the same location
-                same_position_values=[data_strand[x] for data_strand in key_value[key]]
+                # if there's a smaller strand, due to error, this assert
+                # will fire before attempting to access an illegal index
+                #if x >= min([len(data_strand) for data_strand in key_value[key]]):
+                #    print x,"[",",".join([str(len(data_strand)) for data_strand in key_value[key]]),"]"
+                #assert x < min([len(data_strand) for data_strand in key_value[key]])
+                same_position_values = []
+                for data_strand in key_value[key]:
+                    if x < len(data_strand):
+                        same_position_values.append(data_strand[x])
                 #print same_position_values
                 cnt=Counter(same_position_values)
                 most_common_value=cnt.most_common(1)[0][0]
@@ -114,6 +123,4 @@ class clustering_handler:
         #print key_value_data
         return key_value_data
  
-
-
 

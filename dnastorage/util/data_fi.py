@@ -37,13 +37,13 @@ class data_helper:
             self._dist_file_path="".join([self._out_file_directory,'/','_dist','.txt'])
             self._correctness_file_path="".join([self._out_file_directory,'/',fault_file,'_cor','.csv'])
             self._prob_file_path="".join([self._out_file_directory,'/',fault_file,'_prob','.csv'])
-            
+
         elif fault_model == "fixed_rate":
             self._dist_file_path="".join([self._out_file_directory,'/',rate_range,'_dist','.txt'])
             self._correctness_file_path="".join([self._out_file_directory,'/',rate_range,'_cor','.csv'])
             self._prob_file_path="".join([self._out_file_directory,'/',rate_range,'_prob','.csv'])
-                 
-        #delete files if they already exits 
+
+        #delete files if they already exits
         if os.path.exists(self._dist_file_path):
             os.remove(self._dist_file_path)
         if os.path.exists(self._correctness_file_path):
@@ -52,7 +52,7 @@ class data_helper:
             os.remove(self._prob_file_path)
 
 
-           
+
     def set_distribution(self,input_distribution):
         self._distribution=input_distribution
 
@@ -68,10 +68,10 @@ class data_helper:
     def insert_probability_point(self,prob_data):
         self._prob_data.append(prob_data)
 
-        
+
     #This function calculates the midpoint and upper,lower bounds for 95 percent confidence interval for the correctness results aquired from one monte carlo loop
     def calculate_midpoint(self):
-        #calculate sample standard deviation and mean, 
+        #calculate sample standard deviation and mean,
         std=np.std(self._percent_correct,ddof=1)
         mean=np.average(self._percent_correct)
         N=len(self._percent_correct)
@@ -86,10 +86,10 @@ class data_helper:
         _dist=open(self._dist_file_path,'w+')
         for index,item in enumerate(self._distribution):
             _dist.write("{} {}\n".format(index,item[1]))
-            
+
         self.dump_file(self._correctness_file_path,self._data_points)
         self.dump_file(self._prob_file_path,self._prob_data)
-        
+
         _dist.close()
 
     def dump_file(self,path,points):
@@ -107,7 +107,9 @@ class data_helper:
         total_bytes=0
         total_correct_bytes=0
         bad=False
-        assert len(bad_file) == len(clean_file)
+        if len(bad_file) != len(clean_file):
+            print len(bad_file), len(clean_file)
+            assert len(bad_file) == len(clean_file)
         for bad_byte,clean_byte in zip(bad_file,clean_file):
             if bad_byte == clean_byte:
                 total_correct_bytes+=1

@@ -98,18 +98,28 @@ class WritePacketizedFilestream:
         for key,value in items:
             if value is not type(str):
                 value2="".join(value)
+            else:
+                value2 = value
             if i < key:
-                while i < key:
+                while i < key and i < self.numberOfPackets-1:
                     output_data+=emptyString
                     i+=1
             if i == self.numberOfPackets-1:
                 output_data+=value2[0:self.lastPacketSize]
+                i+=1
+                break
             else:
                 output_data+=value2
-            i+=1
+                i+=1
+            if i==self.numberOfPackets:
+                break
         while(i<self.numberOfPackets):
-            output_data+=emptyString
+            if i == self.numberOfPackets-1:
+                output_data+=emptyString[0:self.lastPacketSize]
+            else:
+                output_data+=emptyString
             i+=1
+        assert i == self.numberOfPackets and len(output_data)==self.size 
         return output_data
 
 

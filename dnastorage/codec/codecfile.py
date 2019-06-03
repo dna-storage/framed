@@ -89,6 +89,10 @@ class DecodePacketizedFile:
         # make sure value is a string
         if (type(value) is list) and (type(value[0]) is int or type(value[0]) is long):
             value = "".join([chr(x) for x in value])
+        if (type(value) is list) and (type(value[0]) is str):
+            value = "".join([x for x in value])
+        #if not (type(value) is str):
+        #    print value
         assert type(value) is str
         self._packetizedFile[key] = value
 
