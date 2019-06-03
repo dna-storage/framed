@@ -35,7 +35,8 @@ def check_strand_errors(injection_sites,clean_strands,final_strands):
                 assert error_selected_strand[adjusted_nucleotide_index] == fault_nuc
                 #check deletion, check the removed nucleotide with the clean strand's nucleotide
             elif fault_type == '1':
-                assert clean_selected_strand[nuc_index] == fault_nuc
+                print"clean {} fault{}".format(clean_selected_strand[nuc_index],fault_nuc)
+                assert clean_selected_strand[nuc_index] == fault_nuc 
 
 
 #Calculates percent difference for the generated rates and the spread sheet retes
@@ -147,7 +148,7 @@ class FiTestSuite(unittest.TestCase):
                 nuc_indexes.append(nuc_index)
             assert allUnique(nuc_indexes)
             #make sure that the nuc indexes are consecutive
-            assert sorted(nuc_indexes) == range(min(nuc_indexes),max(nuc_indexes)+1)
+            assert sorted(nuc_indexes) == range(min(nuc_indexes),max(nuc_indexes)+1) 
             assert len(nuc_indexes) == arguments.fails
         assert allUnique(strand_indexes)
         assert len(strand_indexes) == arguments.faulty
