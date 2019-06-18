@@ -18,8 +18,9 @@ class EncodePacketizedFile:
 
     """
 
-    def __init__(self,packetizedFile,CodecObj=None):
-        self._index = 0
+    def __init__(self,packetizedFile,CodecObj=None,minIndex=0):
+        self._index = minIndex
+        self.minIndex = minIndex
         self._packetizedFile = packetizedFile
         self._iterating = False
         if CodecObj == None:
@@ -69,9 +70,10 @@ class EncodePacketizedFile:
             raise StopIteration()
 
 class DecodePacketizedFile:
-    def __init__(self,packetizedFile,CodecObj=None):
+    def __init__(self,packetizedFile,CodecObj=None,minIndex=0):
         self._packetizedFile = packetizedFile
         self._data = {}
+        self.minIndex = minIndex
         if CodecObj == None:
             self._Codec = BaseCodec()
         else:
@@ -94,6 +96,7 @@ class DecodePacketizedFile:
         #if not (type(value) is str):
         #    print value
         assert type(value) is str
+        #print "writeToFile",key, [ord(v) for v in value]
         self._packetizedFile[key] = value
 
     # Ideally, derived classes will only override this implementation
@@ -101,11 +104,14 @@ class DecodePacketizedFile:
         self.writeToFile(key,value)
 
     def decode(self,strand,bypass=False,input_key=None,input_value=None):
+        #if input_key < self.minIndex or input_key >= self._packetizedFile.maxKey:
+        #    return
         if bypass is False:
             key,val = self._Codec.decode(strand)
         else:
             key=input_key
             val=input_value
+        #print key,val
         self._decode(key,val)
 
 

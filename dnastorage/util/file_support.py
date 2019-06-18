@@ -2,6 +2,7 @@
 import os
 import sys
 
+
 """
 Write a file by receiving (index,value) packets of data of a specific size at a given index. Value
 is of packetSize length.  index specifies where in the file to write the data.  Packets can be
@@ -10,21 +11,27 @@ it has received all size/packetSize packets.  The indices are assumed to be dens
 to size/packetSize by 1.  Pythonically: range(0,size/packetSize+(size-size/packetSize*packetSize),1).
 """
 class WritePacketizedFilestream:
-    def __init__(self,fd,size,packetSize):
+    def __init__(self,fd,size,packetSize,minKey=0,zeroFillMissing=False):
         self.__fd = fd
         self.size = size
         self.__set_packetSize(packetSize)
         self.__data = {}
-
+        self.minKey = minKey                      # inclusive
+        self.zeroFillMissing = zeroFillMissing
+        
     def has_key(self,key):
         return self.__data.has_key(key)
     def __setitem__(self,key,value):
-        if key >= 0 and key < self.numberOfPackets:
+        if (key >= self.minKey) and (key < self.maxKey):
             self.__data[key] = value
     def __getitem__(self,key):
-        assert key >= 0 and key < self.numberOfPackets
+        assert key >= self.minKey and key < self.maxKey
         return self.__data[key]
 
+    @property
+    def maxKey(self):
+        return self.minKey+self.numberOfPackets # exclusive
+    
     @property
     def numberOfPackets(self):
         if (self.size % self.packetSize) > 0:
@@ -47,46 +54,53 @@ class WritePacketizedFilestream:
 
     @property
     def complete(self):
-        keys = self.__data.keys()
-        keys.sort()
-        if len(keys) < self.numberOfPackets:
+        if len(self.__data.keys()) < self.numberOfPackets:
             return False
-        for i in range(self.numberOfPackets):
-            if keys[i] != i:
+        for i in range(self.minKey,self.maxKey):
+            if not (i in self.__data.keys()):
                 return False
         return True
 
     def getMissingKeys(self):
         keys = self.__data.keys()
-        keys.sort()
         missing = []
-        i = 0
-        for k in keys:
-            if i != k:
-                while i < k:
-                    missing.append(i)
-                    i+=1
-            i+=1
+        for i in range(self.minKey,self.maxKey):
+            if not keys.has_key(i):
+                missing.append(i)
         return missing
 
 
     ## Warning: requires buffering the whole file!
     def write(self):
-        items = self.__data.items()
-        items.sort(cmp=lambda x,y: cmp(x[0],y[0]))
-        i = 0
+        #items = self.__data.items()
+        #items.sort(cmp=lambda x,y: cmp(x[0],y[0]))
+        #i = 0
         emptyString = '\x00'*self.packetSize
-        for key,value in items:
-            if i < key:
-                while i < key:
-                    self.__fd.write(emptyString)
-                    i+=1
-            if i == self.numberOfPackets-1:
-                self.__fd.write(value[0:self.lastPacketSize])
+
+        for i in range(self.minKey,self.maxKey):
+            if self.__data.has_key(i):
+                if i == self.maxKey-1:
+                    self.__fd.write(self.__data[i][0:self.lastPacketSize])
+                else:
+                    self.__fd.write(self.__data[i])
             else:
-                self.__fd.write(value)
-            i+=1
-        if self.__fd != sys.stdout:
+                if self.zeroFillMissing:
+                    self.__fd.write(emptyString)
+                
+        # for key,value in items:
+        #     if i < key:
+        #         while i < key:
+        #             self.__fd.write(emptyString)
+        #             i+=1
+        #     if i == self.numberOfPackets-1:
+        #         self.__fd.write(value[0:self.lastPacketSize])
+        #     else:
+        #         self.__fd.write(value)
+        #     i+=1
+        self.__fd.flush()
+            
+    def close(self):
+        if self.__fd != sys.stdout and self.__fd != sys.stderr:
             self.__fd.close()
 
     def dummy_write(self):

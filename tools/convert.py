@@ -145,7 +145,7 @@ if __name__ == "__main__":
             tfile.close()
             #print table
 
-        packetizedFile = WritePacketizedFilestream(args.o,args.filesize,20)
+        packetizedFile = WritePacketizedFilestream(args.o,args.filesize,64)
 
         Decoder = build_decode_architecture(args.arch, packetizedFile, args.primer5, args.primer3,table)
 

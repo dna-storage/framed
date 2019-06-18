@@ -9,7 +9,7 @@ from dnastorage.codec.rscodec import *
 from dnastorage.arch.strand import *
 
 def available_file_architectures():
-    return ["UW+MSv1","Illinois",'Goldman','Fountain','Binary','Dense','NRDense','RS+CFC8','RS+ROT','RS+NRD']
+    return ["UW+MSv1","Illinois",'Goldman','Fountain','Binary','Dense','NRDense','RS+CFC8','RS+ROT','RS+NRD', 'Sys']
 
 def build_encode_architecture(arch, pf, primer5, primer3):
     if arch == "UW+MSv1":
@@ -78,6 +78,12 @@ def build_encode_architecture(arch, pf, primer5, primer3):
         b = commafreecodec.CommaFreeCodec(13,None,2)
         p = StrandPrimers(primer5, primer3, b)
         enc = ReedSolomonInnerOuterEncoder(pf,p,k_datastrand=9,e_inner=2,k_index=2)
+        return enc
+
+    elif arch == 'FSMD':
+        b = commafreecodec.CommaFreeCodec(19,None,1)
+        p = StrandPrimers(primer5, primer3, b)
+        enc = ReedSolomonInnerOuterEncoder(pf,p,k_datastrand=16,e_inner=2,k_index=1,e_outer=1)
         return enc
 
     elif arch == 'RS+ROT':
@@ -160,4 +166,10 @@ def build_decode_architecture(arch, pf, primer5, primer3, fountain_table=None):
         h = huffman.RotateCodec(huffman.HuffmanCodec(11,None,11,99))
         p = StrandPrimers(primer5, primer3, h)
         enc = ReedSolomonInnerOuterDecoder(pf,p,k_datastrand=9,e_inner=2,k_index=2)
+        return enc
+
+    elif arch == 'FSMD':
+        b = commafreecodec.CommaFreeCodec(19,None,1)
+        p = StrandPrimers(primer5, primer3, b)
+        enc = ReedSolomonInnerOuterDecoder(pf,p,k_datastrand=16,e_inner=2,k_index=1,e_outer=1)
         return enc

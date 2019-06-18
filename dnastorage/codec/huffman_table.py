@@ -142,6 +142,7 @@ class HuffmanTableBase:
         self._nodes = []
         self._enc_table = None
         assert nbase == len(base_syms)
+        self.memoize = {}
         if symbols != None:
             # we may be initialized with no symbols, in that case, don't do this
             # work to setup the huffman table, just wait
@@ -280,13 +281,15 @@ class HuffmanTableBase:
         return self._enc_table[val]
 
     def decode(self, val):
-        return self.root.dec(val,self._base_syms_lookup)
-
+        if self.memoize.has_key(val):
+            return self.memoize[val]        
+        ans = self.root.dec(val,self._base_syms_lookup)
+        self.memoize[val] = ans
+        return ans
 
 class HuffmanTable(HuffmanTableBase):                
     def __init__(self, nbase, base_syms, symbols, weights=None,prevent_ones=False):
         HuffmanTableBase.__init__(self,nbase,base_syms,symbols,weights,prevent_ones)
-        print self._weights
         if symbols != None:
             self._build_tree()
 

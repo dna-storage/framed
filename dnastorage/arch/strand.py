@@ -75,9 +75,9 @@ class StrandPrimers(BaseCodec):
     def _decode(self,strand):
         assert isinstance(strand,str)
         if not (self.begin_primer in strand[0:len(self.begin_primer)]):
-            assert "Begin primer not found"
+            assert False and "Begin primer not found"
         if not (self.rc_end_primer in strand[-len(self.end_primer):]):
-            assert "End primer not found"
+            assert False and "End primer not found"
         return strand[len(self.begin_primer):-len(self.end_primer)]
 
 class EncodeNaiveStrand(EncodePacketizedFile):

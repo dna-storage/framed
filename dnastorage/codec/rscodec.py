@@ -111,15 +111,15 @@ class ReedSolomonInnerOuterEncoder(EncodePacketizedFile):
     Arguments:
     k_datastrand - # of data bytes in a strand
     e_inner  - # of error correction codes used to correct in a strand
-    k_index  - # of data bytes to devote to address
+    k_index  - # of data bytes to devote to index
     k_outer  - # of strands in one block protected by the RS outer code
     e_outer  - # of error correction codes used to protect an outer block
 
     The total length of a data strand will be k_index + k_datastrand + e_inner.
     The total size of a outer block will k_datastrand*k_outer protected by k_datastrand*e_outer codes.
     """
-    def __init__(self,pf,CodecObj=None,k_datastrand=15,e_inner=2,k_index=3,k_outer=251,e_outer=4):
-        EncodePacketizedFile.__init__(self,pf,CodecObj)
+    def __init__(self,pf,CodecObj=None,k_datastrand=15,e_inner=2,k_index=3,k_outer=251,e_outer=4,minIndex=0):
+        EncodePacketizedFile.__init__(self,pf,CodecObj,minIndex)
         global rs_initialized
         if not rs_initialized:
             rs.init_tables(0x11d)
@@ -134,8 +134,8 @@ class ReedSolomonInnerOuterEncoder(EncodePacketizedFile):
         assert (k_datastrand + k_index + e_inner  <= 255) # required by GF(256)
         assert (k_outer + e_outer  <= 255) # required by GF(256)
         self.strand_length = k_datastrand + k_index + e_inner
-        self.index = 0
         self.strands = []
+        self.index = self.minIndex
         self._transpose = False
     """
     Overload function to prevent incorrect behavior
@@ -260,13 +260,12 @@ class ReedSolomonInnerOuterDecoder(DecodePacketizedFile):
     The total length of a data strand will be k_index + k_datastrand + e_inner.
     The total size of a outer block will k_datastrand*k_outer protected by k_datastrand*e_outer codes.
     """
-    def __init__(self,pf,CodecObj=None,k_datastrand=15,e_inner=2,k_index=3,k_outer=251,e_outer=4):
-        DecodePacketizedFile.__init__(self,pf,CodecObj)
+    def __init__(self,pf,CodecObj=None,k_datastrand=15,e_inner=2,k_index=3,k_outer=251,e_outer=4,minIndex=0):
+        DecodePacketizedFile.__init__(self,pf,CodecObj,minIndex)
         global rs_initialized
         if not rs_initialized:
             rs.init_tables(0x11d)
             rs_initialized = True
-        self._file_size=self._packetizedFile.size
         self._file_size=self._packetizedFile.size
         self._k_strand = k_datastrand
         self._k_index = k_index
@@ -277,7 +276,6 @@ class ReedSolomonInnerOuterDecoder(DecodePacketizedFile):
         assert (k_datastrand + k_index + e_inner  <= 255) # required by GF(256)
         assert (k_outer + e_outer  <= 255) # required by GF(256)
         self.strand_length = k_datastrand + k_index + e_inner
-        self.index = 0
         self.strands = []
         self._transpose = False
         self._rsMap = {}
@@ -285,7 +283,8 @@ class ReedSolomonInnerOuterDecoder(DecodePacketizedFile):
         self.outer_block = k_outer+self.n_error_strands
         self.decodedMap = {}
         self._build_dummy_strands()
-
+        self.index = self.minIndex
+        self._packetizedFile.minKey = self._getBlockIndex(minIndex)
 
 
     #need to build and insert dummy strands into rsMap
@@ -300,13 +299,13 @@ class ReedSolomonInnerOuterDecoder(DecodePacketizedFile):
         total_strands_per_block=strands_per_block_data+strands_per_block_error
 
         #this is the first index in the last block
-        last_block_base_index=total_strands_per_block*(num_blocks-1)
+        last_block_base_index=self.minIndex+total_strands_per_block*(num_blocks-1)
 
         #this is the first index of dummy strands
         dummy_start_index=last_block_base_index+num_real_data_strands_last_block
 
         #upper_bound for the dummy strands
-        dummy_upper_bound=(total_strands_per_block*num_blocks)-strands_per_block_error
+        dummy_upper_bound=self.minIndex+(total_strands_per_block*num_blocks)-strands_per_block_error
 
 
         #insert dummy values into the rsMap table
@@ -320,7 +319,7 @@ class ReedSolomonInnerOuterDecoder(DecodePacketizedFile):
 
 
     def _get_base(self, index):
-        base = index/self.outer_block*self.outer_block
+        base = (index-self.minIndex)/self.outer_block*self.outer_block + self.minIndex
         return base
 
     def _is_block_decoded(self,index):
@@ -474,7 +473,7 @@ class ReedSolomonInnerOuterDecoder(DecodePacketizedFile):
     """
     def attempt_final_decoding(self):
         numBlocks = int(ceil(float(self._packetizedFile.size) / self._packetizedFile.packetSize))
-        for block in range(0,numBlocks*self.outer_block,self.outer_block):
+        for block in range(self.minIndex,self.minIndex+numBlocks*self.outer_block,self.outer_block):
             if self._is_block_decoded(block):
                 continue
             if not self._is_block_ready_to_decode(block):
