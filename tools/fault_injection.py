@@ -219,9 +219,6 @@ def build_cluster_algorithm(cluster_algorithm):
         return starcode("MP")
     
 
-
-
-
 #function to wrap the process of running many strand_fault and missing_strand fault model simulations
 def run_monte_MS(args,desired_faulty_count,clean_strands,clean_file,data_keeper,strand_handler,fault_model,desired_faults_per_strand=None):
     #run many simulations to perform statistical analysis

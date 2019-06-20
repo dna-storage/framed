@@ -2,6 +2,9 @@
 import os
 import sys
 
+import logging
+logger = logging.getLogger("dna.storage.util.file_support")
+logger.addHandler(logging.NullHandler())
 
 """
 Write a file by receiving (index,value) packets of data of a specific size at a given index. Value
@@ -72,11 +75,7 @@ class WritePacketizedFilestream:
 
     ## Warning: requires buffering the whole file!
     def write(self):
-        #items = self.__data.items()
-        #items.sort(cmp=lambda x,y: cmp(x[0],y[0]))
-        #i = 0
         emptyString = '\x00'*self.packetSize
-
         for i in range(self.minKey,self.maxKey):
             if self.__data.has_key(i):
                 if i == self.maxKey-1:

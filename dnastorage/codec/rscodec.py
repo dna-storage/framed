@@ -6,6 +6,10 @@ from random import randint
 from dnastorage.codec.codecfile import *
 from math import ceil
 
+import logging
+logger = logging.getLogger('dna.storage.codec.rscodec')
+logger.addHandler(logging.NullHandler())
+
 rs_initialized = False
 
 def rs_encode(message,n,k):
@@ -176,6 +180,7 @@ class ReedSolomonInnerOuterEncoder(EncodePacketizedFile):
             matrix.append(mesecc)
 
 
+        ind_copy = self.index
         self.index += self._k_outer*self._k_strand/self._k_strand
 
         num_real_strands=len(matrix)
@@ -185,7 +190,7 @@ class ReedSolomonInnerOuterEncoder(EncodePacketizedFile):
             dummy=['\x00']*(self._k_strand)
             ind=base_conversion.convertIntToBytes(dummy_index,self._k_index)
             dummy_message=ind+[_ for _ in bytearray(dummy)]
-            dummy_mesecc=rs.rs_encode_msg(message,self._e_inner)
+            dummy_mesecc=rs.rs_encode_msg(dummy_message,self._e_inner)
             matrix.append(dummy_mesecc)
             dummy_index+=1
 
@@ -220,7 +225,7 @@ class ReedSolomonInnerOuterEncoder(EncodePacketizedFile):
             #print "{} mesecc = {}".format(len(mesecc),mesecc)
             matrix.append(mesecc)
             self.index += 1
-
+            
         for i, m in enumerate(matrix):
             #only append strands if they are real and are error correction strands
             if i<num_real_strands or i>=self._k_outer:
@@ -229,8 +234,6 @@ class ReedSolomonInnerOuterEncoder(EncodePacketizedFile):
                 self.strands.append(self._Codec.encode(tup))
 
         return self._pop_strand()
-
-
 
 class ReedSolomonInnerOuterDecoder(DecodePacketizedFile):
     """
@@ -384,7 +387,7 @@ class ReedSolomonInnerOuterDecoder(DecodePacketizedFile):
         matrix = []
         for x in range(base,base+self.outer_block-self.n_error_strands):
             matrix.append(self._rsMap[x])
-
+            
         # check for inner errors on all the strands
         #for m in matrix:
             # better way?
@@ -393,6 +396,8 @@ class ReedSolomonInnerOuterDecoder(DecodePacketizedFile):
                 #for i in range(len(s)):
                     #m[i] = s[i]
 
+
+                    
         error_strands = []
         for x in range(base+self.outer_block-self.n_error_strands,base+self.outer_block):
             s = self._rsMap[x]
@@ -446,6 +451,7 @@ class ReedSolomonInnerOuterDecoder(DecodePacketizedFile):
 
         assert len(value) == self._packetizedFile.packetSize
         self.writeToFile(key,value)
+        logger.debug("write key={} data[0:15]={} to file.".format(key,",".join(["0x{:x}".format(ord(v)) for v in value[0:15]])))
         self.decodedMap[base] = True
 
     def _decode(self,key,value):
@@ -461,6 +467,8 @@ class ReedSolomonInnerOuterDecoder(DecodePacketizedFile):
                 s = self.check_inner_strand(value2)
         _key=base_conversion.convertBytesToInt(s[:self._k_index])
         self._rsMap[_key] = s
+        logger.debug("_decode received key={} value={}".format(_key,",".join(["0x{:x}".format(v) for v in list(self._rsMap[_key])])))
+
         #print "rsMap[{}] = {}".format(key,value2)
         if self._is_block_ready_to_decode(_key) and not self._is_block_decoded(_key):
             self._decode_block(_key)
@@ -472,12 +480,14 @@ class ReedSolomonInnerOuterDecoder(DecodePacketizedFile):
     After that, decoding may be able to succeed using the outer codes.
     """
     def attempt_final_decoding(self):
+        logger.debug("attempt_final_decoding")
         numBlocks = int(ceil(float(self._packetizedFile.size) / self._packetizedFile.packetSize))
         for block in range(self.minIndex,self.minIndex+numBlocks*self.outer_block,self.outer_block):
             if self._is_block_decoded(block):
                 continue
             if not self._is_block_ready_to_decode(block):
                 # figure out why
+                logger.debug("try to decode block={}".format(block))
                 base = block
                 found = 0
                 for x in range(base,base+self.outer_block):
