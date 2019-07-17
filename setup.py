@@ -13,7 +13,8 @@ with open('LICENSE') as f:
 starcode_module=Extension('starcode_bindings',
                           sources = ['dnastorage/util/starcode_bindings.c', 'other_software/starcode/src/trie.c',
                                      'other_software/starcode/src/starcode.c'],
-                          include_dirs = ['other_software/starcode/src']
+                          include_dirs = ['other_software/starcode/src'],
+                          extra_compile_args = ['-std=c99',"-g3", "-O0", "-g3", "-O0" ]
                           )
 
     
