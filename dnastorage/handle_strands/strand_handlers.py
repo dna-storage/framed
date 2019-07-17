@@ -2,7 +2,8 @@
 from collections import Counter
 from cluster import *
 from cluster_analyzers import *
-import faulthandler; faulthandler.enable(); 
+
+#import faulthandler; faulthandler.enable(); 
 """
 data_vote_simple is a policy that collects data with the same index, and
 uses a majority voting policy in order to infer what the correct data is.

@@ -83,6 +83,7 @@ class fixed_rate(BaseModel):
             return self._error_strands
         else:
             self.write_out(self._error_strands)
+            return self._error_strands
 
     #go through each nucleotide in each strand and apply a flat fault rate
     def injection_sites(self,input_library):

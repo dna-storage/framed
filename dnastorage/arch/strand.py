@@ -12,6 +12,11 @@ from dnastorage.codec.base import *
 from dnastorage.util.file_support import *
 from copy import *
 
+import logging
+logger = logging.getLogger('dna.storage.arch.strand')
+logger.addHandler(logging.NullHandler())
+
+
 class Checksum(BaseCodec):
     def __init__(self,nbytes=1,CodecObj=None):
         BaseCodec.__init__(self,CodecObj)
@@ -75,9 +80,11 @@ class StrandPrimers(BaseCodec):
     def _decode(self,strand):
         assert isinstance(strand,str)
         if not (self.begin_primer in strand[0:len(self.begin_primer)]):
-            assert False and "Begin primer not found"
+            #assert False and "Begin primer not found"
+            logger.debug("Didn't find 5' primer: {} in {}".format(self.begin_primer,strand[0:len(self.begin_primer)]))
         if not (self.rc_end_primer in strand[-len(self.end_primer):]):
-            assert False and "End primer not found"
+            #assert False and "End primer not found"
+            logger.debug("Didn't find 3' primer: {} in {}".format(self.rc_end_primer,strand[-len(self.rc_end_primer):]))
         return strand[len(self.begin_primer):-len(self.end_primer)]
 
 class EncodeNaiveStrand(EncodePacketizedFile):

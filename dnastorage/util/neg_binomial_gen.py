@@ -4,7 +4,6 @@ from scipy import stats
 import random
 import math
 import numpy
-import matplotlib.pyplot as plt
 
 
 #Instantiate this class in order to generate random variables from the negative binomial distribution with gamma function parameterization (rather than classical parameterization)
@@ -92,6 +91,8 @@ def calculate_expected(num_samples,start,bin_size,prob_array,num_bins):
 
     
 if __name__ == "__main__":
+    import matplotlib.pyplot as plt
+
     _rand=neg_bin(200,3000)
     rand_reads=[]
     for i in range (0,1000000):

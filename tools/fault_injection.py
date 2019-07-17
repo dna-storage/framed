@@ -18,7 +18,7 @@ import numpy as np
 import sys
 import os
 import time
-#!/usr/bin/python
+#!/usr/bin/env python
 
 def build_decode_xx_architecture(arch, pf, primer5, primer3, fountain_table=None):
     if arch == "UW+MSv1":
@@ -217,7 +217,7 @@ def build_strand_handler(strand_handler,Codec,cluster_algorithm):
 def build_cluster_algorithm(cluster_algorithm):
     if cluster_algorithm=="starcode_MP":
         return starcode("MP")
-    
+
 
 #function to wrap the process of running many strand_fault and missing_strand fault model simulations
 def run_monte_MS(args,desired_faulty_count,clean_strands,clean_file,data_keeper,strand_handler,fault_model,desired_faults_per_strand=None):

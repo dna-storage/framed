@@ -6,4 +6,4 @@ statistics
 matplotlib
 numpy
 scipy
-PIL
+Pillow

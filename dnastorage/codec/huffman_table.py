@@ -293,6 +293,23 @@ class HuffmanTable(HuffmanTableBase):
         if symbols != None:
             self._build_tree()
 
+
+class ErrorWhileDecodingTable(HuffmanTableBase):
+    def __init__(self, nbase, base_syms, symbols=None, weights=None, prevent_ones=False):
+        HuffmanTableBase.__init__(self,nbase,base_syms,symbols,weights,prevent_ones)
+
+    def decode(self, val):
+        return 0,0
+
+    def encode(self, val):
+        assert False and "Never use this for encoding"
+
+    def average_length(self):
+        return -1
+
+    def histogram(self):
+        return {}
+            
 class LengthLimitedHuffmanTable(HuffmanTableBase):
     # based on package-merge algorithm
     def __init__(self, L, nbase, base_syms, symbols, weights=None,prevent_ones=False):

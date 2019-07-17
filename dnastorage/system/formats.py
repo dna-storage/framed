@@ -93,7 +93,7 @@ FileSystemFormats = {
               ENC_XOR_ROT_200, DEC_XOR_ROT_200],
     0x0030 : [0x0030, 200, 11, "RS+ROT", "Inner/Outer RS with Rotating Huffman encoding", ENC_RS_ROT_200,
               DEC_RS_ROT_200],
-    #0x1000 : [0x1000, 200, "Segmented", "Segmented file format to support Preview", ENC_Segments_200, DEC_Segments_200]
+    0x1000 : [0x1000, 200, 20, "Segmented", "Segmented file format to support Preview", None, None]
 }
 
 

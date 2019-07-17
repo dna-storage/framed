@@ -467,7 +467,7 @@ class ReedSolomonInnerOuterDecoder(DecodePacketizedFile):
                 s = self.check_inner_strand(value2)
         _key=base_conversion.convertBytesToInt(s[:self._k_index])
         self._rsMap[_key] = s
-        logger.debug("_decode received key={} value={}".format(_key,",".join(["0x{:x}".format(v) for v in list(self._rsMap[_key])])))
+        logger.debug("_decode received key={} value={}".format(_key,",".join(["{}".format(v) for v in list(self._rsMap[_key])])))
 
         #print "rsMap[{}] = {}".format(key,value2)
         if self._is_block_ready_to_decode(_key) and not self._is_block_decoded(_key):

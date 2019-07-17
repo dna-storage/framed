@@ -3,12 +3,16 @@ from dnastorage.system.header import *
 import io
 import sys
 
+import logging
+logger = logging.getLogger('dna.storage.system.dnafile')
+logger.addHandler(logging.NullHandler())
+
 class DNAFile:
     def __init__(self):
         return
     
     @classmethod
-    def open(self, filename, op, primer5, primer3, format_name=""):
+    def open(self, filename, op, primer5, primer3, format_name="", write_incomplete_file=False):
         # check if we are reading or writing
         if op=="r":            
             # 1. filename is the input file of strands
@@ -18,12 +22,24 @@ class DNAFile:
             # 3. format is optional for reading and often ignored. Instead we look
             #    at the header to deduce what to do.
             #
-            #b = io.BytesIO()
-            #pf = WritePacketizedFilestream(b)
-            #s = get_strands(name,primer_info)
-            #h = decode_file_header(s)            
-            #f = self(name,op,primer_info,h)
-            return ReadDNAFile(input=filename, primer5=primer5, primer3=primer3)
+            
+            # Ugly: but we have to find the header to know what to do!
+            fd = open(filename,"r")
+            logger.debug("open {} for reading.".format(filename))
+            strands = get_strands(fd)
+            h = decode_file_header(strands,primer5,primer3)
+
+            assert h['version'][0] <= system_version['major']
+            assert h['version'][1] <= system_version['minor']
+            
+            if h['formatid'] == file_system_formatid_by_abbrev("Segmented"):
+                logger.debug("SegmentedReadDNAFile({},{},{})".format(filename,primer5,primer3))
+                return SegmentedReadDNAFile(input=filename,primer5=primer5,primer3=primer3,write_incomplete_file=write_incomplete_file)
+            else:
+                return ReadDNAFile(input=filename, primer5=primer5, primer3=primer3)
+
+        elif "w" in op and "s" in op:
+            return SegmentedWriteDNAFile(output=filename,primer5=primer5,primer3=primer3, format_name=format_name)       
         elif op=="w":
             return WriteDNAFile(output=filename,primer5=primer5,primer3=primer3, format_name=format_name)
         else:
@@ -51,8 +67,6 @@ def get_strands(in_fd):
             continue
         strands.append(s)
     return strands
-    
-
 
 class ReadDNAFile(DNAFile):
     # ReadDNAFile reads a set of strands from a file.  It finds the header,
@@ -83,9 +97,15 @@ class ReadDNAFile(DNAFile):
         self.formatid = h['formatid']
         self.header = h 
         self.size = h['size']
+
+        # set up mem_buffer 
+        self.mem_buffer = BytesIO()
         
-        dec_func = file_system_decoder(self.formatid)
+        if self.formatid >= 0x1000:
+            # let sub-classes handle initialization
+            return
         
+        dec_func = file_system_decoder(self.formatid)                
         self.mem_buffer = BytesIO()
         self.pf = WritePacketizedFilestream(self.mem_buffer,self.size,file_system_format_packetsize(self.formatid))
         self.dec = dec_func(self.pf,kwargs['primer5'],kwargs['primer3'])
@@ -201,8 +221,6 @@ class SegmentedWriteDNAFile(WriteDNAFile):
         # get current index + 1
         self.beginIndex = self.enc.index
         #print "beginIndex={}".format(self.enc.index)
-
-        
         enc_func = file_system_encoder_by_abbrev(format_name)
         self.formatid = file_system_formatid_by_abbrev(format_name)
         # we consumed the prior buffer, so just make a new one to avoid
@@ -216,10 +234,11 @@ class SegmentedWriteDNAFile(WriteDNAFile):
         oprimer5 = segments[0][2]
         oprimer3 = segments[0][3]
         assert len(segments) <= 256
-        if len(segments[1:]) == 0:
-            return []
-        hdr = [ len(segments[1:]) ]
-        for s in segments[1:]:
+        #if len(segments) == 0:
+        #    return []
+        hdr = [ len(segments) ]
+        logger.debug("encode segments header : {}".format(hdr))
+        for s in segments:
             hdr += convertIntToBytes(s[0],2)
             hdr += encode_size_and_value( s[1] )
             hdr += encode_size_and_value( s[4] )
@@ -228,14 +247,28 @@ class SegmentedWriteDNAFile(WriteDNAFile):
 
         return hdr
 
+    def encode_segments_header_comments(self,segments):
+        comment = "% segment descriptions\n"        
+        tab = "%    "
+        for i,s in enumerate(segments):
+            comment += tab + "{}. ".format(i) + file_system_format_description(s[0]) + "\n"
+            comment += tab + "    size = {}".format(s[1]) + "\n"
+            comment += tab + "    5' = {}".format(s[2]) + "\n"
+            comment += tab + "    3' = {}".format(s[3]) + "\n"
+            comment += tab + "    beginIndex = {}".format(s[4]) + "\n"            
+            comment += "%\n"
+        return comment
+
     def close(self):
+        logger.debug("WriteSegmentedDNAFile.close")
+        
         self.flush()
         self._record_segment() # record last segment
         
         hdr_other = self.encode_segments_header(self.segments)
 
-        formatid = self.segments[0][0]
-        size = self.segments[0][1]
+        formatid = file_system_formatid_by_abbrev("Segmented")
+        size = sum([x[1] for x in self.segments])
         primer5 = self.segments[0][2]
         primer3 = self.segments[0][3]
         
@@ -243,7 +276,10 @@ class SegmentedWriteDNAFile(WriteDNAFile):
         for i,h in enumerate(hdr):
             self.strands.insert(i,h)
 
-        comment = encode_file_header_comments(self.output_filename,formatid,size,hdr_other,primer5,primer3)
+        comment = encode_file_header_comments(self.output_filename,formatid,\
+                                              size,hdr_other,primer5,primer3)
+        self.out_fd.write(comment)
+        comment = self.encode_segments_header_comments(self.segments)
         self.out_fd.write(comment)
         for s in self.strands:
             self.out_fd.write("{}\n".format(s))
@@ -294,6 +330,8 @@ class SegmentedReadDNAFile(ReadDNAFile):
     def __init__(self,**kwargs):     
         ReadDNAFile.__init__(self,**kwargs)
 
+        logger.debug("sizeof other_data = {}".format(len(self.header['other_data'])))
+        
         if len(self.header['other_data'])==0:
             return
 
@@ -306,12 +344,13 @@ class SegmentedReadDNAFile(ReadDNAFile):
         #print "segments=",segs
 
         for s in segs:
+            logger.debug("formatid={} size={} bindex={} primer5={} primer3={}".format(s[0],s[1],s[2],s[3],s[4]))                                             
             formatid = s[0]
             size = s[1]
             bindex = s[2]
             primer5 = s[3]
             primer3 = s[4]
-            if kwargs.has_key('use_single_primer'):
+            if kwargs.has_key('use_single_primer') and kwargs['use_single_primer']==True:
                 # strands from sequencing should all have the same primer
                 primer5 = self.primer5
                 primer3 = self.primer3
