@@ -62,6 +62,8 @@ class data_helper:
     def insert_data_point(self,input_data_point):
         self._data_points.append(input_data_point)
 
+    def inc_num_correct(self):
+        self.num_correct+=1
     def get_probability_value(self):
         print self.num_correct
         return float(self.num_correct*100)/float(self._num_trials)
@@ -116,9 +118,7 @@ class data_helper:
             else:
                 bad=True
             total_bytes+=1
-        if not bad:
-            self.num_correct+=1
-        return float(total_correct_bytes*100/total_bytes)
+        return (float(total_correct_bytes*100/total_bytes),bad==False)
 
     def clear_correctness_results(self):
         self._percent_correct=[]
