@@ -334,10 +334,13 @@ def run_monte_rate(args,clean_strands,clean_file,data_keeper,strand_handler,faul
     
     print "Running Monte Carlo sim for error rate {}".format(error_rate)
     
-    results=[parallel(delayed(_monte_rate_parallel_wrapper)(t) for t in tasks )]
-
+    results=parallel(delayed(_monte_rate_parallel_wrapper)(t) for t in tasks )
+    _r=[]
+    for job_res in results:#unpack results from jobs
+        for res in job_res:
+            _r.append(res)
     #add results to the data keeper after the parallel jobs are finished
-    for r in results:
+    for r in _r:
         data_keeper.insert_correctness_result(r[0])
         if r[1]: data_keeper.inc_num_correct()
     
@@ -441,6 +444,10 @@ if __name__ == "__main__":
         read_randomizer=neg_bin(args.mean,args.var)
     else:
         read_randomizer=None
+
+
+    
+    
     #instantiate the clustering algorithm
     clustering_algorithm=build_cluster_algorithm(args.cluster_algorithm)
     #instantiate the strand handler
@@ -462,4 +469,6 @@ if __name__ == "__main__":
         #run a set of simulations for each failure rate
         for error_rate in np.arange(rate_lower,rate_upper,args.rate_step):
              run_monte_rate(args,clean_strands,clean_file,data_keeper,strand_handler,fault_model,error_rate)
+
+    data_keeper.plot_pmf(read_randomizer) #make a plot of the probability mass function
     data_keeper.dump()

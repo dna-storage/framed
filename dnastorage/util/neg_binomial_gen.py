@@ -6,6 +6,8 @@ import math
 import numpy
 
 
+
+
 #Instantiate this class in order to generate random variables from the negative binomial distribution with gamma function parameterization (rather than classical parameterization)
 class neg_bin:
     def __init__(self,mean,var):
@@ -15,6 +17,7 @@ class neg_bin:
         assert var>mean
         self._theta=mean**2/(var-mean)
         self._mean=mean
+        self._var=var
         last_cumlative=0
         index=0
         #build the cummulative probability array and probability array 
@@ -64,6 +67,13 @@ class neg_bin:
             cumulative_index=cumulative_index+1
         return cumulative_index
 
+    def get_mean(self):
+        return self._mean
+
+    def get_var(self):
+        return self._var
+
+    
 
 def bins_array(data,bin_size):
     num_bins=int(math.ceil((max(data)-min(data))/bin_size))
@@ -81,6 +91,9 @@ def bins_array(data,bin_size):
     return bin_array,num_bins
 
 
+
+
+
 def calculate_expected(num_samples,start,bin_size,prob_array,num_bins):
     expected={}
     index=start
@@ -88,6 +101,10 @@ def calculate_expected(num_samples,start,bin_size,prob_array,num_bins):
         expected[int(index)]=num_samples*sum(prob_array[index:index+bin_size])
         index=index+bin_size
     return expected
+
+
+
+
 
     
 if __name__ == "__main__":
