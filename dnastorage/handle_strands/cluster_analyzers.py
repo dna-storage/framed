@@ -1,6 +1,8 @@
 from dnastorage.fi import fault_injector
 import Levenshtein as lv
 import numpy as np
+import matplotlib
+matplotlib.use('agg')
 import matplotlib.pyplot as plt
 import operator
 '''

@@ -19,6 +19,8 @@ import numpy as np
 import sys
 import os
 import time
+from joblib import Parallel, delayed
+
 #!/usr/bin/env python
 
 import logging
@@ -293,14 +295,13 @@ def run_monte_MS(args,desired_faulty_count,clean_strands,clean_file,data_keeper,
 
 
 
-#function for running monte carlo simulations for a fixed rate fault model
-def run_monte_rate(args,clean_strands,clean_file,data_keeper,strand_handler,fault_model,error_rate):
-    #run many simulations to perform statistical analysis
+
+
+def _monte_rate_kernel(args,clean_strands,clean_file,data_keeper,strand_handler,fault_model,error_rate,monte_start,monte_end): #function that will run per process
+    #We cant use the data_keeper object here, should be private per process, need data structures to propagate results back up to parent process
+    results=[] #each element will be a tuple ---> ((float) percent_correct, (bool) File_Correct)
     table=[]
-    dist=[]
-    fault_model.set_fault_rate(error_rate)
-    print "Running Monte Carlo sim for error rate {}".format(error_rate)
-    for sim_number in range(0,args.num_sims):
+    for sim_number in range(monte_start,monte_end+1):
         print "Monte Carlo Sim: {}".format(sim_number)
         #build a "dirty" decoder and packetizedFile for each run
         dirty_packetizedFile= WritePacketizedFilestream(args.o,args.filesize,20)
@@ -322,15 +323,40 @@ def run_monte_rate(args,clean_strands,clean_file,data_keeper,strand_handler,faul
             else:
                 dirty_Decoder.decode(proc)
 
-        bad_file=dirty_Decoder.dummy_write()
         print "Finished decoding erroneous file"
-        #perform a dummy write
-        percent_correct=data_keeper.calculate_correctness(bad_file,clean_file)
-        #print "percent_correct=",percent_correct
-        data_keeper.insert_correctness_result(percent_correct)
+        bad_file=dirty_Decoder.dummy_write()
+        results.append(data_keeper.calculate_correctness(bad_file,clean_file))
+    return results
 
-    #grab an example of the distribution that was used
-    data_keeper.set_distribution(dist)
+
+def _monte_rate_parallel_wrapper(args): #wrapper for parallelization
+    return _monte_rate_kernel(*args)
+
+#function for running monte carlo simulations for a fixed rate fault model
+def run_monte_rate(args,clean_strands,clean_file,data_keeper,strand_handler,fault_model,error_rate):
+    #run many simulations to perform statistical analysis
+    dist=[]
+    fault_model.set_fault_rate(error_rate)
+    monteIters=args.num_sims/args.cores
+    processIters=0
+    tasks=[] #list of arguments for each task
+    parallel=Parallel(n_jobs=args.cores)
+    for i in range(args.cores):
+        tasks.append((args,clean_strands,clean_file,data_keeper,strand_handler,fault_model,error_rate,processIters,processIters+(monteIters-1)))
+        processIters+=monteIters #set up next range of montecarlo simulations
+    
+    print "Running Monte Carlo sim for error rate {}".format(error_rate)
+    
+    results=parallel(delayed(_monte_rate_parallel_wrapper)(t) for t in tasks )
+    _r=[]
+    for job_res in results:#unpack results from jobs
+        for res in job_res:
+            _r.append(res)
+    #add results to the data keeper after the parallel jobs are finished
+    for r in _r:
+        data_keeper.insert_correctness_result(r[0])
+        if r[1]: data_keeper.inc_num_correct()
+    
     #keep track of correctness results
     lower,middle,upper=data_keeper.calculate_midpoint()
     data_point=(error_rate,lower,middle,upper)
@@ -384,6 +410,7 @@ if __name__ == "__main__":
     parser.add_argument('--strand_handler',required=True,choices=['data_vote_simple','cluster_BMA','cluster_BMA_ED','cluster_ED'])
     parser.add_argument('--cluster_algorithm',required=False,choices=['starcode_MP'],default=None)
     parser.add_argument('--fileID',action="store",default='1',help="ID for the input file")
+    parser.add_argument('--cores', type=int, action="store",default='1',help="Number of threads to run monte carlo simulations")
 
 
     args = parser.parse_args()
@@ -430,6 +457,10 @@ if __name__ == "__main__":
         read_randomizer=neg_bin(args.mean,args.var)
     else:
         read_randomizer=None
+
+
+    
+    
     #instantiate the clustering algorithm
     clustering_algorithm=build_cluster_algorithm(args.cluster_algorithm)
     #instantiate the strand handler
@@ -453,4 +484,6 @@ if __name__ == "__main__":
         #run a set of simulations for each failure rate
         for error_rate in np.arange(rate_lower,rate_upper,args.rate_step):
              run_monte_rate(args,clean_strands,clean_file,data_keeper,strand_handler,fault_model,error_rate)
+
+    data_keeper.plot_pmf(read_randomizer) #make a plot of the probability mass function
     data_keeper.dump()
