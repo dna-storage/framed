@@ -108,9 +108,13 @@ class LayeredDecoder(DecodePacketizedFile):
 
     def _layered_decode_phys_to_strand(self, phys_strand):
         # perform block encoding
-        phys_s = self.physCodec.decode(phys_strand)
-        cw_s = self.physToStrandCodec.decode(phys_s)
-        s = self.strandCodec.decode(cw_s)
+        try:
+            phys_s = self.physCodec.decode(phys_strand)
+            cw_s = self.physToStrandCodec.decode(phys_s)
+            s = self.strandCodec.decode(cw_s)
+        except DNAStorageError, p:
+            s = [-1] + [ 0 for _ in range(self.strandSizeInBytes-1) ]
+        
         return s
 
     def decode_from_phys_to_strand(self, s):
