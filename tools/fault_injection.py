@@ -6,6 +6,7 @@ from dnastorage.codec import illinois
 from dnastorage.codec import binary
 from dnastorage.codec import huffman
 from dnastorage.codec import fountain
+from dnastorage.codec.LayeredCodec import *
 from dnastorage.codec.rscodec import *
 from dnastorage.arch.strand import *
 from dnastorage.arch.builder import *
@@ -19,6 +20,15 @@ import sys
 import os
 import time
 #!/usr/bin/env python
+
+import logging
+logger = logging.getLogger('dna')
+logger.setLevel(logging.DEBUG)
+_formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+_ch = logging.FileHandler("dna.debug.log",mode='w')
+_ch.setFormatter(_formatter)
+logger.addHandler(_ch)
+
 
 def build_decode_xx_architecture(arch, pf, primer5, primer3, fountain_table=None):
     if arch == "UW+MSv1":
@@ -80,11 +90,12 @@ def build_decode_xx_architecture(arch, pf, primer5, primer3, fountain_table=None
         enc = ReedSolomonInnerOuterDecoder(pf,p,k_datastrand=9,e_inner=2,k_index=2)
         return enc
 
-
 def read_header(dec_file):
     f = dec_file
     header = {}
     while True:
+        # ugly hack to restore seek position if we fail to match a header line
+        tell = f.tell()
         l = f.readline()
         if l.startswith('%') and 'bytes encoded' in l:
             words = l[1:].split(' ')
@@ -100,6 +111,7 @@ def read_header(dec_file):
             words = l[1:].split(' ')
             header['primer3'] = words[0]
         elif not l.startswith('%'):
+            f.seek(tell) # restore position to beginning of previous read
             break
 
     return header
@@ -293,26 +305,28 @@ def run_monte_rate(args,clean_strands,clean_file,data_keeper,strand_handler,faul
         #build a "dirty" decoder and packetizedFile for each run
         dirty_packetizedFile= WritePacketizedFilestream(args.o,args.filesize,20)
         dirty_Decoder = build_decode_architecture(args.arch, dirty_packetizedFile, args.primer5, args.primer3,table)
+
         #get a new pool of strands based on the negative binomial distribution
         multiple_strand_pool,dist=distribute_reads(clean_strands,read_randomizer,False)
 
         #set the fault_model's library to the new strand pool
         fault_model.set_library(multiple_strand_pool)
         strands_after_faults=fault_model.Run()
-
         #call the strand handler, will return either key,value pairs or strands
         processed_strands=strand_handler.process(strands_after_faults)
-
+        
         #Hand the processed strands off to decoding
         for proc in processed_strands:
             if type(proc) is tuple:
                 dirty_Decoder.decode(None,bypass=True,input_key=proc[0],input_value=proc[1])
             else:
                 dirty_Decoder.decode(proc)
+
+        bad_file=dirty_Decoder.dummy_write()
         print "Finished decoding erroneous file"
         #perform a dummy write
-        bad_file=dirty_Decoder.dummy_write()
         percent_correct=data_keeper.calculate_correctness(bad_file,clean_file)
+        #print "percent_correct=",percent_correct
         data_keeper.insert_correctness_result(percent_correct)
 
     #grab an example of the distribution that was used
@@ -419,8 +433,10 @@ if __name__ == "__main__":
     #instantiate the clustering algorithm
     clustering_algorithm=build_cluster_algorithm(args.cluster_algorithm)
     #instantiate the strand handler
-    strand_handler=build_strand_handler(args.strand_handler,clean_Decoder._Codec, clustering_algorithm)   
-
+    if type(clean_Decoder) is LayeredDecoder:
+        strand_handler=build_strand_handler(args.strand_handler,clean_Decoder, clustering_algorithm)
+    else:
+        strand_handler=build_strand_handler(args.strand_handler,clean_Decoder._Codec, clustering_algorithm)
     
     
     #determine which model to run

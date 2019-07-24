@@ -9,7 +9,7 @@ from dnastorage.codec import base_conversion
 from dnastorage.codec import fountain
 from dnastorage.codec.codecfile import *
 from dnastorage.codec.base import *
-from dnastorage.util.file_support import *
+from dnastorage.util.packetizedfile import *
 from copy import *
 
 import logging

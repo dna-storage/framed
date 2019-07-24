@@ -1,10 +1,10 @@
 #!/usr/bin/python
-from dnastorage.util.file_support import *
+from dnastorage.util.packetizedfile import *
 from dnastorage.codec import base_conversion
 from dnastorage.codec import dense
 from dnastorage.codec.base import BaseCodec
 
-class EncodePacketizedFile:
+class EncodePacketizedFile(object):
     """
     Partition the file into key,value packets for encoding. This is an iterable
     object for convenient encoding. If a CodecObj is provided, the iterator
@@ -69,7 +69,7 @@ class EncodePacketizedFile:
             self._iterating = False
             raise StopIteration()
 
-class DecodePacketizedFile:
+class DecodePacketizedFile(object):
     def __init__(self,packetizedFile,CodecObj=None,minIndex=0):
         self._packetizedFile = packetizedFile
         self._data = {}
@@ -88,6 +88,8 @@ class DecodePacketizedFile:
     #    return self._data[key]
 
     def writeToFile(self,key,value):
+        #print key, len(value)
+        
         # make sure value is a string
         if (type(value) is list) and (type(value[0]) is int or type(value[0]) is long):
             value = "".join([chr(x) for x in value])

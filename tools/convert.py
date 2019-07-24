@@ -73,7 +73,10 @@ if __name__ == "__main__":
         strands = []
         #try:
         for e in enc:
-            strands.append(e)
+            if type(e) is list:
+                strands += e
+            else:
+                strands.append(e)
         #except:
         #    pass
 

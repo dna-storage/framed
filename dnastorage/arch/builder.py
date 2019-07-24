@@ -1,15 +1,73 @@
 from dnastorage.codec import dense
 from dnastorage.codec import norepeatscodec
-from dnastorage.codec import commafreecodec
+from dnastorage.codec.commafreecodec import *
 from dnastorage.codec import illinois
 from dnastorage.codec import binary
 from dnastorage.codec import huffman
 from dnastorage.codec import fountain
 from dnastorage.codec.rscodec import *
+from dnastorage.codec.phys import *
+from dnastorage.codec.strand import *
+from dnastorage.codec.block import *
+from dnastorage.codec.LayeredCodec import *
 from dnastorage.arch.strand import *
+from dnastorage.exceptions import *
 
 def available_file_architectures():
     return ["UW+MSv1","Illinois",'Goldman','Fountain','Binary','Dense','NRDense','RS+CFC8','RS+ROT','RS+NRD', 'Sys']
+
+
+def build_RS_CFC8(is_encoder,pf,primer5,primer3):
+    
+    pol = AllowAll()
+
+    intraBlockIndex = 1
+    interBlockIndex = 2
+    inner_ecc = 2
+    payload=15
+    baseBlock = 185
+    outerECC = 70 # strands
+    assert baseBlock + outerECC < 256
+
+    index = intraBlockIndex + interBlockIndex
+
+    blockSize = payload*baseBlock # 185 normal strands
+    
+    blockCodec = ReedSolomonOuterCodec(packetSize=blockSize,\
+                                       errorSymbols=70,payloadSize=payload,Policy=pol)
+
+    blockToStrand = BlockToStrand(payload,(185+70)*payload,Policy=pol,\
+                                  intraIndexSize=intraBlockIndex,\
+                                  interIndexSize=interBlockIndex)
+    
+    # take index into account
+    # better to just say number of error symbols
+    strandCodec = ReedSolomonInnerCodec(inner_ecc,Policy=pol)
+
+    codewords = CommaFreeCodewords(payload+inner_ecc+index,Policy=pol)
+    pre = PrependSequence(primer5,isPrimer=True,Policy=pol)
+    app = AppendSequence(reverse_complement(primer3), CodecObj=pre, isPrimer=True)    
+    physCodec = app
+
+    if is_encoder==True:
+        enc = LayeredEncoder(pf,blockSizeInBytes=blockSize,strandSizeInBytes=payload,\
+                             blockCodec=blockCodec,\
+                             blockToStrandCodec=blockToStrand,\
+                             strandCodec=strandCodec,\
+                             strandToCodewordCodec=codewords,\
+                             codewordToPhysCodec=CombineCodewords(),\
+                             physCodec=physCodec,Policy=pol)
+        return enc
+    else:
+        dec = LayeredDecoder(pf,blockSizeInBytes=blockSize,strandSizeInBytes=payload,
+                             blockCodec=blockCodec,\
+                             strandCodec=strandCodec,\
+                             physCodec=physCodec,\
+                             physToStrandCodec=codewords,\
+                             strandToBlockCodec=blockToStrand,Policy=pol)
+        return dec
+    
+
 
 def build_encode_architecture(arch, pf, primer5, primer3):
     if arch == "UW+MSv1":
@@ -75,13 +133,14 @@ def build_encode_architecture(arch, pf, primer5, primer3):
         return enc
 
     elif arch == 'RS+CFC8':
-        b = commafreecodec.CommaFreeCodec(13,None,2)
-        p = StrandPrimers(primer5, primer3, b)
-        enc = ReedSolomonInnerOuterEncoder(pf,p,k_datastrand=9,e_inner=2,k_index=2)
-        return enc
+        return build_RS_CFC8(True,pf,primer5,primer3)
+        #b = commafreecodec.CommaFreeCodec(13,None,2)
+        #p = StrandPrimers(primer5, primer3, b)
+        #enc = ReedSolomonInnerOuterEncoder(pf,p,k_datastrand=9,e_inner=2,k_index=2)
+        #return enc
 
     elif arch == 'FSMD':
-        b = commafreecodec.CommaFreeCodec(19,None,1)
+        b = CommaFreeCodec(19,None,1)
         p = StrandPrimers(primer5, primer3, b)
         enc = ReedSolomonInnerOuterEncoder(pf,p,k_datastrand=16,e_inner=2,k_index=1,e_outer=1)
         return enc
@@ -157,11 +216,13 @@ def build_decode_architecture(arch, pf, primer5, primer3, fountain_table=None):
         return dec
 
     elif arch == 'RS+CFC8':
+        return build_RS_CFC8(False,pf,primer5,primer3)
         #print pf.packetSize
-        b = commafreecodec.CommaFreeCodec(13,None,2)
-        p = StrandPrimers(primer5, primer3, b)
-        dec = ReedSolomonInnerOuterDecoder(pf,p,k_datastrand=9,e_inner=2,k_index=2)
-        return dec
+        #b = commafreecodec.CommaFreeCodec(13,None,2)
+        #p = StrandPrimers(primer5, primer3, b)
+        #dec = ReedSolomonInnerOuterDecoder(pf,p,k_datastrand=9,e_inner=2,k_index=2)
+        #return dec
+        
     elif arch == 'RS+ROT':
         h = huffman.RotateCodec(huffman.HuffmanCodec(11,None,11,99))
         p = StrandPrimers(primer5, primer3, h)
@@ -169,7 +230,7 @@ def build_decode_architecture(arch, pf, primer5, primer3, fountain_table=None):
         return enc
 
     elif arch == 'FSMD':
-        b = commafreecodec.CommaFreeCodec(19,None,1)
+        b = CommaFreeCodec(19,None,1)
         p = StrandPrimers(primer5, primer3, b)
         enc = ReedSolomonInnerOuterDecoder(pf,p,k_datastrand=16,e_inner=2,k_index=1,e_outer=1)
         return enc

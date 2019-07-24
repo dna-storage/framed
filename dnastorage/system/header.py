@@ -3,7 +3,7 @@ from dnastorage.arch.builder import *
 import editdistance as ed
 #from dnastorage.primer.primer_util import edit_distance
 from io import BytesIO
-from dnastorage.util.file_support import *
+from dnastorage.util.packetizedfile import *
 import math
 import struct
 from dnastorage.system.formats import *

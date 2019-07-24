@@ -1,8 +1,13 @@
 from dnastorage.codec.base_conversion import convertIntToBytes,convertBytesToInt
+from dnastorage.exceptions import *
 
-class BaseCodec:
-    def __init__(self,CodecObj=None):
+class BaseCodec(object):
+    def __init__(self,CodecObj=None,Policy=None):
         self._Obj = CodecObj
+        if Policy is None:
+            self._Policy = AllowAll()
+        else:
+            self._Policy = Policy
     def _encode(self, s):
         return s
     def encode(self,s):
@@ -20,8 +25,8 @@ class BaseCodec:
             return s
 
 class TableCodec(BaseCodec):
-    def __init__(self,CodecObj=None,keyEncWidth=20,keyDecWidth=4,cwEncWidth=5,cwDecWidth=1):
-        BaseCodec.__init__(self,CodecObj)
+    def __init__(self,CodecObj=None,keyEncWidth=20,keyDecWidth=4,cwEncWidth=5,cwDecWidth=1,Policy=None):
+        BaseCodec.__init__(self,CodecObj=CodecObj,Policy=Policy)
         self._keyEncWidth = keyEncWidth
         self._keyDecWidth = keyDecWidth
         self._cwEncWidth = cwEncWidth

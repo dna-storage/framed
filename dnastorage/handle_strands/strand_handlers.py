@@ -2,6 +2,8 @@
 from collections import Counter
 from cluster import *
 from cluster_analyzers import *
+from dnastorage.codec import base_conversion
+from dnastorage.codec.LayeredCodec import *
 
 #import faulthandler; faulthandler.enable(); 
 """
@@ -15,14 +17,23 @@ portions of data.
 class data_vote_simple:
     def __init__(self,Codec):
         self._Codec=Codec
+
+    def mydecode(self, s):
+        if type(self._Codec) is LayeredDecoder:
+            strand = self._Codec.decode_from_phys_to_strand(s)
+            return base_conversion.convertBytesToInt(strand[0:3]),strand
+        else:
+            return self._Codec.decode(s)
+        
     def process(self,strands):
         key_value={}
         key_val_array=[]
         #print "processing strands"
         #seperare the strands up to their indexes
+        #print "strand_handlers.py: in here 1"
         for s in strands:
             #print "get key,value for strand {}".format(s)
-            key,value=self._Codec.decode(s)
+            key,value=self.mydecode(s)
             #print value
             if key not in key_value and key is not None and value is not None:
                 key_value[key]=[]
@@ -31,6 +42,8 @@ class data_vote_simple:
                 key_value[key].append(value)
             #print "stored key,value"
         #go through each index and figure out the majority data
+        #print "strand_handlers.py: in here 2"
+
         for key in key_value:
             data=[]
             #print "processing key values"
@@ -60,7 +73,7 @@ class data_vote_simple:
         #seperare the strands up to their indexes
         for s in strands:
             if(s[1]>0):
-                key,value=self._Codec.decode(s[0])
+                key,value=self.mydecode(s[0])
                 if key is not None and value is not None:
                     if key not in key_value:
                         key_value[key]=[]

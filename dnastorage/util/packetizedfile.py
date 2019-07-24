@@ -3,7 +3,7 @@ import os
 import sys
 
 import logging
-logger = logging.getLogger("dna.storage.util.file_support")
+logger = logging.getLogger("dna.storage.util.packetizedfile")
 logger.addHandler(logging.NullHandler())
 
 """
@@ -68,7 +68,7 @@ class WritePacketizedFilestream:
         keys = self.__data.keys()
         missing = []
         for i in range(self.minKey,self.maxKey):
-            if not keys.has_key(i):
+            if not i in keys:
                 missing.append(i)
         return missing
 
@@ -132,6 +132,7 @@ class WritePacketizedFilestream:
             else:
                 output_data+=emptyString
             i+=1
+        #print i,self.numberOfPackets,len(output_data),self.size
         assert i == self.numberOfPackets and len(output_data)==self.size 
         return output_data
 
