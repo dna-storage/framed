@@ -27,6 +27,8 @@ class WritePacketizedFilestream:
     def __setitem__(self,key,value):
         if (key >= self.minKey) and (key < self.maxKey):
             self.__data[key] = value
+        #else:
+            #print "not in range:",key,value,self.minKey,self.maxKey
     def __getitem__(self,key):
         assert key >= self.minKey and key < self.maxKey
         return self.__data[key]
@@ -58,9 +60,11 @@ class WritePacketizedFilestream:
     @property
     def complete(self):
         if len(self.__data.keys()) < self.numberOfPackets:
+            print "too few keys {}".format(self.numberOfPackets)
             return False
         for i in range(self.minKey,self.maxKey):
             if not (i in self.__data.keys()):
+                print "missing key {}".format(i)
                 return False
         return True
 

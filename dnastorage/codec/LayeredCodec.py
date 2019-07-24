@@ -137,7 +137,10 @@ class LayeredDecoder(DecodePacketizedFile):
             self.all_strands.append(input_value)
 
     def _attempt_final_decoding(self):
-        blocks = partitionStrandsIntoBlocks(self.all_strands,self.blockIndexSize)
+        if self.blockIndexSize>0:
+            blocks = partitionStrandsIntoBlocks(self.all_strands,self.blockIndexSize)
+        else:
+            blocks = [ (0,self.all_strands) ]
         #print "number of blocks=",len(blocks)
         for b in blocks:
             idx = b[0]
@@ -147,13 +150,15 @@ class LayeredDecoder(DecodePacketizedFile):
                 #print "attempt",b_contig[0],len(b_contig[1])
                 b_noecc = self.blockCodec.decode(b_contig)
                 #print "attempt",b_noecc[0],len(b_noecc[1])
-                self.writeToFile(b_noecc[0],b_noecc[1])                            
+                self.writeToFile(b_noecc[0],b_noecc[1])
+
             except DNAStorageError,e:
                 if self._Policy.allow(e):
                     continue                
                 else:
                     raise e
             except:
+                print str(e)
                 print b
                 
             

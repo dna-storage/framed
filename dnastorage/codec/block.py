@@ -1,6 +1,11 @@
 from dnastorage.codec.base import *
 from math import log, ceil
 from dnastorage.codec import base_conversion
+from dnastorage.codec.reedsolomon.rs import ReedSolomon,get_reed_solomon,ReedSolomonError
+
+import logging
+logger = logging.getLogger('dna.storage.codec.block')
+logger.addHandler(logging.NullHandler())
 
 def partitionStrandsIntoBlocks(strands, interIndexSize=2):
     blocksD = {}
@@ -53,7 +58,7 @@ class BlockToStrand(BaseCodec):
         strands = []
         bindex = base_conversion.convertIntToBytes(packet[0],self._interIndex)
         block = packet[1]
-
+        #print block
         
         #assert len(block) <= self._blockSize
         
@@ -127,9 +132,126 @@ class BlockToStrand(BaseCodec):
                 data = data[:self._blockSize]
             else:
                 raise err
-            
+
+        #print data
         return prior_bindex,data
         
+
+class ReedSolomonOuterCodec(BaseCodec):
+    """ReedSolomonOuterCodec takes a block of data as input and produces a new
+    block of data that's error encoded. 
+
+    The encoding input is a linear array of length payloadSize * nCol bytes,
+    where nRow is ideally set to the payload per strand. However, it's
+    not a strict requirement.
+
+    Bcol must be less than rs.field_charac, which is either 2**8 or 2**16.
+
+    """
+    def __init__(self,packetSize,errorSymbols,payloadSize,c_exp=8,CodecObj=None,Policy=None):
+        BaseCodec.__init__(self,CodecObj=CodecObj,Policy=Policy)
+
+        self._rs = get_reed_solomon(c_exp=c_exp)
+
+        self._packetSize = packetSize
+        self._errorSymbols = errorSymbols
+        self._payloadSize = payloadSize
+        
+        self._lengthMessage = packetSize / payloadSize + errorSymbols
+
+        assert(self._lengthMessage <= self._rs.field_charac) # requirement of RS
+        
+    """
+    packet is a tuple with the key at position 0 and value at position 1. This should return
+    the Reed-Solomon encoded byte array.
+    """
+    def _encode(self,packet):
+
+        index = packet[0]
+        data = packet[1][:]
+        
+        assert packet[0] < 256**3
+        assert len(packet[1])<=self._packetSize
+
+        # hopefully the last packet if it's not a full packetSize
+        # so, pad it out with zeros to make an even number of strands if
+        # isn't already
+        
+        if len(data) < self._packetSize:
+            stats.inc("RSOuterCodec.padPacket")
+            # normalize to multiple of payloadSize
+            rem = len(data) % self._payloadSize
+            data += [0]*(self._payloadSize-rem)
+
+        #print data
+        assert len(data) % self._payloadSize == 0
+        rows = len(data) / self._payloadSize
+        # construct message
+
+        ecc = []        
+        for i in range(self._payloadSize):
+            message = data[i:len(data):self._payloadSize]
+            mesecc = self._rs.rs_encode_msg(message, self._errorSymbols)
+            ecc += mesecc[len(message):]
+            #print "encode message=",mesecc
+            #print message, ecc
+            #print  len(message), len(ecc), self._errorSymbols
+            #assert len(ecc) == self._errorSymbols
+
+        tranpose = []
+        for i in range( self._errorSymbols ):
+            syms = ecc[i:len(ecc):self._errorSymbols]
+            data += syms
+                    
+        # separate out key and value
+        # convert mesecc into a string
+        return packet[0],data
+
+    """
+    This function expects a list of unsigned integers in GF(256). For now, erasures are
+    denoted with -1.
+    """
+    def _decode(self,packet):
+        #print packet[1]
+        data = [x for x in packet[1]]
+        #print data
+        rows = len(data) / self._payloadSize
+        for i in range(self._payloadSize):
+            message = data[i:len(data):self._payloadSize]            
+            erasures = [ j for j in range(len(message)) if message[j]==-1 ]
+            try:
+                # correct the message
+                corrected_message, corrected_ecc = \
+                    self._rs.rs_correct_msg(message, \
+                                            self._errorSymbols, \
+                                            erase_pos=erasures)
+                #print corrected_message
+                #print corrected_ecc
+                data[i:len(data):self._payloadSize] = corrected_message + corrected_ecc
+            except ReedSolomonError, e:
+                stats.inc("RSOuterCodec::ReedSolomonError")
+                # wrap exception into a library specific one when checking policy:
+                wr_e = DNAReedSolomonOuterCodeError(msg=\
+                             "RSOuterCodec found error at index={}".format(packet[0]))
+                if self._Policy.allow(wr_e):
+                    # fix -1
+                    corrected_message = [ max(0,_) for _ in message ]
+                    data[i:len(data):self._payloadSize] = corrected_message
+                    pass # nothing to do
+                else:
+                    # policy doesn't allow handling, raise exception
+                    raise wr_e
+                # just proceed without further error correction
+                pass
+            except Exception, e:
+                if self._Policy.allow(e):
+                    pass
+                else:
+                    raise e
+
+        # discard outer correction codes
+        data = data[0:len(data)-self._errorSymbols*self._payloadSize]        
+        return packet[0],data
 
 
 if __name__ == "__main__":

@@ -20,6 +20,7 @@ class EncodePacketizedFile(object):
 
     def __init__(self,packetizedFile,CodecObj=None,minIndex=0):
         self._index = minIndex
+        #print "self._index={}".format(self._index)
         self.minIndex = minIndex
         self._packetizedFile = packetizedFile
         self._iterating = False
@@ -29,6 +30,11 @@ class EncodePacketizedFile(object):
             self._Codec = CodecObj
 
     @property
+    def index(self):
+        #print "@property _index={}".format(self._index)
+        return self._index
+            
+    @property
     def bytes_encoded(self):
         return self._packetizedFile.bytes_read
 
@@ -36,6 +42,7 @@ class EncodePacketizedFile(object):
     # functionality also needs to be altered
     # returns key, value
     def _encode(self):
+        #print "return self._index={}".format(self._index)
         return self._index,self._packetizedFile.next()
 
     # Ideally, this would not be overriden, but if a subclass wants to
@@ -54,7 +61,7 @@ class EncodePacketizedFile(object):
 
     # iterator
     def __iter__(self):
-        self._index = 0
+        self._index = self.minIndex
         self._iterating = True
         self._packetizedFile.__iter__()
         # reset to begnning of file

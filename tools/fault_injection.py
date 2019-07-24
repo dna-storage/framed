@@ -485,5 +485,6 @@ if __name__ == "__main__":
         for error_rate in np.arange(rate_lower,rate_upper,args.rate_step):
              run_monte_rate(args,clean_strands,clean_file,data_keeper,strand_handler,fault_model,error_rate)
 
-    data_keeper.plot_pmf(read_randomizer) #make a plot of the probability mass function
+    if not (read_randomizer is None):
+        data_keeper.plot_pmf(read_randomizer) #make a plot of the probability mass function
     data_keeper.dump()

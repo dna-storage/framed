@@ -12,7 +12,7 @@ class DNAFile:
         return
     
     @classmethod
-    def open(self, filename, op, primer5, primer3, format_name="", write_incomplete_file=False):
+    def open(self, filename, op, primer5, primer3, format_name="", write_incomplete_file=False, fsmd_abbrev='FSMD',flanking_primer5="",flanking_primer3="",use_flanking_primer_for_decoding=False):
         # check if we are reading or writing
         if op=="r":            
             # 1. filename is the input file of strands
@@ -27,21 +27,42 @@ class DNAFile:
             fd = open(filename,"r")
             logger.debug("open {} for reading.".format(filename))
             strands = get_strands(fd)
-            h = decode_file_header(strands,primer5,primer3)
+
+            if use_flanking_primer_for_decoding==True:
+                h = decode_file_header(strands,flanking_primer5+primer5,\
+                                       flanking_primer3+primer3,fsmd_abbrev=fsmd_abbrev)
+            else:
+                h = decode_file_header(strands,primer5,primer3,fsmd_abbrev=fsmd_abbrev)
 
             assert h['version'][0] <= system_version['major']
             assert h['version'][1] <= system_version['minor']
             
             if h['formatid'] == file_system_formatid_by_abbrev("Segmented"):
                 logger.debug("SegmentedReadDNAFile({},{},{})".format(filename,primer5,primer3))
-                return SegmentedReadDNAFile(input=filename,primer5=primer5,primer3=primer3,write_incomplete_file=write_incomplete_file)
+                return SegmentedReadDNAFile(input=filename,\
+                                            primer5=primer5,primer3=primer3,\
+                                            write_incomplete_file=write_incomplete_file,\
+                                            fsmd_abbrev=fsmd_abbrev,\
+                                            flanking_primer5=flanking_primer5,\
+                                            flanking_primer3=flanking_primer3,\
+                                            use_flanking_primer_for_decoding=use_flanking_primer_for_decoding)
             else:
-                return ReadDNAFile(input=filename, primer5=primer5, primer3=primer3)
+                return ReadDNAFile(input=filename, primer5=primer5, primer3=primer3,\
+                                   fsmd_abbrev=fsmd_abbrev,\
+                                   flanking_primer5=flanking_primer5,\
+                                   flanking_primer3=flanking_primer3,\
+                                   use_flanking_primer_for_decoding=use_flanking_primer_for_decoding)
 
         elif "w" in op and "s" in op:
-            return SegmentedWriteDNAFile(output=filename,primer5=primer5,primer3=primer3, format_name=format_name)       
+            return SegmentedWriteDNAFile(output=filename,primer5=primer5,primer3=primer3, \
+                                         format_name=format_name,fsmd_abbrev=fsmd_abbrev,\
+                                         flanking_primer5=flanking_primer5,\
+                                         flanking_primer3=flanking_primer3)       
         elif op=="w":
-            return WriteDNAFile(output=filename,primer5=primer5,primer3=primer3, format_name=format_name)
+            return WriteDNAFile(output=filename,primer5=primer5,primer3=primer3, \
+                                format_name=format_name,fsmd_abbrev=fsmd_abbrev,\
+                                flanking_primer5=flanking_primer5,\
+                                flanking_primer3=flanking_primer3)
         else:
             return None
 
@@ -82,13 +103,36 @@ class ReadDNAFile(DNAFile):
             self.in_fd = kwargs['in_fd']
             self.input_filename = ""
 
+        if not kwargs.has_key('fsmd_abbrev'):
+            self.fsmd_abbrev = 'FSMD'
+        else:
+            self.fsmd_abbrev = kwargs['fsmd_abbrev']
+            
         assert kwargs.has_key('primer5') and kwargs.has_key('primer3')
         self.primer5 = kwargs['primer5']
         self.primer3 = kwargs['primer3']
 
+        if kwargs.has_key('flanking_primer5'):
+            self.flanking_primer5 = kwargs['flanking_primer5']
+        else:
+            self.flanking_primer5 = ''
+
+        if kwargs.has_key('flanking_primer3'):
+            self.flanking_primer3 = kwargs['flanking_primer3']
+        else:
+            self.flanking_primer3 = ''
+
+
+        if kwargs.has_key('use_flanking_primer_for_decoding'):
+            self.use_flanking_primers = kwargs['use_flanking_primer_for_decoding']
+        else:
+            self.use_flanking_primers = False
+            
         # get all the strands ( this will be bad for large files )
         strands = get_strands(self.in_fd)
-        h = decode_file_header(strands,self.primer5,self.primer3)
+
+        h = decode_file_header(strands,self.primer5,self.primer3,fsmd_abbrev=self.fsmd_abbrev)
+
         self.strands = pick_nonheader_strands(strands,self.primer5)
         
         assert h['version'][0] <= system_version['major']
@@ -108,7 +152,12 @@ class ReadDNAFile(DNAFile):
         dec_func = file_system_decoder(self.formatid)                
         self.mem_buffer = BytesIO()
         self.pf = WritePacketizedFilestream(self.mem_buffer,self.size,file_system_format_packetsize(self.formatid))
-        self.dec = dec_func(self.pf,kwargs['primer5'],kwargs['primer3'])
+
+        if self.use_flanking_primers:
+            self.dec = dec_func(self.pf,self.flanking_primer5+self.primer5,\
+                                self.flanking_primer3+self.primer3)
+        else:
+            self.dec = dec_func(self.pf,kwargs['primer5'],kwargs['primer3'])
 
         for s in self.strands:
             if s.startswith(self.primer5):
@@ -141,14 +190,32 @@ class WriteDNAFile(DNAFile):
             enc_func = file_system_encoder_by_abbrev(kwargs['format_name'])
             self.formatid = file_system_formatid_by_abbrev(kwargs['format_name'])
 
+        if not kwargs.has_key('fsmd_abbrev'):
+            self.fsmd_abbrev = 'FSMD'
+        else:
+            self.fsmd_abbrev = kwargs['fsmd_abbrev']
+
         self.mem_buffer = BytesIO()
         self.pf = ReadPacketizedFilestream(self.mem_buffer)
-        self.enc = enc_func(self.pf,kwargs['primer5'],kwargs['primer3'])
 
         assert kwargs.has_key('primer5') and kwargs.has_key('primer3')
         self.primer5 = kwargs['primer5']
         self.primer3 = kwargs['primer3']
 
+        if kwargs.has_key('flanking_primer3'):
+            self.flanking_primer3 = kwargs['flanking_primer3']
+        else:
+            self.flanking_primer3 = ''
+
+        if kwargs.has_key('flanking_primer5'):
+            self.flanking_primer5 = kwargs['flanking_primer5']
+        else:
+            self.flanking_primer5 = ''
+
+        self.enc = enc_func(self.pf,self.flanking_primer5+self.primer5,\
+                            self.flanking_primer3+self.primer3)
+
+            
         if kwargs.has_key('output'):
             self.output_filename = kwargs['output']
             self.out_fd = open(self.output_filename,"w")
@@ -163,6 +230,7 @@ class WriteDNAFile(DNAFile):
     def _encode_buffer(self):
         for e in self.enc:
             self.strands.append(e)
+        #print "_encode_buffer: index={}".format(self.enc.index)
 
     def read(self, size):
         assert False and "Do not read at the same time as writing"
@@ -187,7 +255,10 @@ class WriteDNAFile(DNAFile):
     def close(self):
         self.flush()
         hdr = encode_file_header(self.output_filename,self.formatid,self.size,\
-                                 "",self.primer5,self.primer3)
+                                 "",self.flanking_primer5+self.primer5,\
+                                 self.flanking_primer3+self.primer3,\
+                                 fsmd_abbrev=self.fsmd_abbrev)
+
         for i,h in enumerate(hdr):
             self.strands.insert(i,h)
 
@@ -213,11 +284,13 @@ class SegmentedWriteDNAFile(WriteDNAFile):
     def _record_segment(self):
         self.segments += [[ self.formatid, self.size, self.primer5, self.primer3, self.beginIndex ]]
 
-    def new_segment(self, format_name, primer5, primer3):
+    def new_segment(self, format_name, primer5, primer3, flanking_primer5="", flanking_primer3=""):
         self._encode_buffer()  # write everything in the buffer to the file
         self._record_segment() # remember new segment
         self.primer5 = primer5
         self.primer3 = primer3
+        self.flanking_primer5 = flanking_primer5
+        self.flanking_primer3 = flanking_primer3
         # get current index + 1
         self.beginIndex = self.enc.index
         #print "beginIndex={}".format(self.enc.index)
@@ -227,7 +300,7 @@ class SegmentedWriteDNAFile(WriteDNAFile):
         # cursor positioning problems (JMT: not sure if this is the best way)
         self.mem_buffer = BytesIO()
         self.pf = ReadPacketizedFilestream(self.mem_buffer)
-        self.enc = enc_func(self.pf,primer5,primer3,self.beginIndex)
+        self.enc = enc_func(self.pf,flanking_primer5+primer5,flanking_primer3+primer3,self.beginIndex)
         self.size=0
 
     def encode_segments_header(self,segments):
@@ -268,11 +341,14 @@ class SegmentedWriteDNAFile(WriteDNAFile):
         hdr_other = self.encode_segments_header(self.segments)
 
         formatid = file_system_formatid_by_abbrev("Segmented")
+
+        #print "formatid=",formatid
+        
         size = sum([x[1] for x in self.segments])
         primer5 = self.segments[0][2]
         primer3 = self.segments[0][3]
         
-        hdr = encode_file_header(self.output_filename,formatid,size,hdr_other,primer5,primer3)
+        hdr = encode_file_header(self.output_filename,formatid,size,hdr_other,primer5,primer3,fsmd_abbrev=self.fsmd_abbrev)
         for i,h in enumerate(hdr):
             self.strands.insert(i,h)
 
@@ -281,9 +357,13 @@ class SegmentedWriteDNAFile(WriteDNAFile):
         self.out_fd.write(comment)
         comment = self.encode_segments_header_comments(self.segments)
         self.out_fd.write(comment)
-        for s in self.strands:
-            self.out_fd.write("{}\n".format(s))
-
+        for ss in self.strands:
+            if type(ss) is list:
+                for s in ss:
+                    self.out_fd.write("{}\n".format(s))
+            else:
+                self.out_fd.write("{}\n".format(ss))
+                    
         if self.out_fd != sys.stdout and self.out_fd != sys.stderr:
             self.out_fd.close()
         return
@@ -338,6 +418,7 @@ class SegmentedReadDNAFile(ReadDNAFile):
         # restore cursor to end of buffer for writing
         self.mem_buffer.seek(0,2)
         
+
         segs = self.decode_segments_header(self.header['other_data'])
         self.segments = segs
 
@@ -360,18 +441,22 @@ class SegmentedReadDNAFile(ReadDNAFile):
             self.pf = WritePacketizedFilestream(self.mem_buffer,size,\
                                                 file_system_format_packetsize(formatid),\
                                                 minKey=bindex)
+
+            #print primer5, primer3, bindex
             self.dec = dec_func(self.pf,primer5,primer3,bindex)
 
             for s in self.strands:
                 if s.startswith(primer5):
-                    #print s
+                    #print "dnafile.py",self.dec.decode_from_phys_to_strand(s)
                     self.dec.decode(s)
 
+            self.dec.write()
             write_anyway = kwargs.has_key('write_incomplete_file') and \
                 kwargs['write_incomplete_file']==True
-            if self.dec.complete or write_anyway:
-                self.dec.write()            
-            #assert self.dec.complete
+            #if self.dec.complete or write_anyway:
+            #    self.dec.write()
+            if not write_anyway:
+                assert self.dec.complete
             
         #print [x for x in self.mem_buffer.getvalue()]
         self.mem_buffer.seek(0,0) # set read point at beginning of buffer        
@@ -392,22 +477,23 @@ if __name__ == "__main__":
     import io
     import sys
     
-    wf = SegmentedWriteDNAFile(primer3='T'*19+'G',primer5='A'*19+'G',format_name='RS+CFC8',output="out.dna")
+    wf = SegmentedWriteDNAFile(primer3='T'*19+'G',primer5='A'*19+'G',format_name='RS+CFC8+RE1',output="out.dna",fsmd_abbrev='FSMD-1')
     
     #wf = DNAFile.open(primer3='TTTG',primer5='AAAG',format_name='FSMD',filename="out.dna2",op="w")
     
-    for i in range(10):
+    for i in range(1000):
         wf.write( "".join([chr(x) for x in convertIntToBytes(i,4)]) )
 
-    wf.new_segment('RS+ROT','AT'+'A'*17+'G','TA'+'T'*17+'G')
+    wf.new_segment('RS+CFC8+RE2','AT'+'A'*17+'G','TA'+'T'*17+'G')
         
     for i in range(10,30):
         wf.write( "".join([chr(x) for x in convertIntToBytes(i,4)]) )
 
     wf.close()
 
-    rf = SegmentedReadDNAFile(primer3='T'*19+'G',primer5='A'*19+'G',input="out.dna")
+    rf = SegmentedReadDNAFile(primer3='T'*19+'G',primer5='A'*19+'G',input="out.dna",fsmd_abbrev='FSMD-1')
 
+    print "Should print out 0 to 30: "
     while True:
         s = rf.read(4)
         if len(s)==0:
@@ -415,6 +501,8 @@ if __name__ == "__main__":
         n = convertBytesToInt([ord(x) for x in s])
         print n
 
+    print "Done."
+    
     sys.exit(0)
     
         
