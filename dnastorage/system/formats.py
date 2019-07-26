@@ -22,12 +22,12 @@ def DEC_FSMD_200(pf, primer5, primer3, bIndex=0,policy=AllowAll(),withCut=None):
 
 def ENC_FSMD_WCUT_160(pf, primer5, primer3, bIndex=0, policy=NoTolerance(),withCut=None):
     withCut="AGGTACCA"
-    enc = customize_RS_CFC8(True,pf,primer5,primer3,1,0,2,10,80,policy,withCut=withCut,outerECCStrands=20,minIndex=bIndex)
+    enc = customize_RS_CFC8(True,pf,primer5,primer3,1,0,2,10,120,policy,withCut=withCut,outerECCStrands=20,minIndex=bIndex)
     return enc    
 
 def DEC_FSMD_WCUT_160(pf, primer5, primer3, bIndex=0,policy=AllowAll(),withCut=None):
     withCut="AGGTACCA"
-    dec = customize_RS_CFC8(False,pf,primer5,primer3,1,0,2,10,80,policy,withCut=withCut,outerECCStrands=20,minIndex=bIndex)
+    dec = customize_RS_CFC8(False,pf,primer5,primer3,1,0,2,10,120,policy,withCut=withCut,outerECCStrands=20,minIndex=bIndex)
     return dec
 
 def ENC_RS_CFC8_200(pf, primer5, primer3, bIndex=0, policy=NoTolerance()):
@@ -41,49 +41,49 @@ def DEC_RS_CFC8_200(pf, primer5, primer3, bIndex=0, policy=AllowAll()):
 
 def ENC_RS_CFC8_RE1_160(pf, primer5, primer3, bIndex=0, policy=NoTolerance()):
     withCut="AGGTACCA"
-    enc = customize_RS_CFC8(True,pf,primer5,primer3,1,2,2,9,185*9,policy,minIndex=bIndex,
+    enc = customize_RS_CFC8(True,pf,primer5,primer3,1,1,3,9,185*9,policy,minIndex=bIndex,
                             withCut=withCut)
     return enc    
 
 def DEC_RS_CFC8_RE1_160(pf, primer5, primer3, bIndex=0, policy=AllowAll()):
     withCut="AGGTACCA"
-    dec = customize_RS_CFC8(False,pf,primer5,primer3,1,2,2,9,185*9,policy,minIndex=bIndex,\
+    dec = customize_RS_CFC8(False,pf,primer5,primer3,1,1,3,9,185*9,policy,minIndex=bIndex,\
                             withCut=withCut)
     return dec    
 
 def ENC_RS_CFC8_RE2_160(pf, primer5, primer3, bIndex=0, policy=NoTolerance()):
     withCut="CCTGCAGG"
-    enc = customize_RS_CFC8(True,pf,primer5,primer3,1,2,2,9,185*9,policy,minIndex=bIndex,
+    enc = customize_RS_CFC8(True,pf,primer5,primer3,1,1,3,9,185*9,policy,minIndex=bIndex,
                             withCut=withCut)
     return enc    
 
 def DEC_RS_CFC8_RE2_160(pf, primer5, primer3, bIndex=0, policy=AllowAll()):
     withCut="CCTGCAGG"
-    dec = customize_RS_CFC8(False,pf,primer5,primer3,1,2,2,9,185*9,policy,minIndex=bIndex,\
+    dec = customize_RS_CFC8(False,pf,primer5,primer3,1,1,3,9,185*9,policy,minIndex=bIndex,\
                             withCut=withCut)
     return dec    
 
 def ENC_RS_CFC8_RE3_160(pf, primer5, primer3, bIndex=0, policy=NoTolerance()):
     withCut="GCGGCCGC"
-    enc = customize_RS_CFC8(True,pf,primer5,primer3,1,2,2,9,185*9,policy,minIndex=bIndex,
+    enc = customize_RS_CFC8(True,pf,primer5,primer3,1,1,3,9,185*9,policy,minIndex=bIndex,
                             withCut=withCut)
     return enc    
 
 def DEC_RS_CFC8_RE3_160(pf, primer5, primer3, bIndex=0, policy=AllowAll()):
     withCut="GCGGCCGC"
-    dec = customize_RS_CFC8(False,pf,primer5,primer3,1,2,2,9,185*9,policy,minIndex=bIndex,\
+    dec = customize_RS_CFC8(False,pf,primer5,primer3,1,1,3,9,185*9,policy,minIndex=bIndex,\
                             withCut=withCut)
     return dec    
 
 def ENC_RS_CFC8_RE4_160(pf, primer5, primer3, bIndex=0, policy=NoTolerance()):
     withCut="GTTTAAAC"
-    enc = customize_RS_CFC8(True,pf,primer5,primer3,1,2,2,9,185*9,policy,minIndex=bIndex,
+    enc = customize_RS_CFC8(True,pf,primer5,primer3,1,1,3,9,185*9,policy,minIndex=bIndex,
                             withCut=withCut)
     return enc    
 
 def DEC_RS_CFC8_RE4_160(pf, primer5, primer3, bIndex=0, policy=AllowAll()):
     withCut="GTTTAAAC"
-    dec = customize_RS_CFC8(False,pf,primer5,primer3,1,2,2,9,185*9,policy,minIndex=bIndex,\
+    dec = customize_RS_CFC8(False,pf,primer5,primer3,1,1,3,9,185*9,policy,minIndex=bIndex,\
                             withCut=withCut)
     return dec    
 
@@ -143,8 +143,8 @@ def DEC_Goldman_200(pf, primer5, primer3):
 
 FileSystemFormats = {
     # KEY      KEY    LEN  PacketSize, Abbrev.   Description                   ENCODER       DECODR
-    0x0010 : [0x0010, 200, 15, "FSMD", "File system meta-data format", ENC_FSMD_200, DEC_FSMD_200 ],
-    0x0011 : [0x0011, 160, 10, "FSMD-1", "File system meta-data format with cut", ENC_FSMD_WCUT_160, DEC_FSMD_WCUT_160 ],
+    0x0010 : [0x0010, 200, 90, "FSMD", "File system meta-data format", ENC_FSMD_200, DEC_FSMD_200 ],
+    0x0011 : [0x0011, 160, 120, "FSMD-1", "File system meta-data format with cut", ENC_FSMD_WCUT_160, DEC_FSMD_WCUT_160 ],
     0x0020 : [0x0020, 200, 16, "RS+CFC8", "Reed-Solomon coded with Comma-free codewords",
               ENC_RS_CFC8_200, DEC_RS_CFC8_200 ],
     #0x0100 : [0x0100, 200, "Dense", "Dense encoding", ENC_Dense_200, DEC_Dense_200 ],

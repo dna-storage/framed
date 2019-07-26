@@ -60,11 +60,11 @@ class WritePacketizedFilestream:
     @property
     def complete(self):
         if len(self.__data.keys()) < self.numberOfPackets:
-            print "too few keys {}".format(self.numberOfPackets)
+            #print "too few keys {}".format(self.numberOfPackets)
             return False
         for i in range(self.minKey,self.maxKey):
             if not (i in self.__data.keys()):
-                print "missing key {}".format(i)
+                #print "missing key {}".format(i)
                 return False
         return True
 

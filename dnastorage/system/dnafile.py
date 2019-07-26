@@ -33,7 +33,8 @@ class DNAFile:
                                        flanking_primer3+primer3,fsmd_abbrev=fsmd_abbrev)
             else:
                 h = decode_file_header(strands,primer5,primer3,fsmd_abbrev=fsmd_abbrev)
-
+            
+            logger.debug("decoded header: {}".format(h)) 
             assert h['version'][0] <= system_version['major']
             assert h['version'][1] <= system_version['minor']
             
@@ -148,8 +149,10 @@ class ReadDNAFile(DNAFile):
         if self.formatid >= 0x1000:
             # let sub-classes handle initialization
             return
-        
-        dec_func = file_system_decoder(self.formatid)                
+
+        dec_func = file_system_decoder(self.formatid)
+            
+            
         self.mem_buffer = BytesIO()
         self.pf = WritePacketizedFilestream(self.mem_buffer,self.size,file_system_format_packetsize(self.formatid))
 
@@ -282,7 +285,7 @@ class SegmentedWriteDNAFile(WriteDNAFile):
         return
 
     def _record_segment(self):
-        self.segments += [[ self.formatid, self.size, self.primer5, self.primer3, self.beginIndex ]]
+        self.segments += [[ self.formatid, self.size, self.primer5, self.primer3, self.beginIndex, self.flanking_primer5, self.flanking_primer3 ]]
 
     def new_segment(self, format_name, primer5, primer3, flanking_primer5="", flanking_primer3=""):
         self._encode_buffer()  # write everything in the buffer to the file
@@ -347,8 +350,13 @@ class SegmentedWriteDNAFile(WriteDNAFile):
         size = sum([x[1] for x in self.segments])
         primer5 = self.segments[0][2]
         primer3 = self.segments[0][3]
+        flanking5 = self.segments[0][-2]
+        flanking3 = self.segments[0][-1]
         
-        hdr = encode_file_header(self.output_filename,formatid,size,hdr_other,primer5,primer3,fsmd_abbrev=self.fsmd_abbrev)
+        hdr = encode_file_header(self.output_filename,formatid,size,hdr_other,flanking5+primer5,flanking3+primer3,fsmd_abbrev=self.fsmd_abbrev)
+
+        #print "Number of strands in header: ", len(hdr)
+
         for i,h in enumerate(hdr):
             self.strands.insert(i,h)
 
@@ -394,12 +402,15 @@ class SegmentedReadDNAFile(ReadDNAFile):
             seg += [v]
 
             primer5,p = decode_primer_diff(val[pos:], self.primer5)
+
             pos += p
             primer3,p = decode_primer_diff(val[pos:], self.primer3)
+
             pos += p
             seg.append(primer5)
             seg.append(primer3)
-            allSegs.append(seg)            
+            allSegs.append(seg)
+
         return allSegs
 
 
@@ -418,7 +429,6 @@ class SegmentedReadDNAFile(ReadDNAFile):
         # restore cursor to end of buffer for writing
         self.mem_buffer.seek(0,2)
         
-
         segs = self.decode_segments_header(self.header['other_data'])
         self.segments = segs
 
@@ -446,7 +456,7 @@ class SegmentedReadDNAFile(ReadDNAFile):
             self.dec = dec_func(self.pf,primer5,primer3,bindex)
 
             for s in self.strands:
-                if s.startswith(primer5):
+                if s.find(primer5)!=-1:
                     #print "dnafile.py",self.dec.decode_from_phys_to_strand(s)
                     self.dec.decode(s)
 

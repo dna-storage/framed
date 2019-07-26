@@ -2,12 +2,14 @@ from dnastorage.codec.base import *
 from math import log, ceil
 from dnastorage.codec import base_conversion
 from dnastorage.codec.reedsolomon.rs import ReedSolomon,get_reed_solomon,ReedSolomonError
+from collections import Counter
 
 import logging
 logger = logging.getLogger('dna.storage.codec.block')
 logger.addHandler(logging.NullHandler())
 
 def partitionStrandsIntoBlocks(strands, interIndexSize=2):
+    logger.debug("partitionStrandsIntoBlocks:strands={}".format(len(strands)))
     blocksD = {}
     for s in strands:
         idx = base_conversion.convertBytesToInt(s[0:interIndexSize])
@@ -15,6 +17,45 @@ def partitionStrandsIntoBlocks(strands, interIndexSize=2):
     blocks = blocksD.items()
     blocks.sort(cmp=lambda x,y: cmp(x[0],y[0]))
     return blocks
+
+def doMajorityVote(strands, indexBytes=3):
+    key_value = {}
+    strand_array = []
+    for s in strands:
+        #print "get key,value for strand {}".format(s)
+        key = base_conversion.convertBytesToInt(s[0:indexBytes])
+        #print value
+        if key is not None:
+            key_value[key] = key_value.get(key,[]) + [s]
+            
+    for key in key_value:
+        data=[]
+        if len(key_value[key])==1:
+            # no reason to vote on a single strand
+            strand_array.append(key_value[key][0])
+            continue
+        #print "processing key values"
+        mx = max([len(data_strand) for data_strand in key_value[key]])
+        for x in range(0,mx):
+            #get a list of values that belong to the same location
+            # if there's a smaller strand, due to error, this assert
+            # will fire before attempting to access an illegal index
+            same_position_values = []
+            for data_strand in key_value[key]:
+                if x < len(data_strand):
+                    same_position_values.append(data_strand[x])
+            #print same_position_values
+            cnt=Counter(same_position_values)
+            most_common_value=cnt.most_common(1)[0][0]
+            #print most_common_value
+            data.append(most_common_value)
+            #put the key and data into an array
+        strand_array.append(data)
+        
+    return strand_array
+
+
+
 
 
 class NormalizeBlock(BaseCodec):
@@ -229,6 +270,7 @@ class ReedSolomonOuterCodec(BaseCodec):
                 #print corrected_ecc
                 data[i:len(data):self._payloadSize] = corrected_message + corrected_ecc
             except ReedSolomonError, e:
+                #print "couldn't correct block {}".format(message)
                 stats.inc("RSOuterCodec::ReedSolomonError")
                 # wrap exception into a library specific one when checking policy:
                 wr_e = DNAReedSolomonOuterCodeError(msg=\

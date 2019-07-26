@@ -7,7 +7,7 @@ from dnastorage.codec import binary
 from dnastorage.codec import huffman
 from dnastorage.codec import fountain
 from dnastorage.codec.LayeredCodec import *
-from dnastorage.codec.rscodec import *
+#from dnastorage.codec.rscodec import *
 from dnastorage.arch.strand import *
 from dnastorage.arch.builder import *
 from dnastorage.primer.primer_util import *

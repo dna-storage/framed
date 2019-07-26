@@ -82,7 +82,8 @@ class LayeredDecoder(DecodePacketizedFile):
                  strandCodec=None,\
                  strandToBlockCodec=None,\
                  blockCodec=None,\
-                 Policy=None):\
+                 Policy=None,
+                 intraBlockIndexSize=1):\
                          
         DecodePacketizedFile.__init__(self,packetizedFile,minIndex=minIndex)
         # set packetSize (can't hurt to do it again here)
@@ -102,6 +103,7 @@ class LayeredDecoder(DecodePacketizedFile):
         self.blockSizeInBytes = blockSizeInBytes
         self.all_strands = []
         self.blockIndexSize = blockIndexSize
+        self.intraBlockIndexSize = intraBlockIndexSize
         self._Policy = Policy
         return
 
@@ -137,6 +139,9 @@ class LayeredDecoder(DecodePacketizedFile):
             self.all_strands.append(input_value)
 
     def _attempt_final_decoding(self):
+        # do voting here!!
+        self.voted_strands = doMajorityVote(self.all_strands,\
+                                            self.blockIndexSize+self.intraBlockIndexSize)
         if self.blockIndexSize>0:
             blocks = partitionStrandsIntoBlocks(self.all_strands,self.blockIndexSize)
         else:

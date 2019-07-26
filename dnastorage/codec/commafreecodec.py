@@ -3,6 +3,8 @@ from dnastorage.codec import base_conversion
 from random import randint
 import editdistance as ed
 
+from dnastorage.util.stats import stats
+
 
 #In this order, no codewords have a hamming distance
 #smaller than 2, and only two consecutive codewords have a hamming
@@ -189,7 +191,7 @@ class CommaFreeCodec(BaseCodec):
                     # whether found or not, move to next possible symbol
                     if dec[n] == None:
                         prior = False
-                    i += 8                        
+                    i += 8        
         return dec
 
 
@@ -255,7 +257,7 @@ class CommaFreeCodewords(BaseCodec):
                 return [100,D[1][0],8]
             elif len(D[1])>1:
                 p = D[1][ randint(0,len(D[1])-1) ]
-                return [1.0/len(D[1])*100,p,1]
+                return [1.0/len(D[1])*100,p,8]
         elif D.has_key(2):
             if len(D[2])==1:
                 return [100,D[2][0],8]
@@ -282,20 +284,28 @@ class CommaFreeCodewords(BaseCodec):
         new_strand = []
         i = 0
         while i < len(s) and len(new_strand) < numSyms:
-            if exact[i] != None:
+            #print i
+            if not(exact[i] is None):
+                if i%8 != 0:
+                    stats.inc("CFC8::misAlignedCodeword")
                 new_strand.append(exact[i])
+                #print i,"->",exact[i]
                 i += 8
             else:
+                #print "missing codeword:",exact[i:i+8]
                 err = DNABadCodeword("Missing expected CFC8 symbol")
                 if self._Policy.allow(err):
-                    j = self.get_next_exact(i+1,exact)
+                    j = self.get_next_exact(i,exact)
                     skipped = int(round((j-i)/8.0))
+                    i_tmp = i
                     for k in range(skipped):
-                        v = self.inexact_vote(s[i:i+9])
+                        #new_strand.append(-1)
+                        v = self.inexact_vote(s[i_tmp:i_tmp+8])
                         if v[0]==100:
                             new_strand.append(cfc_inv[v[1]])
-                            i+=v[2]
+                            i_tmp+=v[2]
                         else:
+                            i_tmp+=8
                             new_strand.append(-1)
                     i = j
                 else:
@@ -303,6 +313,7 @@ class CommaFreeCodewords(BaseCodec):
         
         if len(new_strand) != numSyms:
             err = DNAStrandPayloadWrongSize("Payload wrong size in CFC8")
+            stats.inc("CFC8:payloadWrongSize")
             if self._Policy.allow(err):            
                 if len(new_strand) < numSyms:
                     while len(new_strand) < numSyms:
@@ -311,7 +322,24 @@ class CommaFreeCodewords(BaseCodec):
                     new_strand = new_strand[0:numSyms]
             else:
                 raise err
-                    
+
+
+        cnt=0
+        found=False
+        for _ in new_strand:
+            stats.inc("CFC8::TotalCodewords")
+            if _ == -1:
+                found=True
+                stats.inc("CFC8::UnidentifiedCodeword")
+            else:
+                stats.inc("CFC8::IdentifiedCodeword")
+        if found:
+            #print "found error"
+            stats.inc("CFC8::strandsWithErrors")
+            stats.inc("CFC8::strandsTotal")
+        else:
+            stats.inc("CFC8::strandsTotal")
+            
         return new_strand
                 
             # if j<3:

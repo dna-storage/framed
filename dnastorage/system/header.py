@@ -63,6 +63,7 @@ def encode_size_and_value(val):
     return data
 
 def decode_size_and_value(data,pos):
+    #print "decode_size_and_value: ",pos, len(data)
     size_bytes = data[pos]
     val = convertBytesToInt(data[pos+1:pos+1+size_bytes])
     return val,size_bytes+1
@@ -90,9 +91,11 @@ def encode_file_header(filename,format_id,size,other_data,primer5,primer3,fsmd_a
     data += convertIntToBytes(format_id,2)
     data += convertIntToBytes(len(other_data),2)
     data += other_data
-    data += [0]*(80-len(data))
+    #data += [0]*(80-len(data))
     data = "".join([chr(x) for x in data])
 
+    #print "size of file header: ",len(data)
+    
     pf = ReadPacketizedFilestream(BytesIO(data))
     enc_func = file_system_encoder_by_abbrev(fsmd_abbrev)
     enc = enc_func(pf,primer5+magic_header,primer3)
@@ -123,17 +126,18 @@ def pick_header_strands(strands,primer5):
     picks = []
     others = []
     for s in strands:
-        if s.startswith(primer5+magic_header):
+        if s.find(primer5+magic_header)!=-1:
             picks.append(s)
-        elif s.startswith(primer5):
-            plen= len(primer5)
+        elif s.find(primer5)!=-1:
+            plen= s.find(primer5)+len(primer5)
             possible_hdr = s[plen:plen+len(magic_header)]
             if ed.eval(possible_hdr,magic_header) < 2:
-                ss = s[:]
-                ss[plen:plen+len(magic_header)] = magic_header
-                picks.append(ss)
+                #ss = s[:]
+                #ss[plen:plen+len(magic_header)] = magic_header
+                picks.append(s)
             else:
                 others.append(s)
+
     return picks,others
 
 
@@ -143,12 +147,17 @@ def decode_file_header(strands,primer5,primer3,fsmd_abbrev='FSMD'):
     #print picks
 
     b = BytesIO()
-    pf = WritePacketizedFilestream(b,80,20)
+
+    fid = file_system_formatid_by_abbrev(fsmd_abbrev)
+    packetsize = file_system_format_packetsize(fid)
+
+    pf = WritePacketizedFilestream(b,packetsize,packetsize)
+    
     dec_func = file_system_decoder_by_abbrev(fsmd_abbrev)
     dec = dec_func(pf,primer5+magic_header,primer3)
     
     for s in picks:
-        tmp = dec.decode_from_phys_to_strand(s)
+        #tmp = dec.decode_from_phys_to_strand(s)
         #print len(tmp),tmp
         dec.decode(s)
 
@@ -183,6 +192,10 @@ def decode_file_header(strands,primer5,primer3,fsmd_abbrev='FSMD'):
     size_other_data = convertBytesToInt(data[pos:pos+2])
     pos += 2
     header['other_data'] = [ x for x in data[pos:pos+size_other_data] ]
+
+    #print "size_other_data={}".format(size_other_data)
+    #print "len(other_data)={}".format(len(header['other_data']))
+    
     
     return header
 

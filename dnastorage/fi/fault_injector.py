@@ -87,6 +87,7 @@ class fixed_rate(BaseModel):
 
     #go through each nucleotide in each strand and apply a flat fault rate
     def injection_sites(self,input_library):
+        #print "fault_rate={}".format(self._args.fault_rate)
         generate.seed()
         injection_sites={}
         #go through the strands and pick faults
@@ -97,7 +98,7 @@ class fixed_rate(BaseModel):
                 if inject_fault<=self._args.fault_rate:
                     #need to inject a fault at this nucleotide, fault types are equally probable
                     #FIX if want to have variable error rates per type
-                    injection_sites[strand_index][nuc_index]=str(generate.rand_in_range(0,2))
+                    injection_sites[strand_index][nuc_index]= str(0) #str(generate.rand_in_range(0,2))
         return injection_sites
                     
     #inject errors in the list of strands, each 
