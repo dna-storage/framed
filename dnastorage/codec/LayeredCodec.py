@@ -162,7 +162,7 @@ class LayeredDecoder(DecodePacketizedFile):
                     continue                
                 else:
                     raise e
-            except:
+            except Exception, e:
                 print str(e)
                 print b
                 

@@ -37,7 +37,7 @@ def customize_RS_CFC8(is_enc,pf,primer5,primer3,intraBlockIndex=1,\
 
     blockToStrand = BlockToStrand(payload,(blockStrands+outerECCStrands)*payload,Policy=Policy,\
                                   intraIndexSize=intraBlockIndex,\
-                                  interIndexSize=interBlockIndex)
+                                  interIndexSize=interBlockIndex,filterZeroes=True)
     
     # take index into account
     # better to just say number of error symbols

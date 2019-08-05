@@ -81,26 +81,52 @@ class BlockToStrand(BaseCodec):
         the same block. Then they are assembled into a cohesive block and returned.     
     """
 
-    def __init__(self, strandSizeInBytes, blockSizeInBytes, intraIndexSize=1, interIndexSize=2, nSyms=256, CodecObj=None, Policy=None):
+    def __init__(self, strandSizeInBytes, blockSizeInBytes, intraIndexSize=1, interIndexSize=2, nSyms=256, CodecObj=None, Policy=None, filterZeroes=False):
         super(BlockToStrand,self).__init__(CodecObj=CodecObj,Policy=Policy)
         self._strandSizeInBytes = strandSizeInBytes
         self._blockSize = blockSizeInBytes
         self._interIndex = interIndexSize
         self._intraIndex = intraIndexSize
         self._nSyms = nSyms
-
+        self._removeZeroes = filterZeroes
+        logger.info("filterZeroes = {}".format(filterZeroes))
+        
     def allzeroes(self, l):
         for z in l:
             if z != 0:
                 return False
         return True
-        
+
+    def _filter_zeroes(self, block):
+        if self._removeZeroes == False:
+            return [ False for _ in range(0,len(block),self._strandSizeInBytes) ]
+
+        zeroes = []
+        for i in range(0,len(block),self._strandSizeInBytes): 
+            strand = block[i:i+self._strandSizeInBytes]
+            if self.allzeroes(strand):
+                zeroes.append(True)
+            else:
+                zeroes.append(False)
+                    
+        fil = [ False for _ in range(len(zeroes)) ]
+        assert len(fil) == len(zeroes)
+        for i,z in enumerate(zeroes):
+            if i > 0 and i < len(zeroes)-1:
+                if zeroes[i-1]==True and zeroes[i+1]==True and zeroes[i]==True:
+                    fil[i] = True
+
+        #print fil
+        return fil
+                    
     def _encode(self, packet):
         strands = []
         bindex = base_conversion.convertIntToBytes(packet[0],self._interIndex)
         block = packet[1]
         #print block
-        
+
+        fil = self._filter_zeroes(block)
+            
         #assert len(block) <= self._blockSize
         
         assert len(bindex) <= self._interIndex
@@ -108,7 +134,10 @@ class BlockToStrand(BaseCodec):
         for i in range(0,len(block),self._strandSizeInBytes):
             #if allzeroes(block[i:i+self._strandSizeInBytes]):
             #    continue
-
+            if fil[i/self._strandSizeInBytes]==True: # don't emit zeroes
+                stats.inc("BlockToStrand::filterAllZeroStrand")
+                continue
+            
             sindex = base_conversion.convertIntToBytes(i/self._strandSizeInBytes,self._intraIndex)
             assert len(sindex) <= self._intraIndex
             s = bindex + sindex  + block[i:i+self._strandSizeInBytes]            
@@ -157,12 +186,34 @@ class BlockToStrand(BaseCodec):
         max_index = self._blockSize / self._strandSizeInBytes
         for i in range(max_index):
             if not d.has_key(i):
-                err = DNABlockMissingIndex("Block missing index = {}".format(i))
-                if self._Policy.allow(err):
-                    #print "Block missing index = {}".format(i)
-                    data += d.get(i,[-1 for _ in range(self._strandSizeInBytes)])
+                if self._removeZeroes:
+                    if not (i-1 in d) and not ((i+1) in d):
+                        # guess that it's all zeros
+                        stats.inc("BlockToStrand::decode::guessAllZeroStrand")
+                        data += [ 0 for _ in range(self._strandSizeInBytes) ]
+                    elif (i-1) in d and self.allzeroes(d[i-1]) and not (i+1 in d):
+                        # guess that it's all zeros
+                        stats.inc("BlockToStrand::decode::guessAllZeroStrand")
+                        data += [ 0 for _ in range(self._strandSizeInBytes) ]
+                    elif (i+1) in d and self.allzeroes(d[i+1]) and not (i-1 in d):
+                        # guess that it's all zeros
+                        stats.inc("BlockToStrand::decode::guessAllZeroStrand")
+                        data += [ 0 for _ in range(self._strandSizeInBytes) ]
+                    else:
+                        err = DNABlockMissingIndex("Block missing index = {}".format(i))
+                        stats.inc("BlockToStrand::decode::guessMissingStrand")
+                        if self._Policy.allow(err):
+                            #print "Block missing index = {}".format(i)
+                            data += d.get(i,[-1 for _ in range(self._strandSizeInBytes)])
+                        else:
+                            raise err
                 else:
-                    raise err
+                    err = DNABlockMissingIndex("Block missing index = {}".format(i))
+                    if self._Policy.allow(err):
+                        #print "Block missing index = {}".format(i)
+                        data += d.get(i,[-1 for _ in range(self._strandSizeInBytes)])
+                    else:
+                        raise err
             else:
                 data += d[i]
                 
@@ -269,6 +320,7 @@ class ReedSolomonOuterCodec(BaseCodec):
                 #print corrected_message
                 #print corrected_ecc
                 data[i:len(data):self._payloadSize] = corrected_message + corrected_ecc
+                stats.inc("RSOuterCodec::correct")
             except ReedSolomonError, e:
                 #print "couldn't correct block {}".format(message)
                 stats.inc("RSOuterCodec::ReedSolomonError")
