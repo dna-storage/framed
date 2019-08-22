@@ -82,7 +82,8 @@ class LayeredDecoder(DecodePacketizedFile):
                  strandCodec=None,\
                  strandToBlockCodec=None,\
                  blockCodec=None,\
-                 Policy=None):\
+                 Policy=None,
+                 intraBlockIndexSize=1):\
                          
         DecodePacketizedFile.__init__(self,packetizedFile,minIndex=minIndex)
         # set packetSize (can't hurt to do it again here)
@@ -102,6 +103,7 @@ class LayeredDecoder(DecodePacketizedFile):
         self.blockSizeInBytes = blockSizeInBytes
         self.all_strands = []
         self.blockIndexSize = blockIndexSize
+        self.intraBlockIndexSize = intraBlockIndexSize
         self._Policy = Policy
         return
 
@@ -137,7 +139,13 @@ class LayeredDecoder(DecodePacketizedFile):
             self.all_strands.append(input_value)
 
     def _attempt_final_decoding(self):
-        blocks = partitionStrandsIntoBlocks(self.all_strands,self.blockIndexSize)
+        # do voting here!!
+        self.voted_strands = doMajorityVote(self.all_strands,\
+                                            self.blockIndexSize+self.intraBlockIndexSize)
+        if self.blockIndexSize>0:
+            blocks = partitionStrandsIntoBlocks(self.all_strands,self.blockIndexSize)
+        else:
+            blocks = [ (0,self.all_strands) ]
         #print "number of blocks=",len(blocks)
         for b in blocks:
             idx = b[0]
@@ -147,13 +155,15 @@ class LayeredDecoder(DecodePacketizedFile):
                 #print "attempt",b_contig[0],len(b_contig[1])
                 b_noecc = self.blockCodec.decode(b_contig)
                 #print "attempt",b_noecc[0],len(b_noecc[1])
-                self.writeToFile(b_noecc[0],b_noecc[1])                            
+                self.writeToFile(b_noecc[0],b_noecc[1])
+
             except DNAStorageError,e:
                 if self._Policy.allow(e):
                     continue                
                 else:
                     raise e
-            except:
+            except Exception, e:
+                print str(e)
                 print b
                 
             

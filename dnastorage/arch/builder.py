@@ -5,7 +5,7 @@ from dnastorage.codec import illinois
 from dnastorage.codec import binary
 from dnastorage.codec import huffman
 from dnastorage.codec import fountain
-from dnastorage.codec.rscodec import *
+from dnastorage.codec.deprecated.rscodec import *
 from dnastorage.codec.phys import *
 from dnastorage.codec.strand import *
 from dnastorage.codec.block import *
@@ -17,6 +17,66 @@ def available_file_architectures():
     return ["UW+MSv1","Illinois",'Goldman','Fountain','Binary','Dense','NRDense','RS+CFC8','RS+ROT','RS+NRD', 'Sys']
 
 
+def customize_RS_CFC8(is_enc,pf,primer5,primer3,intraBlockIndex=1,\
+                      interBlockIndex=2,innerECC=2,strandSizeInBytes=15,\
+                      blockSizeInBytes=15*185,Policy=None,\
+                      withCut=None,outerECCStrands=None,minIndex=0):
+    assert blockSizeInBytes % strandSizeInBytes == 0
+    payload=strandSizeInBytes
+    blockStrands = blockSizeInBytes / strandSizeInBytes
+    if outerECCStrands is None:
+        outerECCStrands = 255-blockStrands # strands
+    else:
+        assert outerECCStrands + blockStrands <= 255
+    assert blockStrands + outerECCStrands < 256
+
+    index = intraBlockIndex + interBlockIndex
+
+    blockCodec = ReedSolomonOuterCodec(packetSize=blockSizeInBytes,\
+                                       errorSymbols=outerECCStrands,payloadSize=payload,Policy=Policy)
+
+    blockToStrand = BlockToStrand(payload,(blockStrands+outerECCStrands)*payload,Policy=Policy,\
+                                  intraIndexSize=intraBlockIndex,\
+                                  interIndexSize=interBlockIndex,filterZeroes=True)
+    
+    # take index into account
+    # better to just say number of error symbols
+    strandCodec = ReedSolomonInnerCodec(innerECC,Policy=Policy)
+
+    codewords = CommaFreeCodewords(payload+innerECC+index,Policy=Policy)
+
+    if not (withCut is None):
+        cut = InsertMidSequence(withCut)
+    else:
+        cut = None
+    
+    pre = PrependSequence(primer5,isPrimer=True,Policy=Policy,CodecObj=cut)
+    app = AppendSequence(reverse_complement(primer3), CodecObj=pre, isPrimer=True, \
+                         Policy=Policy)    
+    physCodec = app
+
+    if is_enc==True:
+        enc = LayeredEncoder(pf,blockSizeInBytes=blockSizeInBytes,\
+                             strandSizeInBytes=strandSizeInBytes,\
+                         blockCodec=blockCodec,\
+                         blockToStrandCodec=blockToStrand,\
+                         strandCodec=strandCodec,\
+                         strandToCodewordCodec=codewords,\
+                         codewordToPhysCodec=CombineCodewords(),\
+                             physCodec=physCodec,Policy=Policy,minIndex=minIndex)
+        return enc
+    else:
+        dec = LayeredDecoder(pf,blockSizeInBytes=blockSizeInBytes,\
+                             strandSizeInBytes=strandSizeInBytes,\
+                             blockIndexSize=interBlockIndex,\
+                             blockCodec=blockCodec,\
+                             strandCodec=strandCodec,\
+                             physCodec=physCodec,\
+                             physToStrandCodec=codewords,\
+                             strandToBlockCodec=blockToStrand,Policy=Policy,minIndex=minIndex)
+        return dec
+        
+
 def build_RS_CFC8(is_encoder,pf,primer5,primer3):
     
     pol = AllowAll()
@@ -26,7 +86,7 @@ def build_RS_CFC8(is_encoder,pf,primer5,primer3):
     inner_ecc = 2
     payload=15
     baseBlock = 185
-    outerECC = 70 # strands
+    outerECC = 255-baseBlock # strands
     assert baseBlock + outerECC < 256
 
     index = intraBlockIndex + interBlockIndex
@@ -36,7 +96,7 @@ def build_RS_CFC8(is_encoder,pf,primer5,primer3):
     blockCodec = ReedSolomonOuterCodec(packetSize=blockSize,\
                                        errorSymbols=70,payloadSize=payload,Policy=pol)
 
-    blockToStrand = BlockToStrand(payload,(185+70)*payload,Policy=pol,\
+    blockToStrand = BlockToStrand(payload,(baseBlock+outerECC)*payload,Policy=pol,\
                                   intraIndexSize=intraBlockIndex,\
                                   interIndexSize=interBlockIndex)
     

@@ -3,6 +3,8 @@ from dnastorage.exceptions import *
 from dnastorage.codec.reedsolomon.rs import ReedSolomon,get_reed_solomon,ReedSolomonError
 from random import randint
 
+from dnastorage.util.stats import stats
+
 import logging
 logger = logging.getLogger('dna.storage.codec.strand')
 logger.addHandler(logging.NullHandler())
@@ -71,7 +73,11 @@ class ReedSolomonInnerCodec(BaseCodec):
         try:
             corrected_message, corrected_ecc = self.rs.rs_correct_msg(message,self._numberECCBytes, erase_pos=erasures)
             value = corrected_message
+            #print "corrected message"
+            stats.inc("RSInnerCodec::decode::succeeded")
         except ReedSolomonError, e:
+            stats.inc("RSInnerCodec::decode::failed")
+            #print "Inner: Couldn't correct message: {}".format(message)
             stats.inc("RSInnerCodec.ReedSolomonError")
             if self._Policy.allow(e):
                 # leave erasures, may be helpful for outer decoder

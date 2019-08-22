@@ -10,9 +10,9 @@ from dnastorage.system.formats import *
 
 ### Designed to fit on a single strand for most use cases
 ### 
-### Every header strand begins with special sequence that can't be used at the beginning of indices: CCATCCAT
+### Every header strand begins with special sequence that can't be used at the beginning of indices: ATCGATGC
 ###
-### 1. 'CCATCCAT' [1]
+### 1. 'ATCGATGC' [1]
 ### 2. short index - usually 0, 0-255, at most 16 strands [1]
 ### 3. major version (0-255) [1]
 ### 4. minor version (0-255) [1]
@@ -26,7 +26,7 @@ from dnastorage.system.formats import *
 ### Pad to final width using arbitrary sequence
 
 system_version = { 'major': 0, 'minor':1 }
-magic_header = 'CCATCCAT'
+magic_header = 'ATCGATGC' #'CCATCCAT'
 
 def encode_primer_diff(o,n):
     hdr = []
@@ -63,6 +63,7 @@ def encode_size_and_value(val):
     return data
 
 def decode_size_and_value(data,pos):
+    #print "decode_size_and_value: ",pos, len(data)
     size_bytes = data[pos]
     val = convertBytesToInt(data[pos+1:pos+1+size_bytes])
     return val,size_bytes+1
@@ -81,7 +82,7 @@ def encode_file_header_comments(filename,format_id,size,other_data,primer5,prime
     comment += "% {} bytes of additional data \n".format(len(other_data))
     return comment
 
-def encode_file_header(filename,format_id,size,other_data,primer5,primer3):
+def encode_file_header(filename,format_id,size,other_data,primer5,primer3,fsmd_abbrev='FSMD'):
     data =  [ system_version['major'], system_version['minor'] ]
     data += convertIntToBytes(int(math.ceil(math.log(size,2)/8.0)),1)
     data += convertIntToBytes(size,int(math.ceil(math.log(size,2)/8.0)))
@@ -90,16 +91,22 @@ def encode_file_header(filename,format_id,size,other_data,primer5,primer3):
     data += convertIntToBytes(format_id,2)
     data += convertIntToBytes(len(other_data),2)
     data += other_data
-    data += [0]*(80-len(data))
+    #data += [0]*(80-len(data))
     data = "".join([chr(x) for x in data])
 
+    #print "size of file header: ",len(data)
+    
     pf = ReadPacketizedFilestream(BytesIO(data))
-    enc_func = file_system_encoder_by_abbrev('FSMD')
+    enc_func = file_system_encoder_by_abbrev(fsmd_abbrev)
     enc = enc_func(pf,primer5+magic_header,primer3)
     strands = []
     for e in enc:
-        strands.append(e)
-    
+        if type(e) is list:
+            for s in e:                
+                strands.append(s)
+        else:
+            strands.append(e)
+            
     return strands
 
 def pick_nonheader_strands(strands,primer5):
@@ -119,35 +126,49 @@ def pick_header_strands(strands,primer5):
     picks = []
     others = []
     for s in strands:
-        if s.startswith(primer5+magic_header):
+        if s.find(primer5+magic_header)!=-1:
             picks.append(s)
-        elif s.startswith(primer5):
-            plen= len(primer5)
+        elif s.find(primer5)!=-1:
+            plen= s.find(primer5)+len(primer5)
             possible_hdr = s[plen:plen+len(magic_header)]
             if ed.eval(possible_hdr,magic_header) < 2:
-                ss = s[:]
-                ss[plen:plen+len(magic_header)] = magic_header
-                picks.append(ss)
+                #ss = s[:]
+                #ss[plen:plen+len(magic_header)] = magic_header
+                picks.append(s)
             else:
                 others.append(s)
+
     return picks,others
 
 
-def decode_file_header(strands,primer5,primer3):
+def decode_file_header(strands,primer5,primer3,fsmd_abbrev='FSMD'):
     picks,_ = pick_header_strands(strands,primer5)
 
+    #print picks
+
     b = BytesIO()
-    pf = WritePacketizedFilestream(b,80,20)
-    dec_func = file_system_decoder_by_abbrev('FSMD')
+
+    fid = file_system_formatid_by_abbrev(fsmd_abbrev)
+    packetsize = file_system_format_packetsize(fid)
+
+    pf = WritePacketizedFilestream(b,packetsize,packetsize)
+    
+    dec_func = file_system_decoder_by_abbrev(fsmd_abbrev)
     dec = dec_func(pf,primer5+magic_header,primer3)
     
     for s in picks:
+        #tmp = dec.decode_from_phys_to_strand(s)
+        #print len(tmp),tmp
         dec.decode(s)
+
 
     dec.write()
     assert dec.complete    
 
+
     data = [ ord(x) for x in b.getvalue() ]
+
+    #print data
     
     assert data[0] == system_version['major']
     assert data[1] == system_version['minor']
@@ -171,6 +192,10 @@ def decode_file_header(strands,primer5,primer3):
     size_other_data = convertBytesToInt(data[pos:pos+2])
     pos += 2
     header['other_data'] = [ x for x in data[pos:pos+size_other_data] ]
+
+    #print "size_other_data={}".format(size_other_data)
+    #print "len(other_data)={}".format(len(header['other_data']))
+    
     
     return header
 

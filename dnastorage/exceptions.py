@@ -132,3 +132,12 @@ class DNAStrandPoorlyFormed(DNACodingError):
             msg = "Strand is poorly formed."
         super(DNAStrandPoorlyFormed,self).__init__(msg)
         stats.inc("StrandPoorlyFormed")
+
+class DNAFileHeaderHasError(DNACodingError):
+    """ Header is poorly formed """
+    def __init__(self,msg=None):
+        if msg is None:
+            msg = "DNAFile header has an error."
+        super(DNAFileHeaderHasError,self).__init__(msg)
+        stats.inc("HeaderHasError")
+        

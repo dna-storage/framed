@@ -35,9 +35,17 @@ class dnastats:
                 fmt = "{},"+"{}\n".format(self.formats.get(k,"{}"))
                 self.fd.write(fmt.format(k,v))
                 logger.info(fmt.format(k,v))
+        else:
+            if len(self.msg) > 0:
+                logger.info(self.msg)
+            for k,v in self.all_stats.items():
+                fmt = "{},"+"{}".format(self.formats.get(k,"{}"))
+                logger.info(fmt.format(k,v))
+                
                 
     def __del__(self):
-        self.persist()
+        return
+        #self.persist()
 
 global stats
 stats = dnastats(msg="global stats collection for dnastorage project")
