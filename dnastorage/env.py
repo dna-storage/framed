@@ -29,5 +29,5 @@ def get_oligo_csv():
     return oligos
 
 if __name__ == "__main__":
-     print get_home_directory()
-     print get_data_directory()
+     print (get_home_directory())
+     print (get_data_directory())

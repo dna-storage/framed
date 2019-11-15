@@ -134,7 +134,7 @@ class BlockToStrand(BaseCodec):
         for i in range(0,len(block),self._strandSizeInBytes):
             #if allzeroes(block[i:i+self._strandSizeInBytes]):
             #    continue
-            if fil[i/self._strandSizeInBytes]==True: # don't emit zeroes
+            if fil[int(i/self._strandSizeInBytes)]==True: # don't emit zeroes
                 stats.inc("BlockToStrand::filterAllZeroStrand")
                 continue
             
@@ -321,7 +321,7 @@ class ReedSolomonOuterCodec(BaseCodec):
                 #print corrected_ecc
                 data[i:len(data):self._payloadSize] = corrected_message + corrected_ecc
                 stats.inc("RSOuterCodec::correct")
-            except ReedSolomonError, e:
+            except ReedSolomonError as e:
                 #print "couldn't correct block {}".format(message)
                 stats.inc("RSOuterCodec::ReedSolomonError")
                 # wrap exception into a library specific one when checking policy:
@@ -337,7 +337,7 @@ class ReedSolomonOuterCodec(BaseCodec):
                     raise wr_e
                 # just proceed without further error correction
                 pass
-            except Exception, e:
+            except Exception as e:
                 if self._Policy.allow(e):
                     pass
                 else:
@@ -356,17 +356,17 @@ if __name__ == "__main__":
     b2s = BlockToStrand(20,80,Policy=AllowAll())
 
     x = [ randint(0,255) for x in range(4*20) ]
-    print x
+    print (x)
     
     r = b2s.encode( [2323,x] )
-    print r
+    print (r)
 
     k = randint(0,len(r)-2)
 
     r[3] = r[3]+[32,235, 22]
     
     index,y = b2s.decode ( r[:k]+r[k+1:] )
-    print index, y
+    print (index, y)
     
-    print sum([ (a-b)**2 for a,b in zip(x,y) ])
+    print (sum([ (a-b)**2 for a,b in zip(x,y) ]))
     

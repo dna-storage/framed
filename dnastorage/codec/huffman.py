@@ -232,7 +232,7 @@ def rotate_encode(strand,prev='A'):
     r = []
     for s in strand:
         if s == 'T':
-            print strand
+            print (strand)
         assert s != 'T'
         n = rotate_table[prev][rotate_map[s]]
         r.append( n )
@@ -286,13 +286,13 @@ class RotateCodec(BaseCodec):
         return rotate_decode(s,self._prev)
 
 if __name__ == "__main__":
-    print huffman_encode_byte(255)
+    print (huffman_encode_byte(255))
     s = "12345678"
-    print huffman_encode(s)            
+    print (huffman_encode(s))
     assert s == huffman_decode(huffman_encode(s))
 
     s = 'AGCAGCAGC'
-    print s
-    print rotate_encode(s)
-    print rotate_decode(rotate_encode(s))
+    print (s)
+    print (rotate_encode(s))
+    print (rotate_decode(rotate_encode(s)))
     assert s == rotate_decode(rotate_encode(s))

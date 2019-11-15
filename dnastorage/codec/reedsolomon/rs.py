@@ -42,7 +42,7 @@ class ReedSolomon:
         if prim is None:
             prim = self.find_prime_polys(generator=generator, c_exp=c_exp,  \
                                          fast_primes=True, single=True)
-            print "prim=0x{:x}".format(prim)
+            print ("prim=0x{:x}".format(prim))
             
         self.init_tables(prim=prim,generator=generator,c_exp=c_exp)
         #self.gen = self.rs_generator_poly(errs, 0, generator)
@@ -887,6 +887,6 @@ if __name__ == "__main__":
 
     new_msg = rs16.rs_encode_msg(message, 20)
     new_msg2 = rs8.rs_encode_msg(message, 20)
-    print message
-    print new_msg
-    print new_msg2
+    print (message)
+    print (new_msg)
+    print (new_msg2)

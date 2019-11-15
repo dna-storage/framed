@@ -43,7 +43,7 @@ class TableCodec(BaseCodec):
     def _encode(self, s):
         key = convertIntToBytes(s[0],self._keyDecWidth)
         payload = bytearray(s[1])
-        print "{}:{}".format(key,payload)
+        #print ("{}:{}".format(key,payload))
         enc = []
         for i in range(0,len(key),self._cwDecWidth):
             enc.append( self._enctab( convertBytesToInt(key[i:i+self._cwDecWidth])) )

@@ -52,9 +52,9 @@ class ReedSolomonInnerCodec(BaseCodec):
         try:
             # encoded the message using the RS library
             mesecc = self.rs.rs_encode_msg(message, self._numberECCBytes)
-        except ReedSolomonError, e:
+        except ReedSolomonError as e:
             raise DNACodingError("Error while encoding Reed-Solomon Inner Codec.")
-        except ZeroDivisionError, e:
+        except ZeroDivisionError as e:
             pass
         
         #print "RSInner:",len(mesecc)
@@ -75,7 +75,7 @@ class ReedSolomonInnerCodec(BaseCodec):
             value = corrected_message
             #print "corrected message"
             stats.inc("RSInnerCodec::decode::succeeded")
-        except ReedSolomonError, e:
+        except ReedSolomonError as e:
             stats.inc("RSInnerCodec::decode::failed")
             #print "Inner: Couldn't correct message: {}".format(message)
             stats.inc("RSInnerCodec.ReedSolomonError")
@@ -84,18 +84,18 @@ class ReedSolomonInnerCodec(BaseCodec):
                 value = message[0:(self._numberECCBytes)]
                 pass # nothing to do
             else:
-                print str(e)
+                print (str(e))
                 raise DNACodingError("RSInnerCodec failed to correct message.")
             # just proceed without further error correction
             pass
-        except ZeroDivisionError, e:
+        except ZeroDivisionError as e:
             stats.inc("RSInnerCodec.ZeroDivision")
             if self._Policy.allow(e):
                 # leave erasures, may be helpful for outer decoder
                 value = message[0:(self._numberECCBytes)]
                 pass # nothing to do
             else:
-                print str(e)
+                print (str(e))
                 raise DNACodingError("RSInnerCodec failed to correct message.")
 
         return value

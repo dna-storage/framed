@@ -76,7 +76,7 @@ def fountain_coverage(table,size):
             for e in entry:
                 coverage[e][1] += 1
 
-    print coverage
+    print (coverage)
 
 def fountain_can_decode(table,size):
     decoded = {}
@@ -134,8 +134,8 @@ def evaluate_reliability(t, size, trials, erasures):
                 success[d][1]+=1
             else:
                 if d==1:
-                    print "Deleted: ",D
-                    print "Missing: ",dd
+                    print ("Deleted: ",D)
+                    print ("Missing: ",dd)
                 success[d][1]+=1
     return success
 
@@ -269,25 +269,25 @@ if __name__ == "__main__":
 
     
 
-    print "*"*100
+    print ("*"*100)
     t = create_fountain_distribution_table(100,4,200)
     #print len(t),t
     success = evaluate_reliability(t,100,100,100)
     #print success
     for x,y in success.items():
         if y[1] != 0:
-            print "{}\t{}".format(x,y[0]/float(y[1])) 
+            print ("{}\t{}".format(x,y[0]/float(y[1])) )
 
-    print sum([y[0] for (x,y) in success.items()])/float(sum([y[1] for x,y in success.items()]))
+    print (sum([y[0] for (x,y) in success.items()])/float(sum([y[1] for x,y in success.items()])))
 
-    print "*"*100
+    print ("*"*100)
     t = create_simple_xor_table(100)
     #print len(t),t
     success = evaluate_reliability(t,100,100,100)
     for x,y in success.items():
         if y[1] != 0:
-            print "{}\t{}".format(x,y[0]/float(y[1])) 
-    print sum([y[0] for (x,y) in success.items()])/float(sum([y[1] for x,y in success.items()]))
+            print ("{}\t{}".format(x,y[0]/float(y[1])) )
+    print (sum([y[0] for (x,y) in success.items()])/float(sum([y[1] for x,y in success.items()])))
     
 
     #print "Making big table..."

@@ -150,12 +150,12 @@ if __name__ == "__main__":
     #    assert i == decodeWithExclusion(s,primer)
 
     for i in range(2**8):
-        print convertBase(2,i,8)
+        print (convertBase(2,i,8))
 
     for i in range (len(primer),60):
         val = (2**len(primer)) * (3 **(i-len(primer)))
-        print "Max({}) = {}".format(i,math.log(val,2))
+        print ("Max({}) = {}".format(i,math.log(val,2)))
 
     for i in [2**64, 2**74, 2**80]:
         s = encodeWithExclusion(i,100,primer)
-        print s
+        print (s)

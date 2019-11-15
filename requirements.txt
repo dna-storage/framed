@@ -9,3 +9,4 @@ scipy
 Pillow
 python-Levenshtein
 joblib
+editdistance

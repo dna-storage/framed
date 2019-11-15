@@ -432,8 +432,8 @@ if __name__ == "__main__":
 
     i,m = enc.encode((0,x))
 
-    print "{}".format(x)
-    print "{}".format( [ord(_) for _ in m] )
+    print ("{}".format(x))
+    print ("{}".format( [ord(_) for _ in m] ))
 
     m = [ ord(_) for _ in m ]
     for k in range(50):
@@ -441,14 +441,14 @@ if __name__ == "__main__":
     
     i,d = enc.decode((0,"".join([chr(_) for _ in m])))
 
-    print "{}".format( x )
-    print "{}".format( [_ for _ in m] )
-    print "{}".format( [_ for _ in d] )
+    print ("{}".format( x ))
+    print ("{}".format( [_ for _ in m] ))
+    print ("{}".format( [_ for _ in d] ))
 
     s = sum([(q-y)**2 for q,y in zip(x,d)])
-    print s
+    print (s)
 
-    print [(q-y) for q,y in zip(x,d)]
+    print ([(q-y) for q,y in zip(x,d)])
     
     sys.exit(0)
 
@@ -468,11 +468,11 @@ if __name__ == "__main__":
         #print "{}. ({}) - {}".format(s[0],len(s[1]),[ord(x) for x in s[1]])
         t = [ord(x) for x in s[1]]
         if randint(0,700) < 400:
-            print "Alter strand!"
+            print ("Alter strand!")
             t[randint(0,16)] = randint(0,255)
 
         if randint(0,1000) < 10:
-            print "Throw away strand!"
+            print ("Throw away strand!")
         else:
             t2 = "".join([chr(x) for x in t])
             dec.decode((s[0],t2))
@@ -491,7 +491,7 @@ if __name__ == "__main__":
     dpf = DecodePacketizedFile(wpf,r)
 
     for i,s in enumerate(enc):
-        print "{}. ({}) - {}".format(i,s[0],[ord(x) for x in s[1]])
+        print ("{}. ({}) - {}".format(i,s[0],[ord(x) for x in s[1]]))
         dpf.decode(s)
 
     dpf.write()

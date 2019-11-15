@@ -489,22 +489,22 @@ if __name__ == "__main__":
         enc.append("'"+s+"'")
         dec[s] = i
 
-    print "dense_enc_table = ["
+    print ("dense_enc_table = [")
     for i in range(len(enc)/8):
         if i==len(enc)/8-1:
-            print ",".join(enc[i*8:i*8+8])
+            print (",".join(enc[i*8:i*8+8]))
         else:
-            print ",".join(enc[i*8:i*8+8])+","
-    print "]"
+            print (",".join(enc[i*8:i*8+8])+",")
+    print ("]")
 
-    print "dense_dec_table = {"
+    print ("dense_dec_table = {")
     for i in range(len(enc)):
         s =  "{} : {}".format(enc[i],i)
         if i!=len(enc)-1:
             s += ","
-        print s
-    print "}"
+        print (s)
+    print ("}")
 
     s = "12345678"
-    print dense_encode(s)
+    print (dense_encode(s))
     assert s == dense_decode(dense_encode(s))

@@ -300,17 +300,17 @@ def correlated_helper(s1, s2, show=False):
         if s1[i:i+l] == s2[0:l]:
         #if similarity(s1[i:i+l],s2[0:l])>7:
             if show:
-                print ""
-                print "   ",s1
+                print ("")
+                print ("   ",s1)
                 t = ""
                 for ch1,ch2 in zip(s1[i:i+l],s2[0:l]):
                     if ch1 == ch2:
                         t = t+"|"
                     else:
                         t = t+" "                    
-                print "   ",t.rjust(l+i)
-                print "   ",s2.rjust(len(s2)+i)
-                print ""
+                print ("   ",t.rjust(l+i))
+                print ("   ",s2.rjust(len(s2)+i))
+                print ("")
             return l
         #else:
             #print i, l1, l1-i, l2, l, s, s1[i:i+l], " ", s2[0:l]
@@ -404,20 +404,20 @@ def nextera_strand_comparison(seq,distance):
 if __name__ == "__main__":
     from Bio.SeqUtils import GC
     if uncorrelated('ACG','TACG') == True:
-        print "Error"
+        print ("Error")
 
     if correlated('GTCTCGTGGGCTCGG','TCGTCGGCAGCGTC') == True:
-        print "Error"
+        print ("Error")
 
-    print reverse_complement("ACG")
+    print (reverse_complement("ACG"))
     
     s = repetitionScore('TCAAACATTTACGGGGCGAG')
-    print "Score = ", s
+    print ("Score = ", s)
 
     #5'-CAGGTACGCAGTTAGCACTC
     #5'-CGTGGCAATATGACTACGGA
 
-    print '-'*80
+    print ('-'*80)
     f = open("refined_ranked.txt","r")
     if f:
         s = f.readlines()
@@ -429,5 +429,5 @@ if __name__ == "__main__":
                     show_correlation(seq,o)
 
             if GC(seq[-6:]) < .4:
-                print "Good GC ending:", seq
+                print ("Good GC ending:", seq)
 

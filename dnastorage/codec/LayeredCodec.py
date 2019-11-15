@@ -68,7 +68,7 @@ class LayeredEncoder(EncodePacketizedFile):
                 
     def encode(self):        
         block = self._encode()
-        block = (block[0],[ ord(_) for _ in block[1]])
+        block = (block[0],[ ord(_) for _ in block[1] ])
         return self._layered_encode(block) # get entire block
         
 
@@ -114,7 +114,7 @@ class LayeredDecoder(DecodePacketizedFile):
             phys_s = self.physCodec.decode(phys_strand)
             cw_s = self.physToStrandCodec.decode(phys_s)
             s = self.strandCodec.decode(cw_s)
-        except DNAStorageError, p:
+        except DNAStorageError as p:
             s = [-1] + [ 0 for _ in range(self.strandSizeInBytes-1) ]
         
         return s
@@ -127,10 +127,10 @@ class LayeredDecoder(DecodePacketizedFile):
             try:            
                 s = self._layered_decode_phys_to_strand(phys_strand)
                 self.all_strands.append(s)
-            except DNAMissingPrimer, p:
+            except DNAMissingPrimer as p:
                 # just ignore strands that don't have a required primer
                 pass
-            except DNAStorageError, e:
+            except DNAStorageError as e:
                 if self._Policy.allow(e):
                     pass
                 else:
@@ -157,14 +157,14 @@ class LayeredDecoder(DecodePacketizedFile):
                 #print "attempt",b_noecc[0],len(b_noecc[1])
                 self.writeToFile(b_noecc[0],b_noecc[1])
 
-            except DNAStorageError,e:
+            except DNAStorageError as e:
                 if self._Policy.allow(e):
                     continue                
                 else:
                     raise e
-            except Exception, e:
-                print str(e)
-                print b
+            except Exception as e:
+                print (str(e))
+                print (b)
                 
             
     def write(self):
@@ -217,8 +217,8 @@ if __name__ == "__main__":
                          physCodec=physCodec)
 
     s = enc.dummy_encode()
-    print s[10]
-    print len(s),len(s[0])
+    print (s[10])
+    print (len(s),len(s[0]))
 
     all_strands = [ _ for _ in enc ]
     

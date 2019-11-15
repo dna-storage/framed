@@ -300,8 +300,8 @@ class EncodeFountainStrand(EncodePacketizedFile):
             enc = self._Codec.encode(enc1)
 
             if fails % 10000 == 0:
-                print "10000 fails..."
-                print enc
+                print ("10000 fails...")
+                print (enc)
 
             if hasSingleRun(enc):
                 fails+=1
@@ -414,7 +414,7 @@ if __name__ == "__main__":
     strands = []
     for s in enc:
         strands.append(s)
-        print "{}. ({}) - {}".format(i,len(s),s)
+        print ("{}. ({}) - {}".format(i,len(s),s))
         #if i % 5 != 0 or i == 0 or i > 500:
         #    dec.decodeStrand(s)
         i += 1

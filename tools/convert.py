@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 from dnastorage.codec import norepeatscodec
 from dnastorage.codec import dense
 from dnastorage.codec import commafreecodec
@@ -55,7 +55,7 @@ if __name__ == "__main__":
 
     parser.add_argument('--primer5',dest="primer5",action="store",default="", help="Beginning primer.")
     parser.add_argument('--primer3',dest="primer3",action="store",default="", help="Ending primer.")
-    parser.add_argument('input_file', nargs='?', type=argparse.FileType('r'), default=sys.stdin, help='file to be converted')
+    parser.add_argument('input_file', nargs='?', type=argparse.FileType('rb'), default=sys.stdin, help='file to be converted')
     args = parser.parse_args()
 
     # Debbuging: did I get the args?
@@ -64,8 +64,8 @@ if __name__ == "__main__":
     #print args.primer5
 
     if args.encode and args.decode:
-        print "Can't encode and decode at the same time."
-        print "Assuming encode and continuing."
+        print ("Can't encode and decode at the same time.")
+        print ("Assuming encode and continuing.")
 
     if args.encode:
         packetizedFile = ReadPacketizedFilestream(args.input_file)
@@ -113,21 +113,21 @@ if __name__ == "__main__":
             if h.has_key('size'):
                 args.filesize = h['size']
             else:
-                print "Please provide the file's size."
+                print ("Please provide the file's size.")
                 sys.exit(-1)
 
         if args.primer3 == None:
             if h.has_key('primer3'):
                 args.primer3 = h['primer3']
             else:
-                print "Please provide primer3."
+                print ("Please provide primer3.")
                 sys.exit(-1)
 
         if args.primer5 == None:
             if h.has_key('primer5'):
                 args.primer5 = h['primer5']
             else:
-                print "Please provide primer3."
+                print ("Please provide primer3.")
                 sys.exit(-1)
 
         table = []
@@ -137,7 +137,7 @@ if __name__ == "__main__":
             else:
                 tfile = open(args.input_file.name+".table","r")
             if tfile == None:
-                print "Please fountain table."
+                print ("Please fountain table.")
                 sys.exit(-1)
             while True:
                 l = tfile.readline()
@@ -164,9 +164,9 @@ if __name__ == "__main__":
             Decoder.decode(s)
 
         if args.o == sys.stdout:
-            print "".join([ '-' for _ in range(0,80) ])
+            print ("".join([ '-' for _ in range(0,80) ]))
 
         Decoder.write()
 
         if args.o == sys.stdout:
-           print ""
+           print ("")

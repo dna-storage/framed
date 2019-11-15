@@ -440,10 +440,10 @@ if __name__ == "__main__":
 
             if not found:
                 if i%100 == 0:
-                    print "{}% tested".format(float(i)/len(all)*100.0)
+                    print ("{}% tested".format(float(i)/len(all)*100.0))
                 continue
             else:
-                print "{} {} - {}".format(s,len(start), start[-5:])
+                print ("{} {} - {}".format(s,len(start), start[-5:]))
                 start.append(s)
 
         return start
@@ -464,10 +464,10 @@ if __name__ == "__main__":
             gc[c].append(s)
 
         for key,item in gc.items():
-            print "{} - {}".format(key,len(item))
+            print ("{} - {}".format(key,len(item)))
 
         for key,item in base.items():
-            print "{}:{} {}".format(key,len(item),item[0:4])
+            print ("{}:{} {}".format(key,len(item),item[0:4]))
 
         D = {}
         similar=[]
@@ -479,8 +479,8 @@ if __name__ == "__main__":
                 D[d] = D.get(d,0)+1
                 if d == 1:
                     similar.append( [j,k] )
-        print D
-        print similar
+        print (D)
+        print (similar)
 
 
         
@@ -488,7 +488,7 @@ if __name__ == "__main__":
 
     print_characteristics(cfc)
     #comma_free_check(cfc,8)
-    print len(cfc)
+    print (len(cfc))
     
     arr = [ randint(0,255) for _ in range(20) ]
 
@@ -499,7 +499,7 @@ if __name__ == "__main__":
         b = cfc[randint(0,255)]
         if a[-1:] == b[0:1]:
             r += 1
-    print "repeat rate = {}%".format(r/10000.00 * 100)
+    print ("repeat rate = {}%".format(r/10000.00 * 100))
         
     sys.exit(0)
     
@@ -527,7 +527,7 @@ if __name__ == "__main__":
                 p = D[1][ randint(0,len(D[1])-1) ]
                 if p == a_copy:
                     r += 1
-    print "substitution rate = {}%".format(r/10000.00 * 100)
+    print ("substitution rate = {}%".format(r/10000.00 * 100))
 
     r = 0
     for i in range(10000):
@@ -551,7 +551,7 @@ if __name__ == "__main__":
                 if p == a_copy:
                     r += 1
             
-    print "insertion rate = {}%".format(r/10000.00 * 100)
+    print ("insertion rate = {}%".format(r/10000.00 * 100))
 
     r = 0
     for i in range(10000):
@@ -575,7 +575,7 @@ if __name__ == "__main__":
                 if p == a_copy:
                     r += 1
             
-    print "insertion at end rate = {}%".format(r/10000.00 * 100)
+    print ("insertion at end rate = {}%".format(r/10000.00 * 100))
 
 
     r = 0
@@ -617,7 +617,7 @@ if __name__ == "__main__":
 
 
                     
-    print "deletion rate = {}%".format(r/10000.00 * 100)
+    print ("deletion rate = {}%".format(r/10000.00 * 100))
 
 
     r = 0
@@ -657,11 +657,11 @@ if __name__ == "__main__":
                 if p == a_copy:
                     r += 1
                     
-    print "deletion at end rate = {}%".format(r/10000.00 * 100)
+    print ("deletion at end rate = {}%".format(r/10000.00 * 100))
 
     
     cf = CommaFreeCodewords(20)
 
     enc_arr = cf.encode(arr)
 
-    print enc_arr
+    print (enc_arr)

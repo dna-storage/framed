@@ -79,7 +79,7 @@ if __name__ == "__main__":
     from dnastorage.primer.primer_util import *
     primer = "AGGTCGGACAACGCCTTAAG"
     N = rangeWithExclusion(26,primer)
-    print N, math.log(N,2)
+    print (N, math.log(N,2))
     sys.exit(0)
     for i in range(1,2**20):
         r = random.randint(0,N)
@@ -87,5 +87,5 @@ if __name__ == "__main__":
         if correlation_distance(primer,s) > 3:
             show_correlation(primer,s)
             assert False
-        print "{} = {}  ({})".format(r,s,decodeWithExclusion(s,primer))
+        print ("{} = {}  ({})".format(r,s,decodeWithExclusion(s,primer)))
         assert r == decodeWithExclusion(s,primer)

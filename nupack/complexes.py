@@ -83,4 +83,4 @@ if __name__ == "__main__":
     
     complexes(complexes_args(prefix))
     c = read_mfe_output(prefix,".ocx-mfe")
-    print [cc for cc in c if cc['deltaG'] < 10.0]
+    print ([cc for cc in c if cc['deltaG'] < 10.0])

@@ -204,8 +204,8 @@ if __name__ == "__main__":
         if new == original:
             match += 1
         else:
-            print "--",len(original)-len(new)
-            print original
-            print new
+            print ("--",len(original)-len(new))
+            print (original)
+            print (new)
             
-    print match / 10000.0 * 100
+    print (match / 10000.0 * 100)

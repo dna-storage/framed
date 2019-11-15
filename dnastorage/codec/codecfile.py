@@ -67,7 +67,7 @@ class EncodePacketizedFile(object):
         # reset to begnning of file
         return self
 
-    def next(self):
+    def __next__(self):
         packet = self.encode()
         if packet:
             self._index += 1
@@ -76,6 +76,8 @@ class EncodePacketizedFile(object):
             self._iterating = False
             raise StopIteration()
 
+    next = __next__ # for python 2
+        
 class DecodePacketizedFile(object):
     def __init__(self,packetizedFile,CodecObj=None,minIndex=0):
         self._packetizedFile = packetizedFile

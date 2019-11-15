@@ -70,6 +70,6 @@ if __name__ == "__main__":
         if "((((((((((((((((((((+))))))))))))))))))))" in cc["pattern"]:
             continue
         if cc["deltaG"] < -10.0:
-            print "{} ({}) -- {}".format(cc["name"],cc["deltaG"],cc["pattern"])
+            print ("{} ({}) -- {}".format(cc["name"],cc["deltaG"],cc["pattern"]))
 
-    print c
+    print (c)

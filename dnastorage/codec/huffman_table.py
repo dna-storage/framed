@@ -7,11 +7,11 @@ import unittest
 class HuffmanTableTests(unittest.TestCase):
     def test_dense_16(self):
         syms = [ x for x in range (16) ]
-        print syms
+        print (syms)
         ht = HuffmanTable(2, ['0','1'], syms)
-        print ht._weights
+        print (ht._weights)
         enc,dec = ht.get_tables()
-        print enc
+        print (enc)
         for e in dec.keys():
             assert len(e) == 4
 
@@ -27,8 +27,8 @@ class HuffmanTableTests(unittest.TestCase):
         ht = HuffmanTable(2, ['0','1'], syms)
         rt = ht.get_raw_table(True)
         ht2 = HuffmanTable.from_raw_table(rt,2,['0','1'])
-        print rt
-        print ht2.get_raw_table(True)
+        print (rt)
+        print (ht2.get_raw_table(True))
         assert rt == ht2.get_raw_table(True)
 
     def test_single_entry_raw_table(self):
@@ -378,21 +378,21 @@ if __name__ == "__main__":
     #print ht3.histogram()
 
     ht5 = LengthLimitedHuffmanTable(9, 2, ['0','1'], syms, w, True)
-    print ht5.average_length()
-    print ht5.histogram()
+    print (ht5.average_length())
+    print (ht5.histogram())
 
 
     rt = ht5.get_raw_table(True)
-    print rt
+    print (rt)
     ht6 = HuffmanTable.from_raw_table(rt,2,['0','1'])
 
-    print ht6.get_raw_table()
+    print( ht6.get_raw_table())
     for x,y in zip(ht5.get_raw_table(),ht6.get_raw_table()):
         if x!=y:
-            print x,y
+            print (x,y)
     
     if ht5.get_raw_table(True) == ht6.get_raw_table(True):
-        print "They match "
+        print ("They match ")
 
     #print ht5.encode(192)
     #print ht5.decode(ht5.encode(192)+"111110001")

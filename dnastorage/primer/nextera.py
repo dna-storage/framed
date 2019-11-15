@@ -37,17 +37,17 @@ def nextera_comparison(args):
     #i5 = read_primers(args.i5)
     #i7 = read_primers(args.i7)    
     for p in primers:        
-        print '-'*80 
-        print "{}:".format(p)
+        print ('-'*80 )
+        print ("{}:".format(p))
         for i in illumina_primers:
             d = correlation_distance(p,i)
             if d > distance:
                 errors = True
-                print "Warning: {}-way correlated to {}".format(d,i)
+                print ("Warning: {}-way correlated to {}".format(d,i))
                 show_correlation(p,i)
                 
     if not errors:
-        print "All primers Ok."
+        print ("All primers Ok.")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Check against Nextera sequences")
