@@ -167,11 +167,11 @@ class ReadPacketizedFilestream:
         self._RS=False
 
     def read(self):
-        b = self.__fd.read(self.packetSize)
+        b = bytes(self.__fd.read(self.packetSize))
         self.__read_size += len(b)
         #only pad out if it is not RS, RS encodes by blocks so padding may lead to many useless strands
         if b and len(b) != self.packetSize and not self._RS:
-            b = b.ljust(self.packetSize,'\x00')
+            b = b.ljust(self.packetSize,bytes(1))
 
         return b
 

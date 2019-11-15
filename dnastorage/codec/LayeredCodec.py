@@ -36,6 +36,7 @@ class LayeredEncoder(EncodePacketizedFile):
 
     def _layered_encode(self, block):
         # perform block encoding
+        print (block)
         enc_block = self.blockCodec.encode(block)
 
         # convert block into strands
@@ -68,7 +69,11 @@ class LayeredEncoder(EncodePacketizedFile):
                 
     def encode(self):        
         block = self._encode()
-        block = (block[0],[ ord(_) for _ in block[1] ])
+        try:
+            block = (block[0],[ ord(_) for _ in block[1] ])
+        except Exception as e:
+            # This is pretty horrible, kids don't try this at home!
+            block = (block[0],[ _ for _ in block[1] ])
         return self._layered_encode(block) # get entire block
         
 

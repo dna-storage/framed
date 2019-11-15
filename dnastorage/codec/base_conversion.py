@@ -65,9 +65,11 @@ def convertFromBase(base,s):
     return val
 
 def convertIntToBytes(val,num_bytes):
+    val = int(val)
     if val == None:
         return [-1 for _ in range(num_bytes)]
     else:
+        #print ("HERE!",val,num_bytes,range(num_bytes))
         l = [(val & (0xff << pos*8)) >> pos*8 for pos in range(num_bytes)]
         return l
 
