@@ -12,7 +12,7 @@ from dnastorage.exceptions import *
 
 # FIXME: All of these formats need to implement the LayeredCodec.
 
-def ENC_OH_BITSTRING_XXX(pf, primer5, primer3,strand_length,num_overhangs,bits_per_block): #encoding used to experimentally evaluate overhang construction
+def ENC_OH_BITSTRING_XXX(pf, primer5, primer3,strand_length=512,num_overhangs=3,bits_per_block=1): #encoding used to experimentally evaluate overhang construction
     enc = build_overhang_bitstring_strand(True,pf,primer5,primer3,strand_length,num_overhangs,bits_per_block)
     return enc
 
