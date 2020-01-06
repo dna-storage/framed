@@ -229,6 +229,32 @@ class BlockToStrand(BaseCodec):
         return prior_bindex,data
         
 
+class DoNothingOuterCodec(BaseCodec):
+    """This is a simple do nothing Outer Codec to bypass this step when testing new designs"""
+    def __init__(self,packetSize,payloadSize,CodecObj=None,Policy=None):
+        BaseCodec.__init__(self,CodecObj=CodecObj,Policy=Policy)
+        self._packetSize=packetSize
+        self._payloadSize=payloadSize
+    def _encode(self,packet):
+        """simply check length of packet to make sure it is a multiple of payload size"""
+        index = packet[0]
+        data = packet[1][:]
+        
+        assert len(packet[1])<=self._packetSize
+
+        # hopefully the last packet if it's not a full packetSize
+        # so, pad it out with zeros to make an even number of strands if
+        # isn't already
+        
+        if len(data) < self._packetSize:
+            stats.inc("DoNothingOuterCodec.padPacket")
+            # normalize to multiple of payloadSize
+            rem = len(data) % self._payloadSize
+            data += [0]*(self._payloadSize-rem)
+            
+        return packet[0],data
+
+        
 class ReedSolomonOuterCodec(BaseCodec):
     """ReedSolomonOuterCodec takes a block of data as input and produces a new
     block of data that's error encoded. 

@@ -141,7 +141,7 @@ class CommaFreeCodec(BaseCodec):
         key = base_conversion.convertIntToBytes(packet[0],self._keyWidthInBytes)
         value = packet[1]
         strand = key + value
-        enc_strand = [ cfc[s] for s in strand ]
+        enc_strand = [ cfc[s] for s in strand ] #lookup byte s
         return "".join(enc_strand)
 
     def _decode_cfc(self, s):

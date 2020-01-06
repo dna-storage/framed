@@ -56,6 +56,7 @@ if __name__ == "__main__":
     parser.add_argument('--primer5',dest="primer5",action="store",default="", help="Beginning primer.")
     parser.add_argument('--primer3',dest="primer3",action="store",default="", help="Ending primer.")
     parser.add_argument('input_file', nargs='?', type=argparse.FileType('rb'), default=sys.stdin, help='file to be converted')
+    parser.add_argument('--num_overhangs',dest="num_overhangs",action="store",type=int,default=3,help="Number overhangs for long strand construction")
     args = parser.parse_args()
 
     # Debbuging: did I get the args?
@@ -69,7 +70,7 @@ if __name__ == "__main__":
 
     if args.encode:
         packetizedFile = ReadPacketizedFilestream(args.input_file)
-        enc = build_encode_architecture(args.arch, packetizedFile, args.primer5, args.primer3)
+        enc = build_encode_architecture(args.arch, packetizedFile, args.primer5, args.primer3,num_overhangs=args.num_overhangs)
         strands = []
         #try:
         for e in enc:

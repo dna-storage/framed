@@ -51,6 +51,16 @@ def convertBaseHelper(base,dec,s):
     else:
         return s
 
+def convertBytetoBinary(x,s): #convert byte x to a binary string
+    binary=['0','1']
+    m=x%2
+    q=x/2
+    s=s+binary[m]
+    if q >0:
+        return convertBytetoBinary(q,s)
+    else:
+        return s
+
 def convertBase(base,dec,length):
     s = convertBaseHelper(base,dec,'')
     s = s.ljust(length,bases[0])

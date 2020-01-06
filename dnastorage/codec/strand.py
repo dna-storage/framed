@@ -42,9 +42,11 @@ class ReedSolomonInnerCodec(BaseCodec):
     """ Accepts list/array of bytes. Return the Reed-Solomon encoded byte array.
     """
     def _encode(self,array):
-
-        assert len(array) <= self.rs.field_charac
-
+        try:
+            assert len(array) <= self.rs.field_charac
+        except:
+            print "Failed RS check"
+            return array
         # usually not needed, but makes the code a little more tolerant for use with
         # a variety of codecs that may pass in strings, bytearrays, or lists:
         message = [x for x in array]

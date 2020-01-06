@@ -12,9 +12,10 @@ from dnastorage.codec.block import *
 from dnastorage.codec.LayeredCodec import *
 from dnastorage.arch.strand import *
 from dnastorage.exceptions import *
+from dnastorage.codec.binarystringcodec import *
 
 def available_file_architectures():
-    return ["UW+MSv1","Illinois",'Goldman','Fountain','Binary','Dense','NRDense','RS+CFC8','RS+ROT','RS+NRD', 'Sys']
+    return ["UW+MSv1","Illinois",'Goldman','Fountain','Binary','Dense','NRDense','RS+CFC8','RS+ROT','RS+NRD', 'Sys', 'OverhangStrand']
 
 
 def customize_RS_CFC8(is_enc,pf,primer5,primer3,intraBlockIndex=1,\
@@ -126,10 +127,41 @@ def build_RS_CFC8(is_encoder,pf,primer5,primer3):
                              physToStrandCodec=codewords,\
                              strandToBlockCodec=blockToStrand,Policy=pol)
         return dec
-    
 
 
-def build_encode_architecture(arch, pf, primer5, primer3):
+def build_overhang_bitstring_strand(is_enc,pf,primer5,primer3,strand_length,num_overhangs,bits_per_block): #this encoding will build up a representation of the recurisve tree assuming single bit codewords,num overhangs controls substrand sharing and controls the amount of work that can be completed each reaction
+    #strand length is passed in terms of bytes per strand
+    assert (strand_length*8)%bits_per_block==0 #make sure that the amount of data in a strand is a multiple of the number of bits in a building block
+    pol=AllowAll()
+    if is_enc==True:
+        intraBlockIndex=4 #we want to get up to large files to study sharability of substrands, therefore 4 bytes for indexing
+        interBlockIndex=0 #no block indexes all strand indexes
+        index=intraBlockIndex+interBlockIndex
+        #This is a simple implementation with no error correction built in, simply reads in a strandlength worth of data and then chooses the sequence of overhangs to use
+        #resultant strand from the encoder will be overhangs (of length 4), and a 2 length GG or TT sequence to represent 1's and 0's, this can be replaced later to represent actual code words
+        blockCodec=DoNothingOuterCodec(packetSize=strand_length,
+                                       payloadSize=strand_length,
+                                       Policy=pol)
+        blockToStrand = BlockToStrand(strand_length,strand_length,Policy=pol,\
+                                  intraIndexSize=intraBlockIndex,\
+                                  interIndexSize=interBlockIndex)
+        strandCodec=ReedSolomonInnerCodec(0,Policy=pol)#inner ecc set to 0, we need to make a long ECC for inner strand protection of long strands
+        codewords=BinaryStringCodec(strand_length+index,bits_per_blockPolicy=pol)#converts to a binary string
+        overhangs=InsertOverhangs(num_overhangs,Policy=pol,CodecObj=codewords) #overhangs inserts overhang sequences in between codewords        
+        pre = PrependSequence(primer5,isPrimer=True,Policy=pol)
+        app = AppendSequence(reverse_complement(primer3), CodecObj=pre, isPrimer=True)
+        physCodec= app #append and prepend primer strings  
+        enc=LayeredEncoder(pf,blockSizeInBytes=strand_length,strandSizeInBytes=strand_length,\
+                           blockCodec=blockCodec,\
+                           blockToStrandCodec=blockToStrand,\
+                           strandCodec=strandCodec,\
+                           strandToCodewordCodec=overhangs,\
+                           codewordToPhysCodec=CombineCodewords(),\
+                           physCodec=physCodec,Policy=pol)
+        return enc #result will be a a set of binary strings with overhang tags in between
+
+
+def build_encode_architecture(arch, pf, primer5, primer3,num_overhangs=None):
     if arch == "UW+MSv1":
         h = huffman.RotateCodec(huffman.HuffmanCodec(21,Checksum()))
         p = StrandPrimers(primer5, primer3, h)
@@ -210,7 +242,10 @@ def build_encode_architecture(arch, pf, primer5, primer3):
         p = StrandPrimers(primer5, primer3, h)
         enc = ReedSolomonInnerOuterEncoder(pf,p,k_datastrand=9,e_inner=2,k_index=2)
         return enc
-
+    
+    elif arch == 'OverhangBitStringStrand':
+        return build_overhang_bitstring_strand(True,pf,primer5,primer3,strand_length=2000,num_overhangs=num_overhangs,bits_per_block=1)#encoding algorithm creates an encoding file with will be interpreted by a compiler to create instructions that will create the strand 
+    
 def build_decode_architecture(arch, pf, primer5, primer3, fountain_table=None):
     if arch == "UW+MSv1":
         h = huffman.RotateCodec(huffman.HuffmanCodec(21,Checksum()))

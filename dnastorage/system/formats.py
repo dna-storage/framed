@@ -12,6 +12,13 @@ from dnastorage.exceptions import *
 
 # FIXME: All of these formats need to implement the LayeredCodec.
 
+def ENC_OH_BITSTRING_XXX(pf, primer5, primer3,strand_length,num_overhangs,bits_per_block): #encoding used to experimentally evaluate overhang construction
+    enc = build_overhang_bitstring_strand(True,pf,primer5,primer3,strand_length,num_overhangs,bits_per_block)
+    return enc
+
+def DEC_OH_BITSTRING_XXX(pf, primer5,primer3,strand_length,num_overhangs,bits_per_block):
+    assert 0 #not implemented yet
+    
 def ENC_FSMD_200(pf, primer5, primer3, bIndex=0, policy=NoTolerance(),withCut=None):
     enc = customize_RS_CFC8(True,pf,primer5,primer3,1,0,2,15,90,policy,withCut=withCut,outerECCStrands=20,minIndex=bIndex)
     return enc    
@@ -162,6 +169,7 @@ FileSystemFormats = {
               ENC_RS_CFC8_RE3_160, DEC_RS_CFC8_RE3_160 ],
     0x2024 : [0x2024, 160, 9, "RS+CFC8+RE4", "Reed-Solomon coded with Comma-free codewords",
               ENC_RS_CFC8_RE4_160, DEC_RS_CFC8_RE4_160 ],
+    0x3000 : [0x3000, "Variable", "Variable", "OH_BITSTRING_XXX", "Experimental encoding to evaluate overhang construction",ENC_OH_BITSTRING_XXX,DEC_OH_BITSTRING_XXX],
 }
 
 
