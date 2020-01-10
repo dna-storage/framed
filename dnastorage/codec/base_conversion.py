@@ -50,14 +50,20 @@ def convertBaseHelper(base,dec,s):
         return convertBaseHelper(base,q,s)
     else:
         return s
+    
+def convertBytetoBinary(x,length):
+    s=convertBytetoBinaryHelper(x,'')
+    s=s.ljust(length,"0")
+    print s
+    return s
 
-def convertBytetoBinary(x,s): #convert byte x to a binary string
+def convertBytetoBinaryHelper(x,s): #convert byte x to a binary string
     binary=['0','1']
     m=x%2
     q=x/2
     s=s+binary[m]
     if q >0:
-        return convertBytetoBinary(q,s)
+        return convertBytetoBinaryHelper(q,s)
     else:
         return s
 

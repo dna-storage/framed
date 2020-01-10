@@ -7,6 +7,7 @@ from dnastorage.codec import huffman
 from dnastorage.codec import fountain
 from dnastorage.arch.strand import *
 from dnastorage.arch.builder import customize_RS_CFC8
+from dnastorage.arch.builder import build_overhang_bitstring_strand
 from dnastorage.exceptions import *
 
 

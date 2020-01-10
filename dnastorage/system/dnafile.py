@@ -285,6 +285,10 @@ class OverhangBitStringWriteDNAFile(WriteDNAFile):
             self._strand_length=kwargs['strand_length']
         if kwargs.has_key('num_overhangs'):
             self._num_overhangs=kwargs['num_overhangs']
+        if kwargs.has_key('format_name'):
+            enc_func = file_system_encoder_by_abbrev(kwargs['format_name'])
+        if kwargs.has_key('formatid'):
+            enc_func=file_system_encoder(kwargs['formatid'])
             
         self.enc = enc_func(self.pf,self.flanking_primer5+self.primer5,\
                                    self.flanking_primer3+self.primer3,strand_length=self._strand_length,num_overhangs=self._num_overhangs,bits_per_block=self._bits_per_block)#customize encoding function for experiments
@@ -298,7 +302,7 @@ class OverhangBitStringWriteDNAFile(WriteDNAFile):
         return hdr
 
 
-    def encode_overhang_header_comments(self,segments):
+    def encode_overhang_header_comments(self):
         comment = "% Overhang Description\n"        
         tab = "%    "
         comment += tab + "{}. ".format(i) + file_system_format_description(s[0]) + "\n"
@@ -312,18 +316,28 @@ class OverhangBitStringWriteDNAFile(WriteDNAFile):
     def header_flush(self): #doesnt only flush buffer, but also data associated with the header
         logger.debug("WriteOverhangBitStringDNAFile.header_flush")
         self.flush() #make sure buffer is written into DNA strands 
-        hdr_other = self.encode_overhang_header(self.segments)        
+        #hdr_other = self.encode_overhang_header()        
 
-        hdr = encode_file_header(self.output_filename,self.formatid,self.size,\
-                                 hdr_other,self.flanking_primer5+self.primer5,\
-                                 self.flanking_primer3+self.primer3,\
-                                 fsmd_abbrev=self.fsmd_abbrev)
+        #hdr = encode_file_header(self.output_filename,self.formatid,self.size,\
+        #                         hdr_other,self.flanking_primer5+self.primer5,\
+        #                         self.flanking_primer3+self.primer3,\
+        #                         fsmd_abbrev=self.fsmd_abbrev)
         
-        for i,h in enumerate(hdr):
-            self.strands.insert(i,h) #insert DNA header strands into list
+        #for i,h in enumerate(hdr):
+        #    self.strands.insert(i,h) #insert DNA header strands into list
 
     def get_strands(self):#return strands in list form
-        return self.strands 
+        strand_list=[]
+        #want to return a set of strings
+        for ss in self.strands:
+            if type(ss) is list:
+                for s in ss:
+                    assert type(s) is not list
+                    strand_list.append(s)
+            else:
+                assert type(ss) is not list
+                strand_list.append(ss)
+        return strand_list
     
     def close(self): #write out the strands to file, this is an experimental format, so dumping on a close is useful only for debugging purposes 
         logger.debug("WriteOverhangBitStringDNAFile.close")
@@ -331,7 +345,7 @@ class OverhangBitStringWriteDNAFile(WriteDNAFile):
         comment = encode_file_header_comments(self.output_filename,formatid,\
                                               size,hdr_other,primer5,primer3)
         self.out_fd.write(comment)
-        comment = self.encode_overhang_header_comments(self.segments)
+        comment = self.encode_overhang_header_comments()
         self.out_fd.write(comment)
         for ss in self.strands:
             if type(ss) is list:

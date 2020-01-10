@@ -251,7 +251,9 @@ class DoNothingOuterCodec(BaseCodec):
             # normalize to multiple of payloadSize
             rem = len(data) % self._payloadSize
             data += [0]*(self._payloadSize-rem)
-            
+
+        #print "Data length {}".format(len(data))
+        assert len(data)==self._packetSize
         return packet[0],data
 
         

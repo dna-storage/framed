@@ -126,6 +126,8 @@ def create_anti_sequence(seq):
 
 
 def reverse_complement(seq):
+    if len(seq)==0:
+        return seq
     complement = {'T':'A', 'G':'C', 'C':'G', 'A':'T'}
     r = [complement[x] for x in seq]
     r.reverse()

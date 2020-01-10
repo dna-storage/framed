@@ -146,7 +146,7 @@ def build_overhang_bitstring_strand(is_enc,pf,primer5,primer3,strand_length,num_
                                   intraIndexSize=intraBlockIndex,\
                                   interIndexSize=interBlockIndex)
         strandCodec=ReedSolomonInnerCodec(0,Policy=pol)#inner ecc set to 0, we need to make a long ECC for inner strand protection of long strands
-        codewords=BinaryStringCodec(strand_length+index,bits_per_blockPolicy=pol)#converts to a binary string
+        codewords=BinaryStringCodec(strand_length+index,bits_per_block,Policy=pol)#converts to a binary string
         overhangs=InsertOverhangs(num_overhangs,Policy=pol,CodecObj=codewords) #overhangs inserts overhang sequences in between codewords        
         pre = PrependSequence(primer5,isPrimer=True,Policy=pol)
         app = AppendSequence(reverse_complement(primer3), CodecObj=pre, isPrimer=True)
