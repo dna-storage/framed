@@ -54,7 +54,7 @@ def convertBaseHelper(base,dec,s):
 def convertBytetoBinary(x,length):
     s=convertBytetoBinaryHelper(x,'')
     s=s.ljust(length,"0")
-    print s
+    #print s
     return s
 
 def convertBytetoBinaryHelper(x,s): #convert byte x to a binary string

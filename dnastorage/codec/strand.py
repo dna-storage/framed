@@ -45,7 +45,7 @@ class ReedSolomonInnerCodec(BaseCodec):
         try:
             assert len(array) <= self.rs.field_charac
         except:
-            print "Failed RS check"
+            #print "Failed RS check"
             return array
         # usually not needed, but makes the code a little more tolerant for use with
         # a variety of codecs that may pass in strings, bytearrays, or lists:
