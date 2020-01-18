@@ -124,11 +124,7 @@ class LayeredDecoder(DecodePacketizedFile):
         try:
             s = self.strandCodec.decode(cw_s)
         except DNAStorageError as p:
-<<<<<<< HEAD
             s = [-1] + [ 0 for _ in range(self.strandSizeInBytes-1) ]
-=======
-            s = cw_s
->>>>>>> python3 support
         
         return s
 
