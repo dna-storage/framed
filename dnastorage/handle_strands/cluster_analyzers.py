@@ -221,7 +221,7 @@ if __name__=="__main__":
                 if distance_after==0:
                     correct_count+=1
                 distance_after_array.append(distance_after)
-                print "trial: {} complete\n".format(trial_number)
+                print ("trial: {} complete\n".format(trial_number))
             #plot histograms for edit distance before and after
             hist_axes.clear()
             hist_axes.hist(distance_before_array,bins=10)

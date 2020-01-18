@@ -44,8 +44,8 @@ def repetition(s,verbose=False):
                 ss = ss+'^'
             else:
                 ss = ss+' '
-        print s
-        print ss
+        print (s)
+        print (ss)
     return r
 
 
@@ -67,7 +67,7 @@ if __name__ == "__main__":
         l = makeNoRepeatStrands(i)
         #print i,l[0:5],len(l)
         cw = 4**trunc(log(len(l),4))
-        print "{:3d} {:8d} {:8d} {:3.2f}".format(i,len(l), cw, log(cw,4)/i)
+        print ("{:3d} {:8d} {:8d} {:3.2f}".format(i,len(l), cw, log(cw,4)/i))
         #print l
 
     list = makeNoRepeatStrands(10)
@@ -80,9 +80,9 @@ if __name__ == "__main__":
         else:
             hist[s] = 1
 
-    print hist
+    print (hist)
     total = len(list)-hist['AA']-hist['TT']-hist['GG']-hist['CC']
-    print total
+    print (total)
 
     d = {}
     for i,l in enumerate(list):

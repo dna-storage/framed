@@ -31,9 +31,9 @@ def digital_sum(code,alphabetScore):
 
 def compute_brds_table(symbols,codes,sums,alphabetScore):
     sums.sort()
-    print sums
+    print (sums)
     if len(sums) * len(symbols) > len(codes):
-        print "Warning: succcessful table unlikely!"
+        print ("Warning: succcessful table unlikely!")
     min_sums = min(sums)
     max_sums = max(sums)
     brds_table = {}
@@ -76,8 +76,8 @@ def compute_brds_table(symbols,codes,sums,alphabetScore):
                 if found:
                     prev = brds_table[s][m]
             
-    print brds_table
-    print h
+    print (brds_table)
+    print (h)
     for s in symbols:
         for m in sums:
             if brds_table[s][m] == "":
@@ -87,7 +87,7 @@ def compute_brds_table(symbols,codes,sums,alphabetScore):
 
 
 if __name__ == "__main__":
-    print digital_sum("AGCT",{'A':-1,'C':1,'G':1,'T':-1})
+    print (digital_sum("AGCT",{'A':-1,'C':1,'G':1,'T':-1}))
 
     score = {'A':-1,'C':1,'G':1,'T':-1}
     even = [-4,-2,2, 4]
@@ -108,4 +108,4 @@ if __name__ == "__main__":
     #print len(codes), len(ecc_codes)
 
     table = compute_brds_table(symbols,codes,odd,score)
-    print table
+    print (table)

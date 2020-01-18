@@ -134,9 +134,9 @@ if __name__ == "__main__":
         #print "{}   {}".format(sorted_bin_results[index],sorted_expected_results[index])
         chi_dist=chi_dist+((value-sorted_expected_results[index])**2/(sorted_expected_results[index]))
         #print"chi {}".format(chi_dist)
-    print chi_dist
-    print len(sorted_bin_results)-1-2
-    print 1 - stats.chi2.cdf(chi_dist, len(sorted_bin_results)-1-2)
+    print (chi_dist)
+    print (len(sorted_bin_results)-1-2)
+    print (1 - stats.chi2.cdf(chi_dist, len(sorted_bin_results)-1-2))
 
     
     plt.hist(rand_reads,num_bins)

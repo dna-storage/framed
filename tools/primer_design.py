@@ -13,7 +13,7 @@ def montecarlo(args):
     length = args.primer_length
     L = [] # list of primers
 
-    design_rules = build_standard_design_rules(L,use_nupack)
+    design_rules = build_standard_design_rules(L,use_nupack, distance=distance)
 
     if args.fast:
         pg = LikelyPrimerGenerator(chars="AGCT",length=length)

@@ -69,7 +69,7 @@ class data_helper:
     def inc_num_correct(self):
         self.num_correct+=1
     def get_probability_value(self):
-        print self.num_correct
+        print (self.num_correct)
         return float(self.num_correct*100)/float(self._num_trials)
     def insert_probability_point(self,prob_data):
         self._prob_data.append(prob_data)
@@ -126,7 +126,7 @@ class data_helper:
         total_correct_bytes=0
         bad=False
         if len(bad_file) != len(clean_file):
-            print len(bad_file), len(clean_file)
+            print (len(bad_file), len(clean_file))
             assert len(bad_file) == len(clean_file)
         for bad_byte,clean_byte in zip(bad_file,clean_file):
             if bad_byte == clean_byte:

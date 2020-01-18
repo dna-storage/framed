@@ -286,7 +286,7 @@ if __name__ == "__main__":
     success = evaluate_reliability(t,100,100,100)
     for x,y in success.items():
         if y[1] != 0:
-            print ("{}\t{}".format(x,y[0]/float(y[1])) )
+            print ("{}\t{}".format(x,y[0]/float(y[1])))
     print (sum([y[0] for (x,y) in success.items()])/float(sum([y[1] for x,y in success.items()])))
     
 

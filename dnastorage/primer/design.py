@@ -140,6 +140,9 @@ def build_repetition_rule(fraction):
 def build_singlerun_rule():
     return Rule(lambda s: not primer_util.hasSingleRun(s), "Has no run")
 
+def build_norepeat_rule():
+    return Rule(lambda s: not primer_util.hasRepeat(s), "Has no repeat")
+
 def build_longrun_rule():
     return Rule(lambda s: not primer_util.hasLongRun(s), "Has no run of 4 or longer")
 
@@ -205,7 +208,7 @@ class DesignRules:
     def __str__(self):
         return "{} Results \n\t{}".format(self.name,"\n\t".join(str(self.rules[i]) for i in range(0,len(self.rules))))
 
-def build_standard_design_rules(Library, with_nupack=True):
+def build_standard_design_rules(Library, with_nupack=True, distance=10):
 
     dr = DesignRules("Standard Design Rules")
     dr.add_rule(build_last_must_be_g_rule())
@@ -215,7 +218,7 @@ def build_standard_design_rules(Library, with_nupack=True):
     dr.add_rule(build_repetition_rule(0.99))
     dr.add_rule(build_GC_at_end_rule())
     dr.add_rule(build_Tm_rule(50,60))
-    dr.add_rule(build_hamming_distance_library_rule(10,Library))
+    dr.add_rule(build_hamming_distance_library_rule(distance,Library))
     dr.add_rule(build_check_old_strands_rule())
     dr.add_rule(build_nextera_comparison_rule())
     dr.add_rule(build_correlation_distance_library_rule(Library))
@@ -256,17 +259,17 @@ def design_rules_met(s,L,nupack,nextera_binding):
             # repeat s to search for homo-dimers
             c = primer_util.checkComplexes([s,l])
             if len(c) > 0:
-                print "*****Heterodimer: {} vs {} -- {}".format(l,s, c[0]['pattern'])
+                print ("*****Heterodimer: {} vs {} -- {}".format(l,s, c[0]['pattern']))
                 return False
 
             c = primer_util.checkComplexes([l,primer_util.reverse_complement(s)])
             if len(c) > 0:
-                print "*****False binding: {} vs {} -- {}".format(l,s, c[0]['pattern'])
+                print ("*****False binding: {} vs {} -- {}".format(l,s, c[0]['pattern']))
                 return False
 
             c = primer_util.checkComplexes([s,primer_util.reverse_complement(l)])
             if len(c) > 0:
-                print "*****False binding: {} vs {} -- {}".format(l,s, c[0]['pattern'])
+                print ("*****False binding: {} vs {} -- {}".format(l,s, c[0]['pattern']))
                 return False
 
         #if reverse_correlation_distance(s,l)>3:
@@ -291,17 +294,17 @@ def design_rules_met(s,L,nupack,nextera_binding):
             # repeat s to search for homo-dimers
             c = primer_util.checkComplexes([s,l])
             if len(c) > 0:
-                print "*****Nextera Heterodimer: {} vs {} -- {}".format(l,s, c[0]['pattern'])
+                print ("*****Nextera Heterodimer: {} vs {} -- {}".format(l,s, c[0]['pattern']))
                 return False
 
             c = primer_util.checkComplexes([l,primer_util.reverse_complement(s)])
             if len(c) > 0:
-                print "*****Nextera False binding: {} vs {} -- {}".format(l,s, c[0]['pattern'])
+                print ("*****Nextera False binding: {} vs {} -- {}".format(l,s, c[0]['pattern']))
                 return False
 
             c = primer_util.checkComplexes([s,primer_util.reverse_complement(l)])
             if len(c) > 0:
-                print "*****Nextera Complement False binding: {} vs {} -- {}".format(l,s, c[0]['pattern'])
+                print ("*****Nextera Complement False binding: {} vs {} -- {}".format(l,s, c[0]['pattern']))
                 return False
 
 
@@ -313,7 +316,7 @@ def design_rules_met(s,L,nupack,nextera_binding):
         # repeat s to search for homo-dimers
         c = primer_util.checkComplexes([s,s])
         if len(c) > 0:
-            print "*****Homodimer: {} {}".format(s, c[0]['pattern'])
+            print ("*****Homodimer: {} {}".format(s, c[0]['pattern']))
             return False
 
     return True
@@ -330,14 +333,14 @@ if __name__ == "__main__":
         return ''.join(random.choice(chars) for _ in range(size))
 
     s = id_generator(size=20, chars="ACGT")
-    print s
-    print primer_util.repetitionScore(s)
+    print (s)
+    print (primer_util.repetitionScore(s))
 
     r = build_repetition_rule(.99)
     r.run(s)
-    print str(r)
+    print (str(r))
 
     dr = build_standard_design_rules([],True)
     dr.add_rule(r)
     dr.check(s)
-    print dr
+    print (dr)

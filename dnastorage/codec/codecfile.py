@@ -76,7 +76,7 @@ class EncodePacketizedFile(object):
             self._iterating = False
             raise StopIteration()
 
-    next = __next__ # for python 2
+    next = __next__ # support for python 2.7
         
 class DecodePacketizedFile(object):
     def __init__(self,packetizedFile,CodecObj=None,minIndex=0):

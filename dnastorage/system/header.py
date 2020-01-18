@@ -131,20 +131,19 @@ def pick_header_strands(strands,primer5):
         elif s.find(primer5)!=-1:
             plen= s.find(primer5)+len(primer5)
             possible_hdr = s[plen:plen+len(magic_header)]
-            if ed.eval(possible_hdr,magic_header) < 2:
+            #if ed.eval(possible_hdr,magic_header) < 2:
+            #    print "guessed at header!"
                 #ss = s[:]
                 #ss[plen:plen+len(magic_header)] = magic_header
-                picks.append(s)
-            else:
-                others.append(s)
+            #    picks.append(s)
+            #else:
+            others.append(s)
 
     return picks,others
 
 
 def decode_file_header(strands,primer5,primer3,fsmd_abbrev='FSMD'):
     picks,_ = pick_header_strands(strands,primer5)
-
-    #print picks
 
     b = BytesIO()
 
@@ -155,12 +154,16 @@ def decode_file_header(strands,primer5,primer3,fsmd_abbrev='FSMD'):
     
     dec_func = file_system_decoder_by_abbrev(fsmd_abbrev)
     dec = dec_func(pf,primer5+magic_header,primer3)
-    
+
+    #d = {}
     for s in picks:
         #tmp = dec.decode_from_phys_to_strand(s)
+        #d[tmp[0]] = d.get(tmp[0],[])
+        #d[tmp[0]].append(tmp)
         #print len(tmp),tmp
         dec.decode(s)
 
+    #print d
 
     dec.write()
     assert dec.complete    
@@ -202,6 +205,6 @@ def decode_file_header(strands,primer5,primer3,fsmd_abbrev='FSMD'):
 if __name__ == "__main__":
     strands = encode_file_header("",0xA,2,[1,2,3,4],"A"*19+"G","T"*19+"G")
     for s in strands:
-        print "{}: strand={}".format(len(s), s)
+        print ("{}: strand={}".format(len(s), s))
     
-    print decode_file_header(strands,"A"*19+"G","T"*19+"G")
+    print (decode_file_header(strands,"A"*19+"G","T"*19+"G"))

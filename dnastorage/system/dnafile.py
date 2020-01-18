@@ -97,34 +97,33 @@ class ReadDNAFile(DNAFile):
     def __init__(self,**kwargs):     
         DNAFile.__init__(self)
 
-        if kwargs.has_key('input'):
+        if 'input' in kwargs:
             self.input_filename = kwargs['input']
             self.in_fd = open(self.input_filename,"r")
-        elif kwargs.has_key('in_fd'):
+        elif 'in_fd' in kwargs:
             self.in_fd = kwargs['in_fd']
             self.input_filename = ""
 
-        if not kwargs.has_key('fsmd_abbrev'):
+        if not ('fsmd_abbrev' in kwargs):
             self.fsmd_abbrev = 'FSMD'
         else:
             self.fsmd_abbrev = kwargs['fsmd_abbrev']
             
-        assert kwargs.has_key('primer5') and kwargs.has_key('primer3')
+        assert 'primer5' in kwargs and 'primer3' in kwargs
         self.primer5 = kwargs['primer5']
         self.primer3 = kwargs['primer3']
 
-        if kwargs.has_key('flanking_primer5'):
+        if 'flanking_primer5' in kwargs:
             self.flanking_primer5 = kwargs['flanking_primer5']
         else:
             self.flanking_primer5 = ''
 
-        if kwargs.has_key('flanking_primer3'):
+        if 'flanking_primer3' in kwargs:
             self.flanking_primer3 = kwargs['flanking_primer3']
         else:
             self.flanking_primer3 = ''
 
-
-        if kwargs.has_key('use_flanking_primer_for_decoding'):
+        if 'use_flanking_primer_for_decoding' in kwargs:
             self.use_flanking_primers = kwargs['use_flanking_primer_for_decoding']
         else:
             self.use_flanking_primers = False
@@ -186,14 +185,14 @@ class WriteDNAFile(DNAFile):
     # WriteDNAFile writes a set of strands.
     def __init__(self,**kwargs):     
         DNAFile.__init__(self)
-        if kwargs.has_key('formatid'):            
+        if 'formatid' in kwargs:            
             enc_func = file_system_encoder(kwargs['formatid'])
             self.formatid = kwargs['formatid']
-        elif kwargs.has_key('format_name'):
+        elif 'format_name' in kwargs:
             enc_func = file_system_encoder_by_abbrev(kwargs['format_name'])
             self.formatid = file_system_formatid_by_abbrev(kwargs['format_name'])
 
-        if not kwargs.has_key('fsmd_abbrev'):
+        if not ('fsmd_abbrev' in kwargs):
             self.fsmd_abbrev = 'FSMD'
         else:
             self.fsmd_abbrev = kwargs['fsmd_abbrev']
@@ -201,16 +200,16 @@ class WriteDNAFile(DNAFile):
         self.mem_buffer = BytesIO()
         self.pf = ReadPacketizedFilestream(self.mem_buffer)
 
-        assert kwargs.has_key('primer5') and kwargs.has_key('primer3')
+        assert 'primer5' in kwargs and 'primer3' in kwargs
         self.primer5 = kwargs['primer5']
         self.primer3 = kwargs['primer3']
 
-        if kwargs.has_key('flanking_primer3'):
+        if 'flanking_primer3' in kwargs:
             self.flanking_primer3 = kwargs['flanking_primer3']
         else:
             self.flanking_primer3 = ''
 
-        if kwargs.has_key('flanking_primer5'):
+        if 'flanking_primer5' in kwargs:
             self.flanking_primer5 = kwargs['flanking_primer5']
         else:
             self.flanking_primer5 = ''
@@ -219,10 +218,10 @@ class WriteDNAFile(DNAFile):
                             self.flanking_primer3+self.primer3)
 
             
-        if kwargs.has_key('output'):
+        if 'output' in kwargs:
             self.output_filename = kwargs['output']
             self.out_fd = open(self.output_filename,"w")
-        elif kwargs.has_key('out_fd'):
+        elif 'out_fd' in kwargs:
             self.out_fd = kwargs['out_fd']
             self.output_filename = ""
             
@@ -510,6 +509,8 @@ class SegmentedReadDNAFile(ReadDNAFile):
 
         # restore cursor to end of buffer for writing
         self.mem_buffer.seek(0,2)
+
+        #print self.header['other_data']
         
         segs = self.decode_segments_header(self.header['other_data'])
         self.segments = segs
@@ -523,7 +524,7 @@ class SegmentedReadDNAFile(ReadDNAFile):
             bindex = s[2]
             primer5 = s[3]
             primer3 = s[4]
-            if kwargs.has_key('use_single_primer') and kwargs['use_single_primer']==True:
+            if 'use_single_primer' in kwargs and kwargs['use_single_primer']==True:
                 # strands from sequencing should all have the same primer
                 primer5 = self.primer5
                 primer3 = self.primer3
@@ -543,7 +544,7 @@ class SegmentedReadDNAFile(ReadDNAFile):
                     self.dec.decode(s)
 
             self.dec.write()
-            write_anyway = kwargs.has_key('write_incomplete_file') and \
+            write_anyway = ('write_incomplete_file' in kwargs) and \
                 kwargs['write_incomplete_file']==True
             #if self.dec.complete or write_anyway:
             #    self.dec.write()
@@ -574,7 +575,7 @@ if __name__ == "__main__":
     #wf = DNAFile.open(primer3='TTTG',primer5='AAAG',format_name='FSMD',filename="out.dna2",op="w")
     
     for i in range(1000):
-        wf.write( "".join([chr(x) for x in convertIntToBytes(i,4)]) )
+        wf.write( bytearray(convertIntToBytes(i,4)) )
 
     wf.new_segment('RS+CFC8+RE2','AT'+'A'*17+'G','TA'+'T'*17+'G')
         
@@ -585,34 +586,34 @@ if __name__ == "__main__":
 
     rf = SegmentedReadDNAFile(primer3='T'*19+'G',primer5='A'*19+'G',input="out.dna",fsmd_abbrev='FSMD-1')
 
-    print "Should print out 0 to 30: "
+    print ("Should print out 0 to 30: ")
     while True:
         s = rf.read(4)
         if len(s)==0:
             break
         n = convertBytesToInt([ord(x) for x in s])
-        print n
+        print (n)
 
-    print "Done."
+    print ("Done.")
     
     sys.exit(0)
     
         
-    b = io.BytesIO()
-    print b.readable(), b.writable()
-    #sys.exit(0)
-    readpos = 0
-    for _ in range(4):
-        print "-"*20
-        b.seek(0,2)
-        for i in range(ord('A'),ord('H')+1):
-            b.write("".join([chr(i)]))
-        b.seek(readpos)
-        while True:
-            s = b.read(1)
-            if len(s)==0:
-                break
-            print s
-        readpos = b.tell()
-    print b.getvalue()
-    sys.exit(0)
+    # b = io.BytesIO()
+    # print b.readable(), b.writable()
+    # #sys.exit(0)
+    # readpos = 0
+    # for _ in range(4):
+    #     print "-"*20
+    #     b.seek(0,2)
+    #     for i in range(ord('A'),ord('H')+1):
+    #         b.write("".join([chr(i)]))
+    #     b.seek(readpos)
+    #     while True:
+    #         s = b.read(1)
+    #         if len(s)==0:
+    #             break
+    #         print s
+    #     readpos = b.tell()
+    # print b.getvalue()
+    # sys.exit(0)

@@ -53,7 +53,7 @@ class ReedSolomonInnerOuterEncoder(EncodePacketizedFile):
         assert (k_outer + e_outer  <= 255) # required by GF(256)
         self.strand_length = k_datastrand + k_index + e_inner
         self.strands = []
-        self.index = self.minIndex
+        self.rs_index = self.minIndex
         self._transpose = False
     """
     Overload function to prevent incorrect behavior
@@ -88,14 +88,14 @@ class ReedSolomonInnerOuterEncoder(EncodePacketizedFile):
         #Changed _k_strand*_k_outer to len(raw) !! May need to fix this
         for x in range(0,len(raw),self._k_strand):
             r = raw[x:x+self._k_strand]
-            ind = base_conversion.convertIntToBytes(x/self._k_strand + self.index,self._k_index)
+            ind = base_conversion.convertIntToBytes(x/self._k_strand + self.rs_index,self._k_index)
             message = ind + [x for x in bytearray(r)]
             mesecc = self.rs.rs_encode_msg(message, self._e_inner);
             matrix.append(mesecc)
 
 
-        ind_copy = self.index
-        self.index += self._k_outer*self._k_strand/self._k_strand
+        ind_copy = self.rs_index
+        self.rs_index += self._k_outer*self._k_strand/self._k_strand
 
         num_real_strands=len(matrix)
         #pad out the matrix with dummy strands
@@ -133,12 +133,12 @@ class ReedSolomonInnerOuterEncoder(EncodePacketizedFile):
 
         for i in range(n_error_strands):
             err = [ error_codes[j] for j in range(i,len(error_codes),n_error_strands) ]
-            ind = base_conversion.convertIntToBytes(self.index,self._k_index)
+            ind = base_conversion.convertIntToBytes(self.rs_index,self._k_index)
             message = ind + err
             mesecc = self.rs.rs_encode_msg(message, self._e_inner);
             #print "{} mesecc = {}".format(len(mesecc),mesecc)
             matrix.append(mesecc)
-            self.index += 1
+            self.rs_index += 1
             
         for i, m in enumerate(matrix):
             #only append strands if they are real and are error correction strands
@@ -197,7 +197,7 @@ class ReedSolomonInnerOuterDecoder(DecodePacketizedFile):
         self.outer_block = k_outer+self.n_error_strands
         self.decodedMap = {}
         self._build_dummy_strands()
-        self.index = self.minIndex
+        self.rs_index = self.minIndex
         self._packetizedFile.minKey = self._getBlockIndex(minIndex)
 
 

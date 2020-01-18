@@ -117,9 +117,18 @@ class LayeredDecoder(DecodePacketizedFile):
         try:
             phys_s = self.physCodec.decode(phys_strand)
             cw_s = self.physToStrandCodec.decode(phys_s)
+        except DNAStorageError as p:
+            cw_s = [-1] + [ 0 for _ in range(self.strandSizeInBytes-1) ]
+            return cw_s
+        
+        try:
             s = self.strandCodec.decode(cw_s)
         except DNAStorageError as p:
+<<<<<<< HEAD
             s = [-1] + [ 0 for _ in range(self.strandSizeInBytes-1) ]
+=======
+            s = cw_s
+>>>>>>> python3 support
         
         return s
 
@@ -143,7 +152,7 @@ class LayeredDecoder(DecodePacketizedFile):
             self.all_strands.append(input_value)
 
     def _attempt_final_decoding(self):
-        # do voting here!!
+        # do voting here!!        
         self.voted_strands = doMajorityVote(self.all_strands,\
                                             self.blockIndexSize+self.intraBlockIndexSize)
         if self.blockIndexSize>0:
@@ -151,8 +160,22 @@ class LayeredDecoder(DecodePacketizedFile):
         else:
             blocks = [ (0,self.all_strands) ]
         #print "number of blocks=",len(blocks)
+
+        reportBlockStatus(blocks,self.minIndex,
+                          self.blockIndexSize,self.intraBlockIndexSize)
+        
+        blocks.sort()
         for b in blocks:
             idx = b[0]
+            if idx < self.minIndex or idx >= self._packetizedFile.maxKey:
+                # this happens due to errors in strands, and we should just
+                # discard these erroneous blocks
+                # If we want to reclaim some of these strands, it needs
+                # to happen as part of the error processing per strand
+                stats.inc("LayeredCodec::_attempt_final_decoding::indexOutOfRange")
+                continue
+
+            stats.inc("LayeredCodec::_attempt_final_decoding::numberOfBlocks")
             try:
                 #print "attempt",idx,len(b[1])
                 b_contig = self.strandToBlockCodec.decode(b)

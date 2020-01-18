@@ -387,6 +387,7 @@ if __name__ == "__main__":
     ht6 = HuffmanTable.from_raw_table(rt,2,['0','1'])
 
     print( ht6.get_raw_table())
+
     for x,y in zip(ht5.get_raw_table(),ht6.get_raw_table()):
         if x!=y:
             print (x,y)

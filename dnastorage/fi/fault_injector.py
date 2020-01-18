@@ -479,6 +479,6 @@ if __name__ == "__main__":
     final_strands=missing_strands.remove_strands(removal_locations,clean_strands)
     for site in removal_locations:
         if clean_strands[site] in final_strands:
-            print "strand {} still in final strands".format(site)
+            print ("strand {} still in final strands".format(site))
             assert False
     

@@ -188,13 +188,15 @@ class ReadPacketizedFilestream:
         self.__fd.seek(0)
         return self
 
-    def next(self):
+    def __next__(self):
         b = self.read()
         if b:
             return b
         else:
             raise StopIteration()
 
+    next = __next__  # preserve python 2.7 functionality
+        
     def __getitem__(self,key):
         self.__fd.seek(key*self.packetSize)
         return self.read()

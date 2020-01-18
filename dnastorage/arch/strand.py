@@ -165,10 +165,10 @@ class DecodeGoldmanStrand(DecodePacketizedFile):
 class EncodeXORStrand(EncodePacketizedFile):
     def __init__(self,packetizedFile,CodecObj):
         EncodePacketizedFile.__init__(self,packetizedFile,CodecObj)
-        self.index = 0
+        self.xor_index = 0
 
     def __iter__(self):
-        self.index = 0
+        self.xor_index = 0
         return self
 
         # 1 -> 1
@@ -176,21 +176,21 @@ class EncodeXORStrand(EncodePacketizedFile):
         # 3 -> 5
 
     def next(self):
-        if self.index >= 2 * self._packetizedFile.numberOfPackets - 1:
+        if self.xor_index >= 2 * self._packetizedFile.numberOfPackets - 1:
             raise StopIteration()
         packet = self.encode()
         return packet
 
     def _encode(self):
-        if self.index % 2 == 0:
-            s = self._packetizedFile[self.index/2]
+        if self.xor_index % 2 == 0:
+            s = self._packetizedFile[self.xor_index/2]
             l = [x for x in bytearray(s)]
         else:
-            s1 = self._packetizedFile[self.index/2]
-            s2 = self._packetizedFile[self.index/2+1]
+            s1 = self._packetizedFile[self.xor_index/2]
+            s2 = self._packetizedFile[self.xor_index/2+1]
             l = [x^y for x,y in zip(bytearray(s1),bytearray(s2))]
-        key = self.index
-        self.index+=1
+        key = self.xor_index
+        self.xor_index+=1
         return (key,str(bytearray(l)))
 
 class DecodeXORStrand(DecodePacketizedFile):

@@ -8,6 +8,23 @@ import logging
 logger = logging.getLogger('dna.storage.codec.block')
 logger.addHandler(logging.NullHandler())
 
+block_count = 0
+
+def reportBlockStatus(blocks,bindex,interIndexSize,intraIndexSize):
+    global block_count
+    for j,b in enumerate(blocks):
+        block_count+=1
+        contents = [ '_' for i in range(255) ]
+        for s in b[1]:
+            intra = base_conversion.convertBytesToInt(s[interIndexSize:interIndexSize+intraIndexSize])
+            contents[intra] = '*'
+        
+        #print b[0]
+        #stats["reportBlockStatus::blocks({}<{}>)".format(b[0],block_count)] = b[1]
+        stats["reportBlockStatus({})::block_size({}<{}>)".format(bindex,b[0],block_count)] = len(b[1])
+        stats["reportBlockStatus({})::block_profile({}<{}>)".format(bindex,b[0],block_count)] = "".join(contents)
+
+
 def partitionStrandsIntoBlocks(strands, interIndexSize=2):
     logger.debug("partitionStrandsIntoBlocks:strands={}".format(len(strands)))
     blocksD = {}
@@ -15,7 +32,7 @@ def partitionStrandsIntoBlocks(strands, interIndexSize=2):
         idx = base_conversion.convertBytesToInt(s[0:interIndexSize])
         blocksD[idx] = blocksD.get(idx,[]) + [s]
     blocks = blocksD.items()
-    blocks.sort(cmp=lambda x,y: cmp(x[0],y[0]))
+    blocks.sort()
     return blocks
 
 def doMajorityVote(strands, indexBytes=3):
@@ -147,7 +164,11 @@ class BlockToStrand(BaseCodec):
 
     def _decode(self, packet):        
         """ accepts a list of strands and coverts them into a contiguous block """
+
         d = {} # track all strands we find
+
+        stats.inc("BlockToStrand::_decode::numberOfBlocks")
+        stats.append("BlockToStrand::_decode::indices",packet[0])
         
         prior_bindex = packet[0]
         strands = packet[1]
@@ -184,6 +205,7 @@ class BlockToStrand(BaseCodec):
                 
         data = []
         max_index = self._blockSize / self._strandSizeInBytes
+        contents = [ '_' for _ in range(max_index) ]
         for i in range(max_index):
             if not d.has_key(i):
                 if self._removeZeroes:
@@ -191,20 +213,24 @@ class BlockToStrand(BaseCodec):
                         # guess that it's all zeros
                         stats.inc("BlockToStrand::decode::guessAllZeroStrand")
                         data += [ 0 for _ in range(self._strandSizeInBytes) ]
+                        contents[i] = '0'
                     elif (i-1) in d and self.allzeroes(d[i-1]) and not (i+1 in d):
                         # guess that it's all zeros
                         stats.inc("BlockToStrand::decode::guessAllZeroStrand")
                         data += [ 0 for _ in range(self._strandSizeInBytes) ]
+                        contents[i] = '0'
                     elif (i+1) in d and self.allzeroes(d[i+1]) and not (i-1 in d):
                         # guess that it's all zeros
                         stats.inc("BlockToStrand::decode::guessAllZeroStrand")
                         data += [ 0 for _ in range(self._strandSizeInBytes) ]
+                        contents[i] = '0'
                     else:
                         err = DNABlockMissingIndex("Block missing index = {}".format(i))
                         stats.inc("BlockToStrand::decode::guessMissingStrand")
                         if self._Policy.allow(err):
                             #print "Block missing index = {}".format(i)
                             data += d.get(i,[-1 for _ in range(self._strandSizeInBytes)])
+                            contents[i] = 'M'
                         else:
                             raise err
                 else:
@@ -215,7 +241,9 @@ class BlockToStrand(BaseCodec):
                     else:
                         raise err
             else:
+                contents[i] = '-'
                 data += d[i]
+        stats.unique("BlockToStrand::_decode::block_profile({})".format(prior_bindex),"".join(contents))
                 
         # smaller is allowed due to end of file, larger is a potential problem
         if len(data) > self._blockSize:
@@ -226,6 +254,8 @@ class BlockToStrand(BaseCodec):
                 raise err
 
         #print data
+        #stats.append("BlockToStrand::_decode::data[{}]".format(prior_bindex),data)
+        
         return prior_bindex,data
         
 
@@ -345,6 +375,7 @@ class ReedSolomonOuterCodec(BaseCodec):
                     self._rs.rs_correct_msg(message, \
                                             self._errorSymbols, \
                                             erase_pos=erasures)
+                #debug help
                 #print corrected_message
                 #print corrected_ecc
                 data[i:len(data):self._payloadSize] = corrected_message + corrected_ecc
