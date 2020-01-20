@@ -246,8 +246,20 @@ class WriteDNAFile(DNAFile):
         self.size += len(buff)
         tell = self.mem_buffer.tell()
         self.mem_buffer.seek(0,2)
-        self.mem_buffer.write(buff)
-        self.mem_buffer.seek(tell,0)
+
+        #print ( len(buff), bytes([x for x in buff]), buff )
+
+        #buff = bytes([x for x in buff])        
+        #buff = bytes([ord(x) for x in buff])
+        try:
+            # convert string
+            self.mem_buffer.write(buff)
+            self.mem_buffer.seek(tell,0)
+        except Exception as e:
+            buff = bytearray([x for x in buff])
+            self.mem_buffer.write(buff)
+            self.mem_buffer.seek(tell,0)
+            
         return
     
     def flush(self):
@@ -540,7 +552,7 @@ class SegmentedReadDNAFile(ReadDNAFile):
 
             for s in self.strands:
                 if s.find(primer5)!=-1:
-                    #print "dnafile.py",self.dec.decode_from_phys_to_strand(s)
+                    print ("dnafile.py",self.dec.decode_from_phys_to_strand(s))
                     self.dec.decode(s)
 
             self.dec.write()
@@ -580,7 +592,7 @@ if __name__ == "__main__":
     wf.new_segment('RS+CFC8+RE2','AT'+'A'*17+'G','TA'+'T'*17+'G')
         
     for i in range(10,30):
-        wf.write( "".join([chr(x) for x in convertIntToBytes(i,4)]) )
+        wf.write( bytearray([x for x in convertIntToBytes(i,4)]) )
 
     wf.close()
 
@@ -591,7 +603,7 @@ if __name__ == "__main__":
         s = rf.read(4)
         if len(s)==0:
             break
-        n = convertBytesToInt([ord(x) for x in s])
+        n = convertBytesToInt([x for x in s])
         print (n)
 
     print ("Done.")

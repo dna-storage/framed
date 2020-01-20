@@ -49,7 +49,7 @@ class InsertMidSequence(BaseCodec):
             else:
                 raise err
 
-        middle = len(strand)/2        
+        middle = int(len(strand)/2)
         return strand[0:middle]+self._seq+strand[middle:]
 
     def _decode(self,strand):

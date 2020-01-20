@@ -92,7 +92,8 @@ def encode_file_header(filename,format_id,size,other_data,primer5,primer3,fsmd_a
     data += convertIntToBytes(len(other_data),2)
     data += other_data
     #data += [0]*(80-len(data))
-    data = "".join([chr(x) for x in data])
+    #data = bytearray([x for x in data])
+    data = bytearray(data)
 
     #print "size of file header: ",len(data)
     
@@ -168,9 +169,12 @@ def decode_file_header(strands,primer5,primer3,fsmd_abbrev='FSMD'):
     dec.write()
     assert dec.complete    
 
-
-    data = [ ord(x) for x in b.getvalue() ]
-
+    #print (b.getvalue())
+    try:
+        data = [ ord(x) for x in b.getvalue() ]
+    except Exception as e:
+        data = [ x for x in b.getvalue() ]
+        
     #print data
     
     assert data[0] == system_version['major']

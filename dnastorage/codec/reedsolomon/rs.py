@@ -408,7 +408,7 @@ class ReedSolomon:
     def rs_generator_poly(self, nsym, fcr=0, generator=2):
         '''Generate an irreducible generator polynomial (necessary to encode a message into Reed-Solomon)'''
         g = [1]
-        for i in xrange(nsym):
+        for i in xrange(int(nsym)):
             g = self.gf_poly_mul(g, [1, self.gf_pow(generator, i+fcr)])
         return g
 

@@ -160,7 +160,7 @@ class LayeredDecoder(DecodePacketizedFile):
         reportBlockStatus(blocks,self.minIndex,
                           self.blockIndexSize,self.intraBlockIndexSize)
         
-        blocks.sort()
+        #blocks.sort()
         for b in blocks:
             idx = b[0]
             if idx < self.minIndex or idx >= self._packetizedFile.maxKey:

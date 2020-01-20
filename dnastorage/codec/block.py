@@ -32,7 +32,7 @@ def partitionStrandsIntoBlocks(strands, interIndexSize=2):
         idx = base_conversion.convertBytesToInt(s[0:interIndexSize])
         blocksD[idx] = blocksD.get(idx,[]) + [s]
     blocks = blocksD.items()
-    blocks.sort()
+    #blocks.sort()
     return blocks
 
 def doMajorityVote(strands, indexBytes=3):
@@ -182,7 +182,7 @@ class BlockToStrand(BaseCodec):
                 #print "Bad index {}!={}".format(bindex,prior_bindex)
                 if self._Policy.allow(e):
                     # ignore this strand
-                    if d.has_key(sindex):
+                    if sindex in d:
                         # already found a strand with this sindex, don't use this one
                         continue
                     else:
@@ -204,10 +204,10 @@ class BlockToStrand(BaseCodec):
                 d[sindex] = s[self._interIndex+self._intraIndex:]
                 
         data = []
-        max_index = self._blockSize / self._strandSizeInBytes
+        max_index = int(self._blockSize / self._strandSizeInBytes)
         contents = [ '_' for _ in range(max_index) ]
         for i in range(max_index):
-            if not d.has_key(i):
+            if not i in d:
                 if self._removeZeroes:
                     if not (i-1 in d) and not ((i+1) in d):
                         # guess that it's all zeros
@@ -304,7 +304,7 @@ class ReedSolomonOuterCodec(BaseCodec):
         self._rs = get_reed_solomon(c_exp=c_exp)
 
         self._packetSize = packetSize
-        self._errorSymbols = errorSymbols
+        self._errorSymbols = int(errorSymbols)
         self._payloadSize = payloadSize
         
         self._lengthMessage = packetSize / payloadSize + errorSymbols
@@ -349,7 +349,7 @@ class ReedSolomonOuterCodec(BaseCodec):
             #assert len(ecc) == self._errorSymbols
 
         tranpose = []
-        for i in range( self._errorSymbols ):
+        for i in range( int(self._errorSymbols) ):
             syms = ecc[i:len(ecc):self._errorSymbols]
             data += syms
                     

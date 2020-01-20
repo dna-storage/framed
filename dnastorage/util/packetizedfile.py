@@ -19,30 +19,31 @@ class WritePacketizedFilestream:
         self.size = size
         self.__set_packetSize(packetSize)
         self.__data = {}
-        self.minKey = minKey                      # inclusive
+        self.minKey = int(minKey)                      # inclusive
         self.zeroFillMissing = zeroFillMissing
         
     def has_key(self,key):
-        return self.__data.has_key(key)
-    def __setitem__(self,key,value):
+        return key in self.__data
+    
+    def __setitem__(self,key,value):        
         if (key >= self.minKey) and (key < self.maxKey):
             self.__data[key] = value
-        #else:
-            #print "not in range:",key,value,self.minKey,self.maxKey
+        else:
+            print ("not in range:",key,value,self.minKey,self.maxKey)
     def __getitem__(self,key):
         assert key >= self.minKey and key < self.maxKey
         return self.__data[key]
 
     @property
     def maxKey(self):
-        return self.minKey+self.numberOfPackets # exclusive
+        return int(self.minKey+self.numberOfPackets) # exclusive
     
     @property
     def numberOfPackets(self):
         if (self.size % self.packetSize) > 0:
-            return self.size / self.packetSize + 1
+            return int(self.size / self.packetSize + 1)
         else:
-            return self.size / self.packetSize
+            return int(self.size / self.packetSize)
 
     # packet property
     def __set_packetSize(self,val):
@@ -79,9 +80,11 @@ class WritePacketizedFilestream:
 
     ## Warning: requires buffering the whole file!
     def write(self):
-        emptyString = '\x00'*self.packetSize
+        #emptyString = '\x00'*self.packetSize
+        emptyString = bytearray(self.packetSize)
         for i in range(self.minKey,self.maxKey):
-            if self.__data.has_key(i):
+            #print (self.__data[i])
+            if i in self.__data:
                 if i == self.maxKey-1:
                     self.__fd.write(self.__data[i][0:self.lastPacketSize])
                 else:

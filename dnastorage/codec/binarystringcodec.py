@@ -1,5 +1,5 @@
-from base_conversion import *
-from base import *
+from dnastorage.codec.base_conversion import *
+from dnastorage.codec.base import *
 import math
 
 class BinaryStringCodec(BaseCodec): #simple class used to create binary string code word arrays 

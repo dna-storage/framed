@@ -146,7 +146,7 @@ class CommaFreeCodec(BaseCodec):
 
     def _decode_cfc(self, s):
         global cfc_inv
-        if cfc_inv.has_key(s):
+        if s in cfc_inv:
             return cfc_inv[s]
         return None
 
@@ -228,7 +228,7 @@ class CommaFreeCodewords(BaseCodec):
 
     def _decode_cfc(self, s):
         global cfc_inv
-        if cfc_inv.has_key(s):
+        if s in cfc_inv:
             return cfc_inv[s]
         return None
 
@@ -249,16 +249,16 @@ class CommaFreeCodewords(BaseCodec):
         for x in cfc:
             d = ed.eval(s,x)
             D[d] = D.get(d,[]) + [x]
-        if D.has_key(0):
+        if 0 in D:
             assert len(D[0])==1
             return [100,D[0][0],0]        
-        elif D.has_key(1):
+        elif 1 in D:
             if len(D[1])==1:
                 return [100,D[1][0],8]
             elif len(D[1])>1:
                 p = D[1][ randint(0,len(D[1])-1) ]
                 return [1.0/len(D[1])*100,p,8]
-        elif D.has_key(2):
+        elif 2 in D:
             if len(D[2])==1:
                 return [100,D[2][0],8]
             elif len(D[2])>1:
@@ -458,7 +458,7 @@ if __name__ == "__main__":
         for s in all:
             base[s[0]].append(s)
             c = countGC(s)
-            if not gc.has_key(c):
+            if not (c in gc):
                 gc[c] = [ ]
             #print "{} {}".format(d,c)
             gc[c].append(s)
@@ -518,9 +518,9 @@ if __name__ == "__main__":
         for x in cfc:
             d = ed.eval("".join(a),x)
             D[d] = D.get(d,[]) + [x]
-        if D.has_key(0):
+        if 0 in D:
             pass # didn't find it
-        elif D.has_key(1):
+        elif 1 in D:
             if len(D[1])==1 and a_copy in D[1]:
                 r += 1
             elif len(D[1])>1 and a_copy in D[1]:
@@ -541,9 +541,9 @@ if __name__ == "__main__":
         for x in cfc:
             d = ed.eval("".join(a),x)
             D[d] = D.get(d,[]) + [x]
-        if D.has_key(0):
+        if 0 in D:
             pass # didn't find it
-        elif D.has_key(1):
+        elif 1 in D:
             if len(D[1])==1 and a_copy in D[1]:
                 r += 1
             elif len(D[1])>1 and a_copy in D[1]:
@@ -565,9 +565,9 @@ if __name__ == "__main__":
         for x in cfc:
             d = ed.eval("".join(a),x)
             D[d] = D.get(d,[]) + [x]
-        if D.has_key(0):
+        if 0 in D:
             pass # didn't find it
-        elif D.has_key(1):
+        elif 1 in D:
             if len(D[1])==1 and a_copy in D[1]:
                 r += 1
             elif len(D[1])>1 and a_copy in D[1]:
@@ -590,9 +590,9 @@ if __name__ == "__main__":
         for x in cfc:
             d = ed.eval("".join(a),x)
             D[d] = D.get(d,[]) + [x]
-        if D.has_key(0):
+        if 0 in D:
             pass # didn't find it
-        elif D.has_key(1):
+        elif 1 in D:
             if len(D[1])==1 and a_copy in D[1]:
                 r += 1
             elif len(D[1])>1 and a_copy in D[1]:
@@ -600,14 +600,14 @@ if __name__ == "__main__":
                 if p == a_copy:
                     r += 1
 
-        elif D.has_key(2):
+        elif 2 in D:
             if len(D[2])==1 and a_copy in D[2]:
                 r += 1
             elif len(D[2])>1 and a_copy in D[2]:
                 p = D[2][ randint(0,len(D[2])-1) ]
                 if p == a_copy:
                     r += 1
-        elif D.has_key(3):
+        elif 3 in D:
             if len(D[3])==1 and a_copy in D[3]:
                 r += 1
             elif len(D[3])>1 and a_copy in D[3]:
@@ -632,9 +632,9 @@ if __name__ == "__main__":
         for x in cfc:
             d = ed.eval("".join(a),x)
             D[d] = D.get(d,[]) + [x]
-        if D.has_key(0):
+        if 0 in D:
             pass # didn't find it
-        elif D.has_key(1):
+        elif 1 in D:
             if len(D[1])==1 and a_copy in D[1]:
                 r += 1
             elif len(D[1])>1 and a_copy in D[1]:
@@ -642,14 +642,14 @@ if __name__ == "__main__":
                 if p == a_copy:
                     r += 1
 
-        elif D.has_key(2):
+        elif 2 in D:
             if len(D[2])==1 and a_copy in D[2]:
                 r += 1
             elif len(D[2])>1 and a_copy in D[2]:
                 p = D[2][ randint(0,len(D[2])-1) ]
                 if p == a_copy:
                     r += 1
-        elif D.has_key(3):
+        elif 3 in D:
             if len(D[3])==1 and a_copy in D[3]:
                 r += 1
             elif len(D[3])>1 and a_copy in D[3]:

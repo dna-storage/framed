@@ -6,7 +6,7 @@ logger = logging.getLogger('dna.util.stats')
 logger.addHandler(logging.NullHandler())
 
 def random_string(l=5):
-    return ''.join([choice(string.ascii_letters + string.digits) for n in xrange(l)])
+    return ''.join([choice(string.ascii_letters + string.digits) for n in range(l)])
 
 class dnastats:
     """ collect stats regarding the dnastorage system simulation """
@@ -32,7 +32,7 @@ class dnastats:
         self.all_stats[name] = self.all_stats.get(name,dflt) + [s]
 
     def unique(self, name, val):
-        while self.all_stats.has_key(name):
+        while name in self.all_stats:
             name += "::"+random_string(5)
         self.all_stats[name] = val            
         

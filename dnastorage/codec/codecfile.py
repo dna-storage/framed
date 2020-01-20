@@ -97,19 +97,25 @@ class DecodePacketizedFile(object):
     #    return self._data[key]
 
     def writeToFile(self,key,value):
-        #print key, len(value)
-        
+        #print (key, len(value), value, type(value))
         # make sure value is a string
+        # try:
+        #     if (type(value) is list) and (type(value[0]) is int or type(value[0]) is long):
+        #         value = "".join([chr(x) for x in value])
+            
+        #     if (type(value) is list) and (type(value[0]) is str):
+        #         value = "".join([x for x in value])
+        #     # assert type(value) is str
+        #     self._packetizedFile[key] = value
+        #except Exception as e:
         if (type(value) is list) and (type(value[0]) is int or type(value[0]) is long):
-            value = "".join([chr(x) for x in value])
-        if (type(value) is list) and (type(value[0]) is str):
-            value = "".join([x for x in value])
-        #if not (type(value) is str):
-        #    print value
-        assert type(value) is str
-        #print "writeToFile",key, [ord(v) for v in value]
+            value = bytearray(value)
+        elif (type(value) is list) and (type(value[0]) is str):
+            value = bytearray([ord(x) for x in value])
+        else:
+            value = bytearray(value)
         self._packetizedFile[key] = value
-
+                
     # Ideally, derived classes will only override this implementation
     def _decode(self,key,value):
         self.writeToFile(key,value)
