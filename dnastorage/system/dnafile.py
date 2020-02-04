@@ -145,7 +145,7 @@ class ReadDNAFile(DNAFile):
         # set up mem_buffer 
         self.mem_buffer = BytesIO()
         
-        if self.formatid >= 0x1000:
+        if self.formatid == 0x1000:
             # let sub-classes handle initialization
             return
 
@@ -230,8 +230,12 @@ class WriteDNAFile(DNAFile):
         return
 
     def _encode_buffer(self):
-        for e in self.enc:
-            self.strands.append(e)
+        for block in self.enc:
+            if type(block) == list:
+                for s in block:
+                    self.strands.append(s)
+            else:
+                self.strands.append(block)
         #print "_encode_buffer: index={}".format(self.enc.index)
 
     def read(self, size):
