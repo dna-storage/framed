@@ -15,7 +15,7 @@ class ReadDistribution(object):
         self._var=var
 
     @classmethod
-    def open(distribution,**kwargs):
+    def open(self,distribution,**kwargs):
         assert "mean" in kwargs
         if distribution is "negative_binomial":
             assert "var" in kwargs

@@ -30,9 +30,21 @@ static PyMethodDef generate_methods[] = {
    { "rand_in_range", (PyCFunction)generate_rand_in_range, METH_VARARGS, NULL },
    {"seed",(PyCFunction)generate_seed,METH_NOARGS,NULL},
    {"rand",(PyCFunction)generate_rand,METH_NOARGS,NULL},
-   { NULL, NULL, 0, NULL }
+   { NULL, NULL, 0, NULL}
 };
 
-PyMODINIT_FUNC initgenerate() {
-   Py_InitModule3("generate", generate_methods, "Faster random number generation");
+//PyMODINIT_FUNC initgenerate() {
+// Py_InitModule3("generate", generate_methods, "Faster random number generation");
+//}
+
+static struct PyModuleDef generate={
+				    PyModuleDef_HEAD_INIT,
+				    "generate",
+				    NULL,
+				    -1,
+				    generate_methods
+};
+
+PyMODINIT_FUNC PyInit_generate(void){
+  return PyModule_Create(&generate);
 }

@@ -30,9 +30,9 @@ class Fi_Env(object):
         dist=[]
         #Tuple format accelerates simulation of fault models of nucleotide strand faults and missing strand faults
         if not isinstance(self._fault_mode,strand_fault_compressed):
-            for ind,s in enumerate(this._og_strands):
+            for ind,s in enumerate(self._og_strands):
                 read_count=self._read_distributor.gen()
-                dist.append((ind,red_count))
+                dist.append((ind,read_count))
                 new_pool+=[copy.copy(s) for i in range(0,read_count)]
             return new_pool,dist
         else:
@@ -49,8 +49,11 @@ class Fi_Env(object):
         self._fault_mode.set_library(pool)
         self._fault_mode.Run()
         self._fault_strands=pool #pool should be modified with FaultDNA types
-        assert isinstance(self._fault_strands[0],FaultDNA)
-        
+        #make sure everything goes in as a fault strand
+        for s_index,s in enumerate(self._fault_strands):
+            if not isinstance(s,FaultDNA):
+                self._fault_strands[s_index]=FaultDNA(self._fault_strands[s_index],self._fault_strands[s_index].dna_strand) #simple copy with no errors inejcted
+
     def __next__(self):
         if self._iter_count<self._num_strands:
             res=self._fault_strands[self._iter_count]
@@ -66,4 +69,27 @@ class Fi_Env(object):
 
     def get_strands(self):
         return self._fault_strands
+    
+if __name__=="__main__":
+    import itertools
+    import random
+    import dnastorage.strand_representation
+    #make some fake strands and inject faults just to test data flows of infrastructures
+
+    dna_list=["A","G","C","T"]
+    strands=[]
+    for i in range(2000):
+        strand=[]
+        for j in range(200):
+            strand.append(dna_list[random.randint(0,3)])            
+        strands.append(BaseDNA(dna_strand="".join(strand)))
+        print("Base Strand {} {}".format(i,strands[-1].dna_strand))
+
+    #isntantiate fault injection environment
+    fault_environment = Fi_Env("poisson","fixed_rate",strands,fault_rate=0.1,mean=10)
+    fault_environment.Run()
+    for i in fault_environment.get_strands():
+        print("Error Strand {}".format(i.dna_strand))
+    print(len(fault_environment.get_strands()))
+
     

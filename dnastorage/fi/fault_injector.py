@@ -5,7 +5,7 @@ import csv
 import generate
 import time
 from dnastorage.strand_representation import *
-
+from dnastorage.fi.fault_strand_representation import *
 
 #substitution dictionary used for substitution errors
 sub_dict={'A':['G','C','T'],'G':['C','A','T'], 'T':['G','C','A'], 'C':['G','T','A']}
@@ -20,7 +20,7 @@ class BaseFI:
         pass
     
     @classmethod
-    def open(fault_injector,**kwargs):
+    def open(self,fault_injector,**kwargs):
         if fault_injector=="fixed_rate":
             return fixed_rate(**kwargs)
         elif fault_injector=="missing_strands":
@@ -71,7 +71,7 @@ class fixed_rate(BaseFI):
         #go through the strands and pick faults
         for strand_index,strand in enumerate(self._input_library):
             injection_sites[strand_index]={}
-            for nuc_index,nuc in enumerate(strand):
+            for nuc_index,nuc in enumerate(strand.dna_strand):
                 inject_fault=generate.rand()
                 if inject_fault<=self.fault_rate:
                     #need to inject a fault at this nucleotide, fault types are equally probable
@@ -92,10 +92,10 @@ class fixed_rate(BaseFI):
                     #add on some extra information to the injection sites that indicates the nucleotide used for substitution
                     inject_sites[strand_indexes][fault_indexes]='0-'+sub_nucleotide
                     new_strand=library_strand[0:fault_indexes]+sub_nucleotide+library_strand[fault_indexes+1:len(library_strand)]
-                    #deletion error
+                #deletion error
                 elif inject_sites[strand_indexes][fault_indexes] == '1':
                     #add on some extra information to the injection sites, append the nucleotide that was removed from the original strand 
-                    inject_sites[strand_indexes][fault_indexes]='1-'+out_list[strand_indexes][fault_indexes]
+                    inject_sites[strand_indexes][fault_indexes]='1-'+library_strand[fault_indexes]
                     new_strand=library_strand[0:fault_indexes]+library_strand[fault_indexes+1:len(library_strand)]
                 #insertion error
                 elif inject_sites[strand_indexes][fault_indexes] == '2':
@@ -106,8 +106,6 @@ class fixed_rate(BaseFI):
                     raise ValueError()
                 assert len(new_strand)>0
                 self._input_library[strand_indexes]=FaultDNA(self._input_library[strand_indexes],new_strand)
-
-
 
     
 #class that contains functionality for missing strands fault model
