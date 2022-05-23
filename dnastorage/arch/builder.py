@@ -5,6 +5,7 @@ from dnastorage.codec import illinois
 from dnastorage.codec import binary
 from dnastorage.codec import huffman
 from dnastorage.codec import fountain
+from dnastorage.codec import PipeLine as pipeline
 from dnastorage.codec.deprecated.rscodec import *
 from dnastorage.codec.phys import *
 from dnastorage.codec.strand import *
@@ -13,10 +14,48 @@ from dnastorage.codec.LayeredCodec import *
 from dnastorage.arch.strand import *
 from dnastorage.exceptions import *
 from dnastorage.codec.binarystringcodec import *
+from dnastorage.codec.consolidation import *
+
+from dnastorage.fi.probes import *
+
 
 def available_file_architectures():
     return ["UW+MSv1","Illinois",'Goldman','Fountain','Binary','Dense','NRDense','RS+CFC8','RS+ROT','RS+NRD', 'Sys', 'OverhangStrand']
 
+
+def customize_RS_CFC8_pipeline(pf,**kwargs):
+    print(kwargs)
+    blockSizeInBytes=kwargs.get("blockSizeInBytes",150)
+    strandSizeInBytes=kwargs.get("strandSizeInBytes",15)
+    primer5 = kwargs.get("primer5","")
+    primer3 = kwargs.get("primer3","")
+    innerECC = kwargs.get("innerECC",0)
+    outerECCStrands = kwargs.get("outerECCStrands",0)
+    magic_strand = kwargs.get("magic","")
+    cut = kwargs.get("cut","")
+    fault_injection= kwargs.get("fi",False)
+    upper_strand_length = kwargs.get("dna_length",200)
+    index_bytes=kwargs.get("index_bytes",0)
+    index_bit_set=kwargs.get("index_bit_set",None)
+
+    
+    #create the components we are gonna use
+    rsOuter = ReedSolomonOuterPipeline(blockSizeInBytes//strandSizeInBytes,outerECCStrands)
+    commafree = CommaFreeCodecPipeline(numberBytes=index_bytes+innerECC+strandSizeInBytes)
+    rsInner = ReedSolomonInnerCodecPipeline(innerECC)
+    magic = PrependSequencePipeline(magic_strand)
+    p5 = PrependSequencePipeline(primer5)
+    p3 = AppendSequencePipeline(reverse_complement(primer3))
+    consolidator = SimpleMajorityVote()
+
+    if fault_injection is False:
+        return pipeline.PipeLine((rsOuter,rsInner,commafree,p3,magic,p5),consolidator,blockSizeInBytes,strandSizeInBytes,upper_strand_length,1,packetizedfile=pf,index_bytes=index_bytes
+                                 ,index_bit_set=index_bit_set)
+    else:
+        innerECCprobe = CodewordErrorRateProbe(probe_name="RSInner")
+        commafreeprobe = CodewordErrorRateProbe(probe_name="CommaFree")
+        return pipeline.PipeLine((rsOuter,innerECCProbe,rsInner,commafreeprobe,commafree,p3,magic,p5),consolidator,
+                                 blockSizeInBytes,strandSizeInBytes,upper_strand_length,1,packetizedFile=pf,index_bytes=index_bytes,index_bit_set=index_bit_set)
 
 def customize_RS_CFC8(is_enc,pf,primer5,primer3,intraBlockIndex=1,\
                       interBlockIndex=2,innerECC=2,strandSizeInBytes=15,\

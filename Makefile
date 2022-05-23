@@ -1,3 +1,4 @@
+
 init:
 	#make -C other_software/nupack3.0.6 all
 	pip install --user -r requirements.txt
@@ -12,5 +13,9 @@ clean:
 	rm -rf dnastorage.egg-info
 	rm -rf generate.egg-info
 
+
 install:
 	python setup.py install --user
+
+develop:
+	python setup.py develop --user

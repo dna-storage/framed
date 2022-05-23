@@ -3,6 +3,8 @@ from math import log, ceil
 from dnastorage.codec import base_conversion
 from dnastorage.codec.reedsolomon.rs import ReedSolomon,get_reed_solomon,ReedSolomonError
 from collections import Counter
+from dnastorage.strand_representation import *
+from dnastorage.codec_types import *
 
 import logging
 logger = logging.getLogger('dna.storage.codec.block')
@@ -34,6 +36,8 @@ def partitionStrandsIntoBlocks(strands, interIndexSize=2):
     blocks = blocksD.items()
     #blocks.sort()
     return blocks
+
+
 
 def doMajorityVote(strands, indexBytes=3):
     key_value = {}
@@ -70,9 +74,6 @@ def doMajorityVote(strands, indexBytes=3):
         strand_array.append(data)
         
     return strand_array
-
-
-
 
 
 class NormalizeBlock(BaseCodec):
@@ -286,7 +287,84 @@ class DoNothingOuterCodec(BaseCodec):
         assert len(data)==self._packetSize
         return packet[0],data
 
-        
+
+
+class ReedSolomonOuterPipeline(BaseOuterCodec):
+    def __init__(self,packet_divisor,parity_packets,c_exp=8,OuterCodecObj=None,Policy=None):
+        BaseOuterCodec.__init__(self,packet_divisor,OuterCodecObj=OuterCodecObj,Policy=Policy)
+        self._rs = get_reed_solomon(c_exp=c_exp)
+        self._parity_packets=parity_packets
+        assert(packet_divisor+parity_packets<=self._rs.field_charac)
+    def _encode(self,packets):
+        parity_packets=[]
+        #initialize parity_packets
+        for i in range(0,self._parity_packets):
+            new= []
+            parity_packets.append(new)
+        #encode a set of packets
+        for i in range(0,len(packets[0])):
+            strand_set=[]
+            for j in range(0,len(packets)):
+                strand_set.append(packets[j][i])
+            #use strand set to calculate a message
+            assert(len(strand_set)>0)
+            strand_length = len(strand_set[0].codewords)
+            for i in range(0,self._parity_packets): parity_packets[i].append(BaseDNA(codewords=[])) #make a new strand in each parity packet
+            #go column by column, calculating a RS message and splitting the ECC across strands in each packet
+            for k in range(0,strand_length):
+                message=[]
+                for j in range(0,len(strand_set)):
+                    message.append(strand_set[j].codewords[k]) #get bytes
+                assert(len(message)>0)
+                mesecc = self._rs.rs_encode_msg(message, self._parity_packets)
+                ecc = mesecc[len(message):]
+                for ei, e in enumerate(ecc):
+                    parity_packets[ei][-1].codewords.append(e)
+            for p in parity_packets:
+                assert len(p[-1].codewords)==strand_length
+        return packets+parity_packets
+    
+    def _decode(self,packets):
+        #decode a set of packets 
+        #Need to get packets into the right order to unroll the encoding, basically will get messages the same way as encoding
+        total_packets=[]
+        for key,item in sorted(packets.items(),key=lambda x: x[0]):
+            total_packets.append(item)
+        total_packets=total_packets[:self._total_sub_packets]
+        assert len(total_packets)>0
+        for i in range(0,len(total_packets[0])):
+            strands=[]
+            for j in range(0,len(total_packets)):
+                strands.append(total_packets[j][i])
+            #now get messages
+            assert len(strands)>0
+            for byte_index in range(0,len(strands[0].codewords)):
+                message=[]
+                for strand_index in range(0,len(strands)):
+                    message.append(strands[strand_index].codewords[byte_index])
+                assert len(message)==self._total_sub_packets
+                try:
+                    #perform correction
+                    erasures = [i for i in range(0,len(message)) if message[i]==None]
+                    corrected_message, corrected_ecc = \
+                        self._rs.rs_correct_msg(message, \
+                                                self._parity_packets, \
+                                                erase_pos=erasures)
+                except ReedSolomonError as e:
+                    #just gonna assume we can't fix this, hopefully someone else will
+                    stats.inc("RSOuterCodec::ReedSolomonError")
+                    wr_e = DNAReedSolomonOuterCodeError(msg=\
+                             "RSOuterCodec found error at sub-packet index".format(strands[0].index_ints[:self._level]))
+                    corrected_message = message
+                #write the corrected message back into strand classes
+                for s,m in zip(strands,message):
+                    s.codewords[byte_index] = m
+        #create the original packet
+        return_packet=[]
+        for p in total_packets[:self._num_data_sub_packets]:
+            return_packet+=p
+        return return_packet
+    
 class ReedSolomonOuterCodec(BaseCodec):
     """ReedSolomonOuterCodec takes a block of data as input and produces a new
     block of data that's error encoded. 

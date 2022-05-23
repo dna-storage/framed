@@ -158,9 +158,71 @@ def decodeWithExclusion(s,primer):
     return val
 
 
+#packs index bits into an array of byte values suitable for encoding
+def pack_bits_to_bytes(index_set,index_bit_sizes):
+    byte_array=[]
+    bits_in_remaining_byte=8
+    current_byte=0
+    for t, index in enumerate(index_set):
+        index_size=index_bit_sizes[t]
+        index_value=index
+
+        bits_to_pack=index_size
+
+        while bits_to_pack>0:
+            if bits_to_pack > bits_in_remaining_byte: 
+                bits_from_current_iter = bits_in_remaining_byte
+            else:
+                bits_from_current_iter = bits_to_pack
+            current_byte = (current_byte << bits_from_current_iter)|(index_value>>(bits_to_pack-bits_from_current_iter))
+            if bits_from_current_iter == bits_in_remaining_byte:
+                byte_array.append(current_byte)
+                current_byte=0
+                bits_in_remaining_byte = 8
+            else:
+                bits_in_remaining_byte -= bits_from_current_iter
+            mask= 2**(bits_to_pack-bits_from_current_iter)-1
+            index_value = index_value & mask
+            bits_to_pack-=bits_from_current_iter
+    
+        assert index_value==0 and bits_to_pack==0
+
+    #put the last byte into the array if last byte is not completely filled, push all bits to the top of the byte
+    if bits_in_remaining_byte >0 and bits_in_remaining_byte!=8:
+        current_byte=current_byte<<bits_in_remaining_byte
+        byte_array.append(current_byte)
+    
+    return byte_array
+        
+#unpacks bytes into the correct index values
+def unpack_bytes_to_indexes(index_bytes,index_bit_sizes):
+    index_array=[]
+    byte_index=0
+    current_byte = index_bytes[byte_index]
+    bits_remaining_in_byte = 8 #track how many bits we've taken from the current byte
+    for index_size in index_bit_sizes:
+        bits_to_get = index_size
+        current_index_value=0
+        while bits_to_get>0:
+            if bits_to_get > bits_remaining_in_byte:
+                current_iter_bits = bits_remaining_in_byte
+            else:
+                current_iter_bits = bits_to_get
+            current_index_value = (current_index_value<<current_iter_bits)|(current_byte>>(8-current_iter_bits))
+            current_byte = (current_byte<<current_iter_bits)&((2**8)-1)
+            bits_remaining_in_byte -=current_iter_bits
+            bits_to_get -=current_iter_bits
+            if bits_remaining_in_byte==0 and bits_to_get>0:
+                byte_index+=1
+                current_byte=index_bytes[byte_index]
+                bits_remaining_in_byte=8
+        index_array.append(current_index_value)
+
+    return index_array
+
+
 if __name__ == "__main__":
     import math
-
     primer = "GTCTCGTGGGCTCGG"
     #for i in range(3**5):
     #    s = encodeWithExclusion(i,10,primer)
@@ -177,3 +239,22 @@ if __name__ == "__main__":
     for i in [2**64, 2**74, 2**80]:
         s = encodeWithExclusion(i,100,primer)
         print (s)
+
+
+    #test out the packing/unpacking of indexing
+    
+    index_array = [ random.randint(0,255) for i in range(0,20)] #generate a list of random indices
+
+    index_size_array = [ random.randint(math.ceil(math.log(i,2)),8) for i in index_array] #choose random sizes that will at least satisfy each index
+
+    byte_array = pack_bits_to_bytes(index_array,index_size_array)
+
+    index_array2 = unpack_bytes_to_indexes(byte_array,index_size_array)
+
+    print(index_array)
+    print(index_array2)
+    
+    assert index_array==index_array2
+
+    
+

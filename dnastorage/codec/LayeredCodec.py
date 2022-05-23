@@ -47,7 +47,6 @@ class LayeredEncoder(EncodePacketizedFile):
         tmp_strands = []
         for s in strands:
             ecc_s = self.strandCodec.encode(s)
-            tmp_strands.append(ecc_s)
             cw_s = self.strandToCodewordCodec.encode(ecc_s)
             # phys codecs expect a DNA sequnce as a string
             phys_s = self.codewordToPhysCodec.encode(cw_s)            

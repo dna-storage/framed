@@ -3,6 +3,7 @@
 from setuptools import setup, find_packages
 from distutils.core import setup, Extension
 
+
 with open('README.md') as f:
     readme = f.read()
 
@@ -33,3 +34,4 @@ setup(
     license=license,
     packages=find_packages(exclude=( 'tests','docs', 'tools', 'other_software'))
 )
+

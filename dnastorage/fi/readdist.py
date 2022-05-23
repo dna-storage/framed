@@ -1,23 +1,56 @@
-#This file contains code for generating random numbers based on specified parameters, uses the inverse transform method with cutpoints to speed up generation
+import numpy as np
 from scipy import special
 from scipy import stats
-import random
+import scipy
 import math
-import numpy
+import random
 
 
+'''
+Top level class for distribution classes that generate copies of DNA strands based on some distribution
+'''
+class ReadDistribution(object):
+    def __init__(self,mean,var):
+        self._mean=mean
+        self._var=var
+
+    @classmethod
+    def open(distribution,**kwargs):
+        assert "mean" in kwargs
+        if distribution is "negative_binomial":
+            assert "var" in kwargs
+            return DNANegativeBinomial(kwargs["mean"],kwargs["var"])
+        elif distribution is "poisson":
+            return DNAPoisson(kwargs["mean"])
+        
+    def get_mean(self):
+        return self._mean
+
+    def get_var(self):
+        return self._var
+
+    '''
+    pmf calculates the probability of input X based on a probability mass function
+    '''
+    def pmf(self,X):
+        raise NotImplementedError()
+
+    '''
+    gen samples a value from a distribution
+    '''
+    def gen(self):
+        raise NotImplementedError()
 
 
 #Instantiate this class in order to generate random variables from the negative binomial distribution with gamma function parameterization (rather than classical parameterization)
-class neg_bin:
+class DNANegativeBinomial(ReadDistribution):
     def __init__(self,mean,var):
+        ReadDistribution.__init__(self,mean,var)
         self._cumulative_array=[]
         self._prob_array=[]
         #variance should be greater than the mean for neg binomial, otherwise use Poisson distribution
         assert var>mean
         self._theta=mean**2/(var-mean)
-        self._mean=mean
-        self._var=var
         last_cumlative=0
         index=0
         #build the cummulative probability array and probability array 
@@ -67,14 +100,26 @@ class neg_bin:
             cumulative_index=cumulative_index+1
         return cumulative_index
 
-    def get_mean(self):
-        return self._mean
 
-    def get_var(self):
-        return self._var
+
+
+'''
+This is a simple class that samples a poisson distribution, relies on scipy and np
+'''
+class DNAPoisson(ReadDistribution):
+    def __init__(self,mean):
+        ReadDistribution.__init__(self,mean,mean)
+        assert self._mean==self._var
+        
+    def pmf(self,X):
+        return scipy.stats.poisson.pmf(X,self._mean)
+
+    def gen(self):
+        return np.random.poisson(self._mean)
+
+
 
     
-
 def bins_array(data,bin_size):
     num_bins=int(math.ceil((max(data)-min(data))/bin_size))
     lower_bin=min(data)
@@ -92,8 +137,6 @@ def bins_array(data,bin_size):
 
 
 
-
-
 def calculate_expected(num_samples,start,bin_size,prob_array,num_bins):
     expected={}
     index=start
@@ -103,10 +146,6 @@ def calculate_expected(num_samples,start,bin_size,prob_array,num_bins):
     return expected
 
 
-
-
-
-    
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
 

@@ -1,6 +1,8 @@
 from dnastorage.codec.base import *
 from dnastorage.primer.primer_util import *
 from dnastorage.exceptions import *
+from dnastorage.codec_types import *
+from dnastorage.strand_representation import *
 
 class CombineCodewords(BaseCodec):
     def __init__(self,CodecObj=None,Policy=None):
@@ -11,6 +13,8 @@ class CombineCodewords(BaseCodec):
 
     def _decode(self, s):
         assert ("not used for decoding")
+
+
 
 
 class NormalizeStrandLength(BaseCodec):
@@ -34,6 +38,7 @@ class NormalizeStrandLength(BaseCodec):
     def _decode(self, s):
         assert ("not used for decoding")
 
+        
         
 class InsertMidSequence(BaseCodec):
     def __init__(self,seq,CodecObj=None,Policy=None):
@@ -114,7 +119,7 @@ class PrependSequence(BaseCodec):
                 
                 idx = res.index(mn)
                 #print res,mn
-                if mn < 5:
+                if mn < 0:
                     return strand[idx+slen:]
                 else:
                     if self.is_primer:
@@ -124,6 +129,7 @@ class PrependSequence(BaseCodec):
                     return strand
             else:
                 raise err
+
 
 
 class AppendSequence(BaseCodec):
@@ -171,6 +177,39 @@ class AppendSequence(BaseCodec):
             else:
                 raise err
 
+
+class PrependSequencePipeline(PrependSequence,DNAtoDNA):
+    def __init__(self,seq,CodecObj=None,Policy=None,isPrimer=False):
+        PrependSequence.__init__(self,seq,CodecObj=CodecObj,Policy=Policy)
+        DNAtoDNA.__init__(self)
+    def _encode(self,strand):
+        #this is a wrapper around the basic PrependSequence _encode so that the strand interface
+        strand.dna_strand=PrependSequence._encode(self,strand.dna_strand)
+        return strand
+    def _decode(self,strand):
+        if strand.dna_strand is None: return strand
+        strand_before =strand.dna_strand
+        strand.dna_strand=PrependSequence._decode(self,strand.dna_strand)
+        if strand_before==strand.dna_strand and self._seq != "":
+            strand.dna_strand = None
+        return strand
+
+class AppendSequencePipeline(AppendSequence,DNAtoDNA):
+    def __init__(self,seq,CodecObj=None,Policy=None,isPrimer=False):
+        AppendSequence.__init__(self,seq,CodecObj=CodecObj,Policy=Policy)
+        DNAtoDNA.__init__(self)
+    def _encode(self,strand):
+        #this is a wrapper around the basic AppendSequence _encode so that the strand interface
+        strand.dna_strand=AppendSequence._encode(self,strand.dna_strand)
+        return strand
+    def _decode(self,strand):
+        if strand.dna_strand is None: return strand
+        strand_before =strand.dna_strand
+        strand.dna_strand=AppendSequence._decode(self,strand.dna_strand)
+        if strand_before==strand.dna_strand and self._seq != "":
+            strand.dna_strand = None
+        return strand
+ 
 
 if __name__ == "__main__":
     import random

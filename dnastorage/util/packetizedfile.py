@@ -1,7 +1,7 @@
 #!/usr/bin/python
 import os
 import sys
-
+import io
 import logging
 logger = logging.getLogger("dna.storage.util.packetizedfile")
 logger.addHandler(logging.NullHandler())
@@ -25,7 +25,7 @@ class WritePacketizedFilestream:
     def has_key(self,key):
         return key in self.__data
     
-    def __setitem__(self,key,value):        
+    def __setitem__(self,key,value):
         if (key >= self.minKey) and (key < self.maxKey):
             self.__data[key] = value
         else:
@@ -83,7 +83,6 @@ class WritePacketizedFilestream:
         #emptyString = '\x00'*self.packetSize
         emptyString = bytearray(self.packetSize)
         for i in range(self.minKey,self.maxKey):
-            #print (self.__data[i])
             if i in self.__data:
                 if i == self.maxKey-1:
                     self.__fd.write(self.__data[i][0:self.lastPacketSize])
@@ -92,17 +91,7 @@ class WritePacketizedFilestream:
             else:
                 if self.zeroFillMissing:
                     self.__fd.write(emptyString)
-                
-        # for key,value in items:
-        #     if i < key:
-        #         while i < key:
-        #             self.__fd.write(emptyString)
-        #             i+=1
-        #     if i == self.numberOfPackets-1:
-        #         self.__fd.write(value[0:self.lastPacketSize])
-        #     else:
-        #         self.__fd.write(value)
-        #     i+=1
+  
         self.__fd.flush()
             
     def close(self):
@@ -173,7 +162,7 @@ class ReadPacketizedFilestream:
         b = bytes(self.__fd.read(self.packetSize))
         self.__read_size += len(b)
         #only pad out if it is not RS, RS encodes by blocks so padding may lead to many useless strands
-        if b and len(b) != self.packetSize and not self._RS:
+        if b and len(b) != self.packetSize:
             b = b.ljust(self.packetSize,bytes(1))
 
         return b
@@ -206,7 +195,10 @@ class ReadPacketizedFilestream:
 
     @property
     def size(self):
-        return os.fstat(self.__fd.fileno()).st_size
+        if isinstance(self.__fd,io.BytesIO):
+            return len(self.__fd.getvalue())
+        else:
+            return os.fstat(self.__fd.fileno()).st_size
     @property
     def bytes_read(self):
         return self.__read_size

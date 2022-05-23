@@ -108,7 +108,7 @@ class DecodePacketizedFile(object):
         #     # assert type(value) is str
         #     self._packetizedFile[key] = value
         #except Exception as e:
-        if (type(value) is list) and (type(value[0]) is int or type(value[0]) is long):
+        if (type(value) is list) and (type(value[0]) is int):
             value = bytearray(value)
         elif (type(value) is list) and (type(value[0]) is str):
             value = bytearray([ord(x) for x in value])

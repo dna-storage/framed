@@ -1,26 +1,27 @@
 from dnastorage.system.formats import *
-from dnastorage.system.header import *
+from dnastorage.system.header_class import *
+from dnastorage.strand_representation import *
 import io
 import sys
+import copy
 
 import logging
 logger = logging.getLogger('dna.storage.system.dnafile')
 logger.addHandler(logging.NullHandler())
 
-class DNAFile:
+
+
+class DNAFilePipeline:
     def __init__(self):
         return
     
     @classmethod
-    def open(self, filename, op, primer5, primer3, format_name="", write_incomplete_file=False, fsmd_abbrev='FSMD',flanking_primer5="",flanking_primer3="",use_flanking_primer_for_decoding=False, fault_injection=False,strands=None):
+    def open(self, filename, op, format_name="", write_incomplete_file=False, fsmd_abbrev='FSMD',input_strands=None,encoder_params={}):
         # check if we are reading or writing
         if op=="rf":
-            return  SegmentedReadDNAFile(primer5=primer5,primer3=primer3,\
-                                        write_incomplete_file=write_incomplete_file,\
+            return  SegmentedReadDNAFile(write_incomplete_file=write_incomplete_file,\
                                         fsmd_abbrev=fsmd_abbrev,\
-                                        flanking_primer5=flanking_primer5,\
-                                        flanking_primer3=flanking_primer3,\
-                                        use_flanking_primer_for_decoding=use_flanking_primer_for_decoding,fault_injection=fault_injection,strands=strands)
+                                        strands=strands)
         if op=="r":            
             # 1. filename is the input file of strands
             # 2. primer_info optionally tells us the primers we're looking,
@@ -31,46 +32,35 @@ class DNAFile:
             #
             
             # Ugly: but we have to find the header to know what to do!
-            fd = open(filename,"r")
-            logger.debug("open {} for reading.".format(filename))
-            strands = get_strands(fd)
+            if os.path.exists(filename):
+                fd = open(filename,"r")
+                logger.debug("open {} for reading.".format(filename))
+                strands = get_strands(fd)
+            elif input_strands is not None:
+                strands=input_strands
 
-            if use_flanking_primer_for_decoding==True:
-                h = decode_file_header(strands,flanking_primer5+primer5,\
-                                       flanking_primer3+primer3,fsmd_abbrev=fsmd_abbrev)
-            else:
-                h = decode_file_header(strands,primer5,primer3,fsmd_abbrev=fsmd_abbrev)
+            assert strands is not None
+            header = Header("0.1",encoder_params["primer5"],encoder_params["primer3"])
             
-            logger.debug("decoded header: {}".format(h)) 
-            assert h['version'][0] <= system_version['major']
-            assert h['version'][1] <= system_version['minor']
+            h = header.decode_file_header(copy.copy(strands)) #TODO: this should be changed to something like getting an encoder but for the header
+            
+            logger.debug("decoded header: {}".format(h))
             
             if h['formatid'] == file_system_formatid_by_abbrev("Segmented"):
                 logger.debug("SegmentedReadDNAFile({},{},{})".format(filename,primer5,primer3))
-                return SegmentedReadDNAFile(input=filename,\
-                                            primer5=primer5,primer3=primer3,\
+                return SegmentedReadDNAFilePipeline(input=filename,\
                                             write_incomplete_file=write_incomplete_file,\
-                                            fsmd_abbrev=fsmd_abbrev,\
-                                            flanking_primer5=flanking_primer5,\
-                                            flanking_primer3=flanking_primer3,\
-                                            use_flanking_primer_for_decoding=use_flanking_primer_for_decoding)
+                                            fsmd_abbrev=fsmd_abbrev)
             else:
-                return ReadDNAFile(input=filename, primer5=primer5, primer3=primer3,\
-                                   fsmd_abbrev=fsmd_abbrev,\
-                                   flanking_primer5=flanking_primer5,\
-                                   flanking_primer3=flanking_primer3,\
-                                   use_flanking_primer_for_decoding=use_flanking_primer_for_decoding)
-
+                return ReadDNAFilePipeline(input=filename,
+                                           fsmd_abbrev=fsmd_abbrev,input_strands=strands,encoder_params=encoder_params)
+            
         elif "w" in op and "s" in op:
-            return SegmentedWriteDNAFile(output=filename,primer5=primer5,primer3=primer3, \
-                                         format_name=format_name,fsmd_abbrev=fsmd_abbrev,\
-                                         flanking_primer5=flanking_primer5,\
-                                         flanking_primer3=flanking_primer3)       
+            return SegmentedWriteDNAFilePipeline(output=filename,
+                                         format_name=format_name,fsmd_abbrev=fsmd_abbrev)       
         elif op=="w":
-            return WriteDNAFile(output=filename,primer5=primer5,primer3=primer3, \
-                                format_name=format_name,fsmd_abbrev=fsmd_abbrev,\
-                                flanking_primer5=flanking_primer5,\
-                                flanking_primer3=flanking_primer3)
+            return WriteDNAFilePipeline(output=filename,
+                                        format_name=format_name,fsmd_abbrev=fsmd_abbrev,encoder_params=encoder_params)
         else:
             return None
 
@@ -94,68 +84,39 @@ def get_strands(in_fd):
         s = s.strip()
         if s.startswith('%'):
             continue
-        strands.append(s)
+        strands.append(BaseDNA(dna_strand=s))
     return strands
 
-class ReadDNAFile(DNAFile):
+class ReadDNAFilePipeline(DNAFilePipeline):
     # ReadDNAFile reads a set of strands from a file.  It finds the header,
     # determines compatibility and encoding type, and then decodes the file.
     #
     def __init__(self,**kwargs):     
-        DNAFile.__init__(self)
-        fi=False
-        if 'fault_injection' in kwargs:
-            fi = kwargs['fault_injection']
-            
+        DNAFilePipeline.__init__(self)
+        self._enc_opts=kwargs["encoder_params"]
         if 'input' in kwargs:
             self.input_filename = kwargs['input']
             self.in_fd = open(self.input_filename,"r")
-            
+            strands = get_strands(self.in_fd)
+
         elif 'in_fd' in kwargs:
             self.in_fd = kwargs['in_fd']
             self.input_filename = ""
-
+        elif "input_strands" in kwargs:
+            strands=kwargs["input_strands"]
+        else:
+            assert 0
+            
         if not ('fsmd_abbrev' in kwargs):
             self.fsmd_abbrev = 'FSMD'
         else:
             self.fsmd_abbrev = kwargs['fsmd_abbrev']
-            
-        assert 'primer5' in kwargs and 'primer3' in kwargs
-        self.primer5 = kwargs['primer5']
-        self.primer3 = kwargs['primer3']
 
-        if 'flanking_primer5' in kwargs:
-            self.flanking_primer5 = kwargs['flanking_primer5']
-        else:
-            self.flanking_primer5 = ''
-
-        if 'flanking_primer3' in kwargs:
-            self.flanking_primer3 = kwargs['flanking_primer3']
-        else:
-            self.flanking_primer3 = ''
-
-        if 'use_flanking_primer_for_decoding' in kwargs:
-            self.use_flanking_primers = kwargs['use_flanking_primer_for_decoding']
-        else:
-            self.use_flanking_primers = False
-
-            
-        # get all the strands ( this will be bad for large files )
-        if 'input' in kwargs:
-            strands = get_strands(self.in_fd)
-        else:
-            assert kwargs['strands']
-            strands=kwargs['strads']
-        assert strands
-
-
-        if not fi:
-            h = decode_file_header(strands,self.primer5,self.primer3,fsmd_abbrev=self.fsmd_abbrev)
-            self.strands = pick_nonheader_strands(strands,self.primer5)
+        header = Header("0.1",self._enc_opts["primer5"],self._enc_opts["primer3"])
         
-        assert h['version'][0] <= system_version['major']
-        assert h['version'][1] <= system_version['minor']
-
+        h = header.decode_file_header(strands)
+        self.strands = header.pick_nonheader_strands()
+        
         self.formatid = h['formatid']
         self.header = h 
         self.size = h['size']
@@ -167,23 +128,18 @@ class ReadDNAFile(DNAFile):
             # let sub-classes handle initialization
             return
 
-        dec_func = file_system_decoder(self.formatid)
+        constructor_function = file_system_decoder(self.formatid)
             
         self.mem_buffer = BytesIO()
         self.pf = WritePacketizedFilestream(self.mem_buffer,self.size,file_system_format_packetsize(self.formatid))
 
-        if self.use_flanking_primers:
-            self.dec = dec_func(self.pf,self.flanking_primer5+self.primer5,\
-                                self.flanking_primer3+self.primer3)
-        else:
-            self.dec = dec_func(self.pf,kwargs['primer5'],kwargs['primer3'])
-
+        print(self.header)
+        self.pipe = constructor_function(self.pf,**self._enc_opts)
+        self.pipe.decode_header_data(self.header["other_data"])
+        
         for s in self.strands:
-            if s.startswith(self.primer5):
-                self.dec.decode(s)
-
-        self.dec.write()
-        assert self.dec.complete
+            self.pipe.decode(s)
+        self.pipe.final_decode()
 
         self.mem_buffer.seek(0,0) # set read point at beginning of buffer
         return
@@ -198,10 +154,11 @@ class ReadDNAFile(DNAFile):
     def writable(self):
         return False
         
-class WriteDNAFile(DNAFile):
+class WriteDNAFilePipeline(DNAFilePipeline):
     # WriteDNAFile writes a set of strands.
-    def __init__(self,**kwargs):     
-        DNAFile.__init__(self)
+    def __init__(self,**kwargs):
+        DNAFilePipeline.__init__(self)
+        self._enc_opts=kwargs["encoder_params"]
         if 'formatid' in kwargs:            
             enc_func = file_system_encoder(kwargs['formatid'])
             self.formatid = kwargs['formatid']
@@ -215,26 +172,10 @@ class WriteDNAFile(DNAFile):
             self.fsmd_abbrev = kwargs['fsmd_abbrev']
 
         self.mem_buffer = BytesIO()
-        self.pf = ReadPacketizedFilestream(self.mem_buffer)
-
-        assert 'primer5' in kwargs and 'primer3' in kwargs
-        self.primer5 = kwargs['primer5']
-        self.primer3 = kwargs['primer3']
-
-        if 'flanking_primer3' in kwargs:
-            self.flanking_primer3 = kwargs['flanking_primer3']
-        else:
-            self.flanking_primer3 = ''
-
-        if 'flanking_primer5' in kwargs:
-            self.flanking_primer5 = kwargs['flanking_primer5']
-        else:
-            self.flanking_primer5 = ''
-
-        self.enc = enc_func(self.pf,self.flanking_primer5+self.primer5,\
-                            self.flanking_primer3+self.primer3)
-
-            
+        self.pf= ReadPacketizedFilestream(self.mem_buffer)
+        
+        self.pipe = enc_func(self.pf,**self._enc_opts)
+           
         if 'output' in kwargs:
             self.output_filename = kwargs['output']
             self.out_fd = open(self.output_filename,"w")
@@ -244,16 +185,16 @@ class WriteDNAFile(DNAFile):
             
         self.size = 0
         self.strands = []
+      
         return
 
     def _encode_buffer(self):
-        for block in self.enc:
+        for block in self.pipe:
             if type(block) == list:
                 for s in block:
                     self.strands.append(s)
             else:
                 self.strands.append(block)
-        #print "_encode_buffer: index={}".format(self.enc.index)
 
     def read(self, size):
         assert False and "Do not read at the same time as writing"
@@ -268,10 +209,6 @@ class WriteDNAFile(DNAFile):
         tell = self.mem_buffer.tell()
         self.mem_buffer.seek(0,2)
 
-        #print ( len(buff), bytes([x for x in buff]), buff )
-
-        #buff = bytes([x for x in buff])        
-        #buff = bytes([ord(x) for x in buff])
         try:
             # convert string
             self.mem_buffer.write(buff)
@@ -280,7 +217,6 @@ class WriteDNAFile(DNAFile):
             buff = bytearray([x for x in buff])
             self.mem_buffer.write(buff)
             self.mem_buffer.seek(tell,0)
-            
         return
     
     def flush(self):
@@ -289,111 +225,32 @@ class WriteDNAFile(DNAFile):
 
     def close(self):
         self.flush()
-        hdr = encode_file_header(self.output_filename,self.formatid,self.size,\
-                                 "",self.flanking_primer5+self.primer5,\
-                                 self.flanking_primer3+self.primer3,\
-                                 fsmd_abbrev=self.fsmd_abbrev)
+        header = Header("0.1",self._enc_opts["primer5"],self._enc_opts["primer3"])
 
-        for i,h in enumerate(hdr):
+        header_dict={}
+        header_dict["filename"]=self.output_filename
+        header_dict["formatid"]=self.formatid
+        header_dict["size"]=self.size
+        hdr_strands= header.encode_file_header(header_dict,self.pipe.encode_header_data())
+
+        for i,h in enumerate(hdr_strands):
             self.strands.insert(i,h)
 
-        comment = encode_file_header_comments(self.output_filename,self.formatid,self.size,"",\
-                                              self.primer5,self.primer3)
+        comment = header.encode_file_header_comments(header_dict)
+        comment+="% Primer 5 : {}\n".format(self._enc_opts["primer5"])
+        comment+="% Primer 3 : {}\n".format(self._enc_opts["primer3"])
         self.out_fd.write(comment)
         for s in self.strands:
-            self.out_fd.write("{}\n".format(s))
+            self.out_fd.write("{}\n".format(s.dna_strand))
 
         if self.out_fd != sys.stdout and self.out_fd != sys.stderr:
             self.out_fd.close()
         return
-
-
-class OverhangBitStringWriteDNAFile(WriteDNAFile):
-    def __init__(self,**kwargs):
-        WriteDNAFile.__init__(self,**kwargs)
-        if kwargs.has_key('bits_per_block'):
-            self._bits_per_block=kwargs['bits_per_block']
-        if kwargs.has_key('strand_length'):
-            self._strand_length=kwargs['strand_length']
-        if kwargs.has_key('num_overhangs'):
-            self._num_overhangs=kwargs['num_overhangs']
-        if kwargs.has_key('format_name'):
-            enc_func = file_system_encoder_by_abbrev(kwargs['format_name'])
-        if kwargs.has_key('formatid'):
-            enc_func=file_system_encoder(kwargs['formatid'])
-            
-        self.enc = enc_func(self.pf,self.flanking_primer5+self.primer5,\
-                                   self.flanking_primer3+self.primer3,strand_length=self._strand_length,num_overhangs=self._num_overhangs,bits_per_block=self._bits_per_block)#customize encoding function for experiments
-        return
-
-    def encode_overhang_header(self):
-        hdr=[]
-        hdr+=convertIntToBytes(self._bits_per_block,1)
-        hdr+=convertIntToBytes(self._strand_length,2)
-        hdr+=convertIntToBytes(self._num_overhangs,2)
-        return hdr
-
-
-    def encode_overhang_header_comments(self):
-        comment = "% Overhang Description\n"        
-        tab = "%    "
-        comment += tab + "{}. ".format(i) + file_system_format_description(s[0]) + "\n"
-        comment += tab + "    bits_per_block = {}".format(self._bits_per_block) + "\n"
-        comment += tab + "    strand_length = {}".format(self._strand_length) + "\n"
-        comment += tab + "    num_overhangs = {}".format(self._num_overhangs) + "\n"
-        comment += "%\n"
-        return comment
-
-
-    def header_flush(self): #doesnt only flush buffer, but also data associated with the header
-        logger.debug("WriteOverhangBitStringDNAFile.header_flush")
-        self.flush() #make sure buffer is written into DNA strands 
-        #hdr_other = self.encode_overhang_header()        
-
-        #hdr = encode_file_header(self.output_filename,self.formatid,self.size,\
-        #                         hdr_other,self.flanking_primer5+self.primer5,\
-        #                         self.flanking_primer3+self.primer3,\
-        #                         fsmd_abbrev=self.fsmd_abbrev)
-        
-        #for i,h in enumerate(hdr):
-        #    self.strands.insert(i,h) #insert DNA header strands into list
-
-    def get_strands(self):#return strands in list form
-        strand_list=[]
-        #want to return a set of strings
-        for ss in self.strands:
-            if type(ss) is list:
-                for s in ss:
-                    assert type(s) is not list
-                    strand_list.append(s)
-            else:
-                assert type(ss) is not list
-                strand_list.append(ss)
-        return strand_list
     
-    def close(self): #write out the strands to file, this is an experimental format, so dumping on a close is useful only for debugging purposes 
-        logger.debug("WriteOverhangBitStringDNAFile.close")
-        self.header_flush()
-        comment = encode_file_header_comments(self.output_filename,formatid,\
-                                              size,hdr_other,primer5,primer3)
-        self.out_fd.write(comment)
-        comment = self.encode_overhang_header_comments()
-        self.out_fd.write(comment)
-        for ss in self.strands:
-            if type(ss) is list:
-                for s in ss:
-                    self.out_fd.write("{}\n".format(s))
-            else:
-                self.out_fd.write("{}\n".format(ss))
-                    
-        if self.out_fd != sys.stdout and self.out_fd != sys.stderr:
-            self.out_fd.close()
-        return
-    
-class SegmentedWriteDNAFile(WriteDNAFile):
+class SegmentedWriteDNAFilePipeline(WriteDNAFilePipeline):
     # SegmentedWriteDNAFile writes a set of strands.
     def __init__(self,**kwargs):     
-        WriteDNAFile.__init__(self,**kwargs)
+        WriteDNAFilePipeline.__init__(self,**kwargs)
         self.segments = []
         self.beginIndex = 0
         return
@@ -469,8 +326,6 @@ class SegmentedWriteDNAFile(WriteDNAFile):
         
         hdr = encode_file_header(self.output_filename,formatid,size,hdr_other,flanking5+primer5,flanking3+primer3,fsmd_abbrev=self.fsmd_abbrev)
 
-        #print "Number of strands in header: ", len(hdr)
-
         for i,h in enumerate(hdr):
             self.strands.insert(i,h)
 
@@ -490,8 +345,7 @@ class SegmentedWriteDNAFile(WriteDNAFile):
             self.out_fd.close()
         return
 
-
-class SegmentedReadDNAFile(ReadDNAFile):
+class SegmentedReadDNAFilePipeline(ReadDNAFilePipeline):
 
     def decode_segments_header(self,other_data):
         val = other_data
@@ -533,7 +387,7 @@ class SegmentedReadDNAFile(ReadDNAFile):
     # determines compatibility and encoding type, and then decodes the file.
     #    
     def __init__(self,**kwargs):     
-        ReadDNAFile.__init__(self,**kwargs)
+        ReadDNAFilePipeline.__init__(self,**kwargs)
 
         logger.debug("sizeof other_data = {}".format(len(self.header['other_data'])))
         
@@ -600,26 +454,27 @@ class SegmentedReadDNAFile(ReadDNAFile):
 
     
 if __name__ == "__main__":
-    import io
-    import sys
+    import os
+    encoder_params={
+        "primer3":"A"*10,
+        "primer5":"T"*10,
+        "blockSizeInBytes":150,
+        "strandSizeInBytes":15,
+        "innerECC":2,
+        "outerECCStrands":20,
+        "dna_length":300,
+    }
     
-    wf = SegmentedWriteDNAFile(primer3='T'*19+'G',primer5='A'*19+'G',format_name='RS+CFC8+RE1',output="out.dna",fsmd_abbrev='FSMD-1')
-    
-    #wf = DNAFile.open(primer3='TTTG',primer5='AAAG',format_name='FSMD',filename="out.dna2",op="w")
-    
+    wf = DNAFilePipeline.open("out.dna","w",format_name='Pipe-RS+CFC8',fsmd_abbrev='FSMD-Pipe',encoder_params=encoder_params)
+      
     for i in range(1000):
         wf.write( bytearray(convertIntToBytes(i,4)) )
 
-    wf.new_segment('RS+CFC8+RE2','AT'+'A'*17+'G','TA'+'T'*17+'G')
-        
-    for i in range(10,30):
-        wf.write( bytearray([x for x in convertIntToBytes(i,4)]) )
-
     wf.close()
 
-    rf = SegmentedReadDNAFile(primer3='T'*19+'G',primer5='A'*19+'G',input="out.dna",fsmd_abbrev='FSMD-1')
+    rf = DNAFilePipeline.open("out.dna","r",format_name='Pipe-RS+CFC8',fsmd_abbrev='FSMD-Pipe',encoder_params=encoder_params)
 
-    print ("Should print out 0 to 30: ")
+    print ("Should print out 0 to 1000: ")
     while True:
         s = rf.read(4)
         if len(s)==0:
@@ -628,7 +483,7 @@ if __name__ == "__main__":
         print (n)
 
     print ("Done.")
-    
+    os.remove("out.dna")
     sys.exit(0)
     
         

@@ -1,6 +1,9 @@
 import logging
 from random import choice
 import string
+import pickle
+import numpy as np
+
 
 logger = logging.getLogger('dna.util.stats')
 logger.addHandler(logging.NullHandler())
@@ -8,25 +11,34 @@ logger.addHandler(logging.NullHandler())
 def random_string(l=5):
     return ''.join([choice(string.ascii_letters + string.digits) for n in range(l)])
 
-class dnastats:
+class dnastats(object):
     """ collect stats regarding the dnastorage system simulation """
-    def __init__(self, msg="", fd=None):
+    def __init__(self, msg="", fd=None,pickle_fd=None):
         self.fd = fd
+        self.pickle_fd=pickle_fd
         self.msg = msg
         self.all_stats = {}
         self.formats = {}
 
     def set_fd(self, fd):
         self.fd = fd
+    def set_pickle_fd(self,fd):
+        self.pickle_fd=fd
 
     # Use inc to track and dump a counter. example:
     #    stats.inc("block::errors")
     # If called 5 times, this will produce a log entry like this:
     #    block::errors=5
     #
-    def inc(self, name, i=1, dflt=0):
-        self.all_stats[name] = self.all_stats.get(name,dflt) + i
-
+    def inc(self, name, i=1, dflt=0,coords=None):
+        if coords is None:self.all_stats[name] = self.all_stats.get(name,dflt) + i
+        else:
+            self.all_stats[name][coords] = self.all_stats.get(name,dflt)[coords]+i
+    #use clear to reset stat counters
+    def clear(self):
+        self.all_stats={}
+        self.formats={}
+    
     # Use append to record a list of data
     def append(self, name, s, dflt=[]):
         self.all_stats[name] = self.all_stats.get(name,dflt) + [s]
@@ -67,10 +79,23 @@ class dnastats:
                 fmt = "{}="+"{}".format(self.formats.get(k,"{}"))
                 logger.info(fmt.format(k,v))
                 
-                
+        if not (self.pickle_fd is None): #dumping pickle of stats 
+            pickle.dump(self.all_stats,self.pickle_fd)
+
+
+    def aggregate(self,other_stats):
+        assert isinstance(other_stats,dnastats)
+        #aggregate other_stats into this stats
+        for x in other_stats.all_stats:
+            if x not in self.all_stats:
+                self.all_stats = other_stats.all_stats[x]
+            else:
+                self.all_stats[x]=self.all_stats[x]+other_stats.all_stats[x]    
+            
     def __del__(self):
         return
         #self.persist()
+    
 
 global stats
 stats = dnastats(msg="global stats collection for dnastorage project")

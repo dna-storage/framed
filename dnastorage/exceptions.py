@@ -40,6 +40,14 @@ class DNAStorageError(Exception):
         super(DNAStorageError,self).__init__(msg)
         stats.inc("Error")
 
+
+class PipeLineConstructionError(DNAStorageError):
+    """An error occured during the construction of the pipeline"""
+    def __init__(self,msg=None):
+        if msg is None:
+            msg="An error occured while constructing the pipeline"
+        DNAStorageError.__init__(self,msg)
+        
 class DNACodingError(DNAStorageError):
     """ An error occured while encoding or decoding a file """
     def __init__(self,msg=None):
@@ -47,7 +55,7 @@ class DNACodingError(DNAStorageError):
             msg = "An error occurred while encoding/decoding a file."
         super(DNACodingError,self).__init__(msg)
         stats.inc("CodingError")
-
+        
 
 class DNAReedSolomonOuterCodeError(DNACodingError):
     """ An error occured while encoding or decoding a file """

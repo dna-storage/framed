@@ -1,5 +1,7 @@
 from dnastorage.codec.base import *
 from dnastorage.codec import base_conversion
+from dnastorage.codec_types import *
+from dnastorage.strand_representation import *
 from random import randint
 import editdistance as ed
 
@@ -129,6 +131,9 @@ def create_cfc_inv():
         cfc_inv[c] = i
     cfc_inv[None] = -1000
 
+
+
+    
 class CommaFreeCodec(BaseCodec):
     def __init__(self,numberBytes,CodecObj=None,keyBytes=3):
         BaseCodec.__init__(self,CodecObj)
@@ -214,6 +219,26 @@ class CommaFreeCodec(BaseCodec):
         #Return an array of values rather than joining them as characters, possibly FIX_ME?
         return key,dec[self._keyWidthInBytes:]
 
+#wrapper so that the old comma free codec plays nice with pipeline based processing
+class CommaFreeCodecPipeline(CommaFreeCodec,CWtoDNA):
+    def __init__(self,numberBytes=15,CodecObj=None,Policy=None):
+        CommaFreeCodec.__init__(self,numberBytes,CodecObj=CodecObj,keyBytes=0)
+        CWtoDNA.__init__(self)
+    def _encode(self,strand):
+        self._numberBytes=len(strand.codewords)
+        strand.dna_strand=CommaFreeCodec._encode(self,(0,strand.codewords))
+        return strand
+    def _decode(self,strand):
+        dummy, strand.codewords=CommaFreeCodec._decode(self,strand.dna_strand)
+        return strand
+
+    def _encode_header(self):
+        return convertIntToBytes(self._numberBytes,1)
+
+    def _decode_header(self,buf):
+        self._numberBytes=convertBytesToInt(buf[0:1])
+        return buf[1::]
+    
 
 class CommaFreeCodewords(BaseCodec):
     def __init__(self,numberSymbols,CodecObj=None,Policy=None):

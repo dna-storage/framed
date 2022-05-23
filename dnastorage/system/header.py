@@ -69,7 +69,8 @@ def decode_size_and_value(data,pos):
     return val,size_bytes+1
 
 
-def encode_file_header_comments(filename,format_id,size,other_data,primer5,primer3):
+#TODO: kwargs out the header stuff
+def encode_file_header_comments(filename,format_id,size,other_data,primer5,primer3,**kwargs):
     comment = "% dnastorage version {}.{}\n".format(system_version['major'],system_version['minor'])
     comment += "% {} \n".format(size)
     if len(filename) > 0:
@@ -82,6 +83,7 @@ def encode_file_header_comments(filename,format_id,size,other_data,primer5,prime
     comment += "% {} bytes of additional data \n".format(len(other_data))
     return comment
 
+#TODO: kwargs out the primer5/primer3 stuff
 def encode_file_header(filename,format_id,size,other_data,primer5,primer3,fsmd_abbrev='FSMD'):
     data =  [ system_version['major'], system_version['minor'] ]
     data += convertIntToBytes(int(math.ceil(math.log(size,2)/8.0)),1)

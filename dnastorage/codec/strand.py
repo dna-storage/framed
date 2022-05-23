@@ -2,8 +2,10 @@ from dnastorage.codec.base import *
 from dnastorage.exceptions import *
 from dnastorage.codec.reedsolomon.rs import ReedSolomon,get_reed_solomon,ReedSolomonError
 from random import randint
-
 from dnastorage.util.stats import stats
+from dnastorage.codec_types import *
+from dnastorage.strand_representation import *
+
 
 import logging
 logger = logging.getLogger('dna.storage.codec.strand')
@@ -20,6 +22,9 @@ class RandomizeCodec(BaseCodec):
 
     def _decode(self, array):
         return array[:self._numRandBytes]
+
+
+
 
 class ReedSolomonInnerCodec(BaseCodec):
     """
@@ -70,7 +75,7 @@ class ReedSolomonInnerCodec(BaseCodec):
         #print array
         message = [x for x in array] 
         # find the -1s in the list
-        erasures = [ i for i in range(len(message)) if message[i]==-1 ]
+        erasures = [ i for i in range(len(message)) if (message[i]==-1 or message[i]==None) ]
         # correct the message
         try:
             corrected_message, corrected_ecc = self.rs.rs_correct_msg(message,self._numberECCBytes, erase_pos=erasures)
@@ -101,3 +106,17 @@ class ReedSolomonInnerCodec(BaseCodec):
                 raise DNACodingError("RSInnerCodec failed to correct message.")
 
         return value
+
+
+
+#Wrapper class so that the reedsolomon inner codec can be used with the pipeline infrastructure
+class ReedSolomonInnerCodecPipeline(ReedSolomonInnerCodec,CWtoCW):
+    def __init__(self,numberECCBytes,c_exp=8,CodecObj=None,Policy=None):
+        ReedSolomonInnerCodec.__init__(self,numberECCBytes,c_exp=c_exp,CodecObj=CodecObj,Policy=Policy)
+        CWtoCW.__init__(self)
+    def _encode(self,strand):
+        strand.codewords=ReedSolomonInnerCodec._encode(self,strand.codewords)
+        return strand
+    def _decode(self,strand):
+        strand.codewords=ReedSolomonInnerCodec._decode(self,strand.codewords)
+        return strand
