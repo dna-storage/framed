@@ -5,7 +5,7 @@ from dnastorage.util.packetizedfile import *
 import math
 import struct
 from dnastorage.system.formats import *
-
+import hashlib
 def version_0_1():
     #returns a formatting dictionary for the given version
     version_dict={}
@@ -33,6 +33,16 @@ class Header(object):
         enc_func = file_system_encoder_by_abbrev(self._format_dict["decoding_format"][0])
         self._pipeline = enc_func(None,magic=self._format_dict["magic"][0],primer3=primer3,primer5=primer5)
 
+    def get_header_pipeline_data(self):
+        buff=self._pipeline.encode_header_data()
+        buff+=self._encoded_header_hash
+        buff+=convertIntToBytes(self._header_length,4)
+        return buff
+    def set_pipeline_data(self,buff):
+        buff=self._pipeline.decode_header_data(buff)
+        self._encoded_header_hash=buff[:hashlib.md5().digest_size]
+        pos = hashlib.md5().digest_size
+        self._header_length=convertBytesToInt(buff[pos:pos+4])
         
     def encode_file_header(self,encode_dict,other_data,**kwargs):
         data=[]
@@ -51,6 +61,12 @@ class Header(object):
                     data += convertIntToBytes(len(value)+1,2)
                 data += [ ord(_) for _ in value ] + [0]
         data = bytearray(data)+bytearray(convertIntToBytes(len(other_data),2))+bytearray(other_data)
+        
+        dhash = hashlib.md5()
+        dhash.update(data)
+        self._encoded_header_hash = dhash.digest()
+        self._header_length = len(data)
+        
         
         pf = ReadPacketizedFilestream(BytesIO(data))
         self._pipeline.set_read_pf(pf)
@@ -92,6 +108,13 @@ class Header(object):
         except Exception as e:
             data = [ x for x in b.getvalue() ]
 
+
+        if self._encoded_header_hash!=None: #quick check to determine if header survived correctly
+            dhash = hashlib.md5()
+            dhash.update(bytearray(data[:self._header_length]))
+            if dhash.digest() != self._encoded_header_hash:
+                return None
+        
         pos = 0
         #now read out bytes
         return_header={}

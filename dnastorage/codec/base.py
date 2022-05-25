@@ -279,8 +279,6 @@ class BaseOuterCodec(BaseCodec):
         #check if this level index is actually in a zero range, allows for easy detection of zero strands 
         if not is_zero and self._zero_range is not () and (tuple(after_index)[self._level-1:]>=self._zero_range[0] and tuple(after_index)[self._level-1:]<=self._zero_range[1]):
             is_zero=True
-        else:
-            is_zero=False
         return after_index,is_zero
 
     def get_total_divisor(self):
@@ -288,7 +286,19 @@ class BaseOuterCodec(BaseCodec):
             return self._packet_divisor*self._Obj.get_total_divisor()
         else:
             return self._packet_divisor
-    
+
+    def valid(self,index):
+        if self._Obj==None:
+            return index[self._level-1]<self._total_sub_packets 
+        else:
+            return index[self._level-1]<self._total_sub_packets and self._Obj.valid(index)
+    def is_zero(self,index):
+        if self._zero_range is ():
+            return False
+        if self._Obj==None:
+            return (tuple(after_index)[self._level-1:]>=self._zero_range[0] and tuple(after_index)[self._level-1:]<=self._zero_range[1])
+        else:
+            return (tuple(after_index)[self._level-1:]>=self._zero_range[0] and tuple(after_index)[self._level-1:]<=self._zero_range[1]) or self._Obj.is_zero(index)
     
 class TableCodec(BaseCodec):
     def __init__(self,CodecObj=None,keyEncWidth=20,keyDecWidth=4,cwEncWidth=5,cwDecWidth=1,Policy=None):

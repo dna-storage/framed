@@ -357,7 +357,7 @@ class ReedSolomonOuterPipeline(BaseOuterCodec):
                              "RSOuterCodec found error at sub-packet index".format(strands[0].index_ints[:self._level]))
                     corrected_message = message
                 #write the corrected message back into strand classes
-                for s,m in zip(strands,message):
+                for s,m in zip(strands,corrected_message):
                     s.codewords[byte_index] = m
         #create the original packet
         return_packet=[]

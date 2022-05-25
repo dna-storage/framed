@@ -108,7 +108,6 @@ class PipeLine(EncodePacketizedFile,DecodePacketizedFile):
         #encode the packet using our set of cascade encoders
         total_packet_strands=self._outer_cascade.encode(packet_strands)
        
-
         #Grab indexing information
         tmp_index_bit_set= (math.ceil(math.log(math.ceil(self._packetizedFile.numberOfPackets),2)),)+self._outer_cascade.get_index_bits() #need to take into account the packet index
 
@@ -158,20 +157,25 @@ class PipeLine(EncodePacketizedFile,DecodePacketizedFile):
         if isinstance(self._consolidator,DNAConsolidate):
             self._decode_strands = self._consolidator.decode(self._decode_strands)
 
+        after_inner=[]
         for strand in self._decode_strands:
             self._cw_to_DNA_cascade.decode(strand)
             self._inner_cascade.decode(strand)
+            if None in strand.codewords[0:self._index_bytes]: continue
             strand.index_ints = unpack_bytes_to_indexes(strand.codewords[0:self._index_bytes],self._index_bit_set)
-
+            after_inner.append(strand)
+        self._decode_strands=after_inner
+        
         if isinstance(self._consolidator,CWConsolidate):
             self._decode_strands=self._consolidator.decode(self._decode_strands)
-
-
+            
         #Now we need to collect packets together and get the packet indexes before unrolling the outer encoding
         packets={}
         for s in self._decode_strands:
-            packets[s.index_ints[0]]=packets.get(s.index_ints[0],[])+[s]
             s.codewords=s.codewords[self._index_bytes:] #strip off indexing before outer decoding
+            if self._outer_cascade.is_zero(s.index_ints) or not self._outer_cascade.valid(s.index_ints) or len(s.codewords)<self._basestrand_bytes:
+                continue
+            packets[s.index_ints[0]]=packets.get(s.index_ints[0],[])+[s]
 
 
         #at this point we have our main packets, so lets run through outer decoding
@@ -183,8 +187,8 @@ class PipeLine(EncodePacketizedFile,DecodePacketizedFile):
             for i in range(0,self._final_decode_iterations):
                 output_packet=self._outer_cascade.decode(packets[p])
 
-            #data should be ordered correctly inherently coming out of decoding
-            out_data = [ c for x in output_packet for c in x.codewords]
+            #data should be ordered correctly inherently coming out of decoding,filters Nones that may come from dropouts
+            out_data = [ c if c!=None else 0 for x in output_packet for c in x.codewords] 
             self.writeToFile(p,out_data) #write out packet
         self.write()
 

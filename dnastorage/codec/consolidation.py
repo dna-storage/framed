@@ -21,12 +21,9 @@ class SimpleMajorityVote(BaseCodec,CWConsolidate):
         strand_array = []
         for s in strands:
             #print "get key,value for strand {}".format(s)
-            key = base_conversion.convertBytesToInt(s.codewords[0:s.index_bytes])
+            key =tuple(s.index_ints)
             #print value
-            if len(s.codewords[0:s.index_bytes])<s.index_bytes:
-                key=None
-            if key is not None:
-                key_value[key]=key_value.get(key,[]) + [s]
+            key_value[key]=key_value.get(key,[]) + [s]
                 
         for key in key_value:
             data=[]
@@ -50,19 +47,20 @@ class SimpleMajorityVote(BaseCodec,CWConsolidate):
                 #print most_common_value
                 data.append(most_common_value)
                 #put the key and data into an array
-            print(len(data))
             #try to find the representive strand to copy over class contents
             min_distance=0xFFFFFFFFFFFFFFFF
             min_strand=key_value[key][0]
-            print(len(min_strand.codewords))
             for s in key_value[key]:
                 distance=0
                 for i,v in enumerate(data):
+                    if i>=len(s.codewords):
+                        distance+=len(data)-len(s.codewords)
+                        break
                     if not v==s.codewords[i]:
                         distance+=1
                 if distance<min_distance:
                     min_strand=s
             new_strand=copy.copy(min_strand)
             strand_array.append(new_strand)
-
+   
         return strand_array

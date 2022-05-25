@@ -119,7 +119,7 @@ class PrependSequence(BaseCodec):
                 
                 idx = res.index(mn)
                 #print res,mn
-                if mn < 0:
+                if mn < 5:
                     return strand[idx+slen:]
                 else:
                     if self.is_primer:

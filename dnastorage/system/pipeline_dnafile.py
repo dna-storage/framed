@@ -16,7 +16,7 @@ class DNAFilePipeline:
         return
     
     @classmethod
-    def open(self, filename, op, format_name="", write_incomplete_file=False, fsmd_abbrev='FSMD',input_strands=None,encoder_params={}):
+    def open(self, filename, op, format_name="", write_incomplete_file=False, fsmd_abbrev='FSMD',fsmd_header_filename=None,input_strands=None,encoder_params={}):
         # check if we are reading or writing
         if op=="rf":
             return  SegmentedReadDNAFile(write_incomplete_file=write_incomplete_file,\
@@ -32,20 +32,25 @@ class DNAFilePipeline:
             #
             
             # Ugly: but we have to find the header to know what to do!
-            if os.path.exists(filename):
+            if filename is not None and os.path.exists(filename):
                 fd = open(filename,"r")
                 logger.debug("open {} for reading.".format(filename))
                 strands = get_strands(fd)
             elif input_strands is not None:
                 strands=input_strands
 
+          
             assert strands is not None
             header = Header("0.1",encoder_params["primer5"],encoder_params["primer3"])
-            
-            h = header.decode_file_header(copy.copy(strands)) #TODO: this should be changed to something like getting an encoder but for the header
-            
+            if fsmd_header_filename!=None:
+                with open(fsmd_header_filename,"rb") as serialized_header_pipeline_data:
+                    header.set_pipeline_data(serialized_header_pipeline_data.read())
+            h = header.decode_file_header(copy.deepcopy(strands)) #TODO: this should be changed to something like getting an encoder but for the header
+            print(h)
+
+            if h is None: return None #couldnt decode header, don't really have much else to go off of
+
             logger.debug("decoded header: {}".format(h))
-            
             if h['formatid'] == file_system_formatid_by_abbrev("Segmented"):
                 logger.debug("SegmentedReadDNAFile({},{},{})".format(filename,primer5,primer3))
                 return SegmentedReadDNAFilePipeline(input=filename,\
@@ -53,14 +58,14 @@ class DNAFilePipeline:
                                             fsmd_abbrev=fsmd_abbrev)
             else:
                 return ReadDNAFilePipeline(input=filename,
-                                           fsmd_abbrev=fsmd_abbrev,input_strands=strands,encoder_params=encoder_params)
+                                           fsmd_abbrev=fsmd_abbrev,input_strands=input_strands,encoder_params=encoder_params,fsmd_header_filename=fsmd_header_filename)
             
         elif "w" in op and "s" in op:
             return SegmentedWriteDNAFilePipeline(output=filename,
-                                         format_name=format_name,fsmd_abbrev=fsmd_abbrev)       
+                                                 format_name=format_name,fsmd_abbrev=fsmd_abbrev,fsmd_header_filename=fsmd_header_filename)       
         elif op=="w":
             return WriteDNAFilePipeline(output=filename,
-                                        format_name=format_name,fsmd_abbrev=fsmd_abbrev,encoder_params=encoder_params)
+                                        format_name=format_name,fsmd_abbrev=fsmd_abbrev,encoder_params=encoder_params,fsmd_header_filename=fsmd_header_filename)
         else:
             return None
 
@@ -91,14 +96,13 @@ class ReadDNAFilePipeline(DNAFilePipeline):
     # ReadDNAFile reads a set of strands from a file.  It finds the header,
     # determines compatibility and encoding type, and then decodes the file.
     #
-    def __init__(self,**kwargs):     
+    def __init__(self,**kwargs):
         DNAFilePipeline.__init__(self)
         self._enc_opts=kwargs["encoder_params"]
-        if 'input' in kwargs:
+        if 'input' in kwargs and kwargs["input"]!=None:
             self.input_filename = kwargs['input']
             self.in_fd = open(self.input_filename,"r")
             strands = get_strands(self.in_fd)
-
         elif 'in_fd' in kwargs:
             self.in_fd = kwargs['in_fd']
             self.input_filename = ""
@@ -113,14 +117,20 @@ class ReadDNAFilePipeline(DNAFilePipeline):
             self.fsmd_abbrev = kwargs['fsmd_abbrev']
 
         header = Header("0.1",self._enc_opts["primer5"],self._enc_opts["primer3"])
-        
+
+        if 'fsmd_header_filename' in kwargs and kwargs["fsmd_header_filename"]!=None: #read into the header pipeline data that described its encoding process
+            with open(kwargs["fsmd_header_filename"],"rb") as serialized_header_pipeline_data:
+                header.set_pipeline_data(serialized_header_pipeline_data.read())
+                
+                
         h = header.decode_file_header(strands)
         self.strands = header.pick_nonheader_strands()
         
         self.formatid = h['formatid']
         self.header = h 
         self.size = h['size']
-
+        print(self.header)
+        
         # set up mem_buffer 
         self.mem_buffer = BytesIO()
         
@@ -131,9 +141,8 @@ class ReadDNAFilePipeline(DNAFilePipeline):
         constructor_function = file_system_decoder(self.formatid)
             
         self.mem_buffer = BytesIO()
-        self.pf = WritePacketizedFilestream(self.mem_buffer,self.size,file_system_format_packetsize(self.formatid))
+        self.pf = WritePacketizedFilestream(self.mem_buffer,self.size,0)
 
-        print(self.header)
         self.pipe = constructor_function(self.pf,**self._enc_opts)
         self.pipe.decode_header_data(self.header["other_data"])
         
@@ -159,6 +168,12 @@ class WriteDNAFilePipeline(DNAFilePipeline):
     def __init__(self,**kwargs):
         DNAFilePipeline.__init__(self)
         self._enc_opts=kwargs["encoder_params"]
+        self.out_fd=None
+        self._header_fd=None
+        self.output_filename="none.dna"
+        if "fsmd_header_filename" in kwargs and kwargs["fsmd_header_filename"]!=None:
+            self._header_fd=open(kwargs["fsmd_header_filename"],"wb+")
+        
         if 'formatid' in kwargs:            
             enc_func = file_system_encoder(kwargs['formatid'])
             self.formatid = kwargs['formatid']
@@ -173,10 +188,8 @@ class WriteDNAFilePipeline(DNAFilePipeline):
 
         self.mem_buffer = BytesIO()
         self.pf= ReadPacketizedFilestream(self.mem_buffer)
-        
         self.pipe = enc_func(self.pf,**self._enc_opts)
-           
-        if 'output' in kwargs:
+        if 'output' in kwargs and kwargs["output"] !=None :
             self.output_filename = kwargs['output']
             self.out_fd = open(self.output_filename,"w")
         elif 'out_fd' in kwargs:
@@ -227,6 +240,7 @@ class WriteDNAFilePipeline(DNAFilePipeline):
         self.flush()
         header = Header("0.1",self._enc_opts["primer5"],self._enc_opts["primer3"])
 
+        
         header_dict={}
         header_dict["filename"]=self.output_filename
         header_dict["formatid"]=self.formatid
@@ -236,6 +250,12 @@ class WriteDNAFilePipeline(DNAFilePipeline):
         for i,h in enumerate(hdr_strands):
             self.strands.insert(i,h)
 
+        #write out meta data for header to digital data for recovery later
+        if self._header_fd!=None:
+            self._header_fd.write(bytearray(header.get_header_pipeline_data()))
+            self._header_fd.close()
+            
+        if self.out_fd is None: return
         comment = header.encode_file_header_comments(header_dict)
         comment+="% Primer 5 : {}\n".format(self._enc_opts["primer5"])
         comment+="% Primer 3 : {}\n".format(self._enc_opts["primer3"])
@@ -455,6 +475,7 @@ class SegmentedReadDNAFilePipeline(ReadDNAFilePipeline):
     
 if __name__ == "__main__":
     import os
+    import tempfile
     encoder_params={
         "primer3":"A"*10,
         "primer5":"T"*10,
@@ -464,15 +485,20 @@ if __name__ == "__main__":
         "outerECCStrands":20,
         "dna_length":300,
     }
-    
+
+    temp_header_pipeline_data=tempfile.NamedTemporaryFile(mode="wb+",delete=False)
+
     wf = DNAFilePipeline.open("out.dna","w",format_name='Pipe-RS+CFC8',fsmd_abbrev='FSMD-Pipe',encoder_params=encoder_params)
-      
+    
+    wf._header_fd=temp_header_pipeline_data
+    
     for i in range(1000):
         wf.write( bytearray(convertIntToBytes(i,4)) )
 
     wf.close()
 
-    rf = DNAFilePipeline.open("out.dna","r",format_name='Pipe-RS+CFC8',fsmd_abbrev='FSMD-Pipe',encoder_params=encoder_params)
+
+    rf = DNAFilePipeline.open("out.dna","r",format_name='Pipe-RS+CFC8',fsmd_abbrev='FSMD-Pipe',encoder_params=encoder_params,fsmd_header_filename=temp_header_pipeline_data.name)
 
     print ("Should print out 0 to 1000: ")
     while True:

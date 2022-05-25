@@ -155,17 +155,13 @@ def PIPE_Custom_Hedges_RS(pf,**kwargs):
 
 def PIPE_250_FSMD(pf,**kwargs):
     blockSizeInBytes=90
-    outerECCStrands=20
+    outerECCStrands=40
     strandSizeInBytes=15
     
     #pipeline implementation fo FSMD
     pipe = customize_RS_CFC8_pipeline(pf,magic=kwargs["magic"],primer5=kwargs['primer5'],primer3=kwargs['primer3'],innerECC=2,strandSizeInBytes=strandSizeInBytes,
-                                      blockSizeInBytes=blockSizeInBytes,outerECCStrands=outerECCStrands,dna_length=250,index_bytes=2,index_bit_set=(8,8))
-    #KV: Hack for filesystem metadata
-    pipe._outer_codecs[0]._level=2
-    pipe._outer_codecs[0]._num_data_sub_packets=blockSizeInBytes//strandSizeInBytes
-    pipe._outer_codecs[0]._total_sub_packets=pipe._outer_codecs[0]._num_data_sub_packets+outerECCStrands
-    pipe._outer_codecs[0]._index_bits=math.ceil(math.log(pipe._outer_codecs[0]._total_sub_packets,2))
+                                      blockSizeInBytes=blockSizeInBytes,outerECCStrands=outerECCStrands,dna_length=250)
+  
     return pipe
 
 def PIPE_RS_CFC8(pf,**kwargs):

@@ -17,10 +17,11 @@ class ReadDistribution(object):
     @classmethod
     def open(self,distribution,**kwargs):
         assert "mean" in kwargs
-        if distribution is "negative_binomial":
+        print(distribution)
+        if distribution=="negative_binomial":
             assert "var" in kwargs
             return DNANegativeBinomial(kwargs["mean"],kwargs["var"])
-        elif distribution is "poisson":
+        elif distribution=="poisson":
             return DNAPoisson(kwargs["mean"])
         
     def get_mean(self):

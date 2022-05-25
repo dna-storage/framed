@@ -64,7 +64,7 @@ class dnastats(object):
                 logger.info(self.msg)
 
             items = self.all_stats.items()
-            items.sort()
+            items=sorted(items,key=lambda x: x[0])
                 
             for k,v in items:
                 fmt = "{}="+"{}\n".format(self.formats.get(k,"{}"))
@@ -74,7 +74,7 @@ class dnastats(object):
             if len(self.msg) > 0:
                 logger.info(self.msg)
             items = self.all_stats.items()
-            items.sort()
+            items=sorted(items,key=lambda x: x[0])
             for k,v in items:
                 fmt = "{}="+"{}".format(self.formats.get(k,"{}"))
                 logger.info(fmt.format(k,v))
@@ -88,7 +88,7 @@ class dnastats(object):
         #aggregate other_stats into this stats
         for x in other_stats.all_stats:
             if x not in self.all_stats:
-                self.all_stats = other_stats.all_stats[x]
+                self.all_stats[x] = other_stats.all_stats[x]
             else:
                 self.all_stats[x]=self.all_stats[x]+other_stats.all_stats[x]    
             

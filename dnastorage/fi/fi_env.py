@@ -1,8 +1,8 @@
 '''
 Fi_Env class ecapsulates all of the pieces needed for fault injection 
 '''
-from readdist import *
-from fault_injector import *
+from dnastorage.fi.readdist import *
+from dnastorage.fi.fault_injector import *
 from dnastorage.strand_representation import *
 import copy
 
