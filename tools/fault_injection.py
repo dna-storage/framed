@@ -36,7 +36,6 @@ def _monte_kernel(monte_start,monte_end,args): #function that will run per proce
     #We cant use the data_keeper object here, should be private per process, need data structures to propagate results back up to parent process
     results=[] #each element will be an object that encapsulates the entire statistics    
     stats.clear()
-
     file_to_fault_inject= open(args.file, "rb")
     file_to_fault_inject.seek(0,2)
     file_to_inject_size=file_to_fault_inject.tell()
@@ -120,7 +119,7 @@ def run_monte(args):
     monteIters=args.num_sims//args.cores
     processIters=0
     tasks=[] #list of arguments for each task
-    parallel=Parallel(n_jobs=args.cores)
+    parallel=Parallel(n_jobs=args.cores,backend="threading")
     for i in range(args.cores):
         tasks.append((processIters,processIters+(monteIters-1),args))
         processIters+=monteIters #set up next range of montecarlo simulations
@@ -177,7 +176,7 @@ if __name__ == "__main__":
     
     parser.add_argument('--arch',required=True,choices=file_system_formats(),help="Encoding/decoding architecture")
     parser.add_argument('--file',required=True,help = "File to fault inject on")
-    parser.add_argument('--cores', type=int, action="store",default='1',help="Number of threads to run monte carlo simulations")
+    parser.add_argument('--cores', type=int, action="store",default=1,help="Number of threads to run monte carlo simulations")
 
     parser.add_argument('--enc_params',type=str,required=True,action="store",help="Path to json file with parameters used to set error correction in encoding")
     parser.add_argument('--out_dir',type=str,required=True,action="store",help="Directory where data will be dumped")
