@@ -6,6 +6,7 @@ from dnastorage.codec.base import *
 from dnastorage.exceptions import *
 from dnastorage.codec.base_conversion import *
 from dnastorage.strand_representation import *
+from dnastorage.primer.primer_util import *
 from dnastorage.codec_types import *
 from io import *
 import random
@@ -261,7 +262,12 @@ class PipeLine(EncodePacketizedFile,DecodePacketizedFile):
         self._dna_to_dna_cascade.decode(strand)
         if strand.dna_strand == None:
             strand.dna_strand=strand_dna_before_process
-            return strand #return the strand if it does not meet the physical processing requirements
+            #try reverse_complement
+            strand.dna_strand=reverse_complement(strand.dna_strand)
+            self._dna_to_dna_cascade.decode(strand)
+            if strand.dna_strand ==None:
+                strand.dna_strand=strand_dna_before_process
+                return strand #return the strand if it does not meet the physical processing requirements
         strand.index_bytes = self._index_bytes
         self._decode_strands.append(strand)
         return None

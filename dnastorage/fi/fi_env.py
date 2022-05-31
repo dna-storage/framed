@@ -4,6 +4,8 @@ Fi_Env class ecapsulates all of the pieces needed for fault injection
 from dnastorage.fi.readdist import *
 from dnastorage.fi.fault_injector import *
 from dnastorage.strand_representation import *
+from dnastorage.primer.primer_util import *
+import random
 import copy
 
 
@@ -34,6 +36,9 @@ class Fi_Env(object):
                 read_count=self._read_distributor.gen()
                 dist.append((ind,read_count))
                 new_pool+=[copy.copy(s) for i in range(0,read_count)]
+            for s in new_pool:
+                rand_choice =random.randint(0,1)
+                if rand_choice==1: s.dna_strand = reverse_complement(s.dna_strand) #reverse complements
             return new_pool,dist
         else:
             #make a simple array of tuples in format (strand,count for that strand)
@@ -42,6 +47,7 @@ class Fi_Env(object):
             for strand in new_pool:
                 pool_size+=strand[1]
             return new_pool,pool_size
+        
 
     def Run(self):
         #run an instance of fault injection and simulation
