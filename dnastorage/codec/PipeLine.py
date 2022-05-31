@@ -24,7 +24,7 @@ def cascade_build(component_list):
 class PipeLine(EncodePacketizedFile,DecodePacketizedFile):
     def __init__(self,components,consolidator,packetsize_bytes,
                  basestrand_bytes, DNA_upper_bound, final_decode_iterations,packetizedfile=None,
-                 index_bit_set=None,index_bytes=0):
+                 barcode=tuple()):
         
         EncodePacketizedFile.__init__(self,None)
         DecodePacketizedFile.__init__(self,None)
@@ -37,14 +37,14 @@ class PipeLine(EncodePacketizedFile,DecodePacketizedFile):
         self._inner_codecs=[]
         self._cw_to_DNA=[] #These processes are those that turn CW information into DNA
         self._DNA_to_DNA=[] #These processes are those that post-process dna strand information, e.g. primers, cut sites, etc.
-        self._index_bit_set=index_bit_set #index_bit_set describes how the index is broken down between outer encodings, allows us to reconstruct indexes to bits
-        self._index_bytes=index_bytes #length in bytes for an inde
         self._basestrand_bytes=basestrand_bytes
         self._DNA_upper_bound=DNA_upper_bound #upper bound DNA length
         self._decode_strands=[] #strands that will be decoded
         self._final_decode_iterations=final_decode_iterations #how many complete final decoding processes should be done
         self._consolidator=consolidator
         self._final_decode_run=False
+        self._filtered_strands=[]
+        self._barcode=barcode
         most_recent_list=None
         for index,component in enumerate(components):
             if index>0: prev_component=components[index-1]
@@ -115,28 +115,13 @@ class PipeLine(EncodePacketizedFile,DecodePacketizedFile):
         total_packet_strands=self._outer_cascade.encode(packet_strands)
        
         #Grab indexing information
-        tmp_index_bit_set= (math.ceil(math.log(math.ceil(self._packetizedFile.numberOfPackets),2)),)+self._outer_cascade.get_index_bits() #need to take into account the packet index
-
-        if self._index_bit_set !=None:
-            if len(tmp_index_bit_set)>len(self._index_bit_set):
-                raise PipeLineConstructionError("User used an index bit set too short, inferred set is {}".format(tmp_index_bit_set))
-            #user set the index bit set, so check them
-            for _,i in enumerate(self._index_bit_set):
-                if tmp_index_bit_set[_]>i:
-                    raise PipeLineConstructionError("User used an index bit set with entry too small, inferred set is {}".format(tmp_index_bit_set))
-
-        else:
-            self._index_bit_set=tmp_index_bit_set #use inferred index_bit_set
+        self._index_bit_set= (math.ceil(math.log(math.ceil(self._packetizedFile.numberOfPackets),2)),)+self._outer_cascade.get_index_bits() #need to take into account the packet index
+        self._index_bit_set = (8,)*len(self._barcode)+self._index_bit_set
         
         total_bits= sum(self._index_bit_set) 
         index_bytes = total_bits//8
         if not total_bits%8==0: index_bytes+=1
-
-        if self._index_bytes>0:
-            if index_bytes > self._index_bytes:
-                raise PipeLineConstructionError("User used an _index_bytes too small, inferred is {}".format(index_bytes))
-        else:
-            self._index_bytes = index_bytes
+        self._index_bytes=index_bytes
 
         final_DNA_strands=[]
 
@@ -144,6 +129,7 @@ class PipeLine(EncodePacketizedFile,DecodePacketizedFile):
         
         
         for packet_strand in total_packet_strands:
+            packet_strand.index_ints= self._barcode+packet_strand.index_ints
             packet_strand.index_bytes=self._index_bytes
             packet_strand.codewords = pack_bits_to_bytes(packet_strand.index_ints,self._index_bit_set)+index_pad_array+packet_strand.codewords #turn index integers to bytes
             #pass through the next steps   
@@ -167,9 +153,16 @@ class PipeLine(EncodePacketizedFile,DecodePacketizedFile):
         for strand in self._decode_strands:
             self._cw_to_DNA_cascade.decode(strand)
             self._inner_cascade.decode(strand)
-            if None in strand.codewords[0:self._index_bytes]: continue
+            if None in strand.codewords[0:self._index_bytes] or len(strand.codewords)<self._index_bytes:
+                self.filter_strand(strand)
+                continue
             strand.index_ints = unpack_bytes_to_indexes(strand.codewords[0:self._index_bytes],self._index_bit_set)
+            if len(self._barcode)>0 and tuple(strand.index_ints[:len(self._barcode)])!=self._barcode:
+                self.filter_strand(strand) #strand does not match barcode
+                continue
+            strand.index_ints=strand.index_ints[len(self._barcode):]
             after_inner.append(strand)
+        
         self._decode_strands=after_inner
         
         if isinstance(self._consolidator,CWConsolidate):
@@ -257,21 +250,29 @@ class PipeLine(EncodePacketizedFile,DecodePacketizedFile):
         if self._final_decode_run is True:
             self._final_decode_run=False
             self._decode_strands=[]
-        strand_dna_before_process = strand.dna_strand
+            self._filtered_strands=[]
+        strand.before_decode=strand.dna_strand
         #perform the stream portion of the encoding pipeline, which processes the physical cascade. This should include stuff like removing physical portions
         self._dna_to_dna_cascade.decode(strand)
         if strand.dna_strand == None:
-            strand.dna_strand=strand_dna_before_process
+            strand.dna_strand=strand.before_decode
             #try reverse_complement
             strand.dna_strand=reverse_complement(strand.dna_strand)
             self._dna_to_dna_cascade.decode(strand)
             if strand.dna_strand ==None:
-                strand.dna_strand=strand_dna_before_process
-                return strand #return the strand if it does not meet the physical processing requirements
+                self.filter_strand(strand)
+                return
         strand.index_bytes = self._index_bytes
         self._decode_strands.append(strand)
-        return None
-        
+   
+
+    def filter_strand(self,strand):
+        strand.dna_strand=strand.before_decode #single point to revert filtered strand for future processing by pipelines
+        self._filtered_strands.append(strand)
+    def get_filtered(self): #get strands that don't conform
+        return self._filtered_strands
+
+    
     def set_read_pf(self,read_pf):
         assert(isinstance(read_pf,ReadPacketizedFilestream))
         read_pf.packetSize = self._packetsize_bytes
@@ -290,7 +291,6 @@ class PipeLine(EncodePacketizedFile,DecodePacketizedFile):
             # This is pretty horrible, kids don't try this at home!
             block = (block[0],[ _ for _ in block[1] ])
         return self._encode_pipeline(block) # get entire block
-
 
 
     def encode_header_data(self):

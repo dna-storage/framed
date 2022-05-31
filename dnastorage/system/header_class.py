@@ -6,6 +6,11 @@ import math
 import struct
 from dnastorage.system.formats import *
 import hashlib
+
+HEADER_BARCODE=0xEE
+
+
+
 def version_0_1():
     #returns a formatting dictionary for the given version
     version_dict={}
@@ -26,12 +31,13 @@ version_formats={"0.1": version_0_1}
 
 
 class Header(object): 
-    def __init__(self, version_number,primer5="",primer3=""):
+    def __init__(self, version_number,primer5="",primer3="",barcode_suffix=tuple()):
         assert version_number in version_formats
         self._version=version_number
         self._format_dict= version_formats[self._version]()
         enc_func = file_system_encoder_by_abbrev(self._format_dict["decoding_format"][0])
-        self._pipeline = enc_func(None,magic=self._format_dict["magic"][0],primer3=primer3,primer5=primer5)
+        barcode = (HEADER_BARCODE,)+barcode_suffix
+        self._pipeline = enc_func(None,primer3=primer3,primer5=primer5,barcode=barcode)#,magic=self._format_dict["magic"][0])
 
     def get_header_pipeline_data(self):
         buff=self._pipeline.encode_header_data()
@@ -96,10 +102,7 @@ class Header(object):
         
         self._non_header_strands=[]
         for s in strands:
-            returned_strand = self._pipeline.decode(s)
-            if returned_strand is not None:
-                self._non_header_strands.append(returned_strand)
-                continue
+            self._pipeline.decode(s)
         #should be able to finish decoding here
         self._pipeline.final_decode()
 
@@ -140,9 +143,7 @@ class Header(object):
         return return_header
         
     def pick_nonheader_strands(self):
-        #gets non-header strands, simply those not picked for decoding
-        assert self._non_header_strands
-        return self._non_header_strands
+        return self._pipeline.get_filtered()
 
 
 if __name__=="__main__":

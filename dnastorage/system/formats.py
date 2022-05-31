@@ -159,9 +159,8 @@ def PIPE_250_FSMD(pf,**kwargs):
     strandSizeInBytes=15
     
     #pipeline implementation fo FSMD
-    pipe = customize_RS_CFC8_pipeline(pf,magic=kwargs["magic"],primer5=kwargs['primer5'],primer3=kwargs['primer3'],innerECC=2,strandSizeInBytes=strandSizeInBytes,
+    pipe = customize_RS_CFC8_pipeline(pf,**kwargs,innerECC=2,strandSizeInBytes=strandSizeInBytes,
                                       blockSizeInBytes=blockSizeInBytes,outerECCStrands=outerECCStrands,dna_length=250)
-  
     return pipe
 
 def PIPE_RS_CFC8(pf,**kwargs):

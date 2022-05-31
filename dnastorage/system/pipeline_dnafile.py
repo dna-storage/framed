@@ -10,6 +10,8 @@ logger = logging.getLogger('dna.storage.system.dnafile')
 logger.addHandler(logging.NullHandler())
 
 
+DATA_BARCODE=0xCC
+
 
 class DNAFilePipeline:
     def __init__(self):
@@ -143,7 +145,7 @@ class ReadDNAFilePipeline(DNAFilePipeline):
         self.mem_buffer = BytesIO()
         self.pf = WritePacketizedFilestream(self.mem_buffer,self.size,0)
 
-        self.pipe = constructor_function(self.pf,**self._enc_opts)
+        self.pipe = constructor_function(self.pf,**self._enc_opts,barcode=(DATA_BARCODE,))
         self.pipe.decode_header_data(self.header["other_data"])
         
         for s in self.strands:
@@ -188,7 +190,7 @@ class WriteDNAFilePipeline(DNAFilePipeline):
 
         self.mem_buffer = BytesIO()
         self.pf= ReadPacketizedFilestream(self.mem_buffer)
-        self.pipe = enc_func(self.pf,**self._enc_opts)
+        self.pipe = enc_func(self.pf,**self._enc_opts,barcode=(DATA_BARCODE,))
         if 'output' in kwargs and kwargs["output"] !=None :
             self.output_filename = kwargs['output']
             self.out_fd = open(self.output_filename,"w")
