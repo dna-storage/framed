@@ -54,6 +54,10 @@ def _monte_kernel(monte_start,monte_end,args): #function that will run per proce
 
     write_dna.write(file_to_fault_inject.read())
     write_dna.close()
+
+    stats["total_encoded_strands"]=len(write_dna.strands)
+    stats["header_strand_length"]=len(write_dna.strands[0].dna_strand) #header strands should be first
+    stats["payload_strand_length"]=len(write_dna.strands[-1].dna_strand)#strands with real payload should be at the end
     
     #Encode file we are fault injecting on
     fault_environment =  Fi_Env(args.strand_distribution, args.fault_model,write_dna.strands,fault_rate=args.fault_rate,
@@ -135,7 +139,7 @@ def run_monte(args):
     stats.set_pickle_fd(pickle_fd)
     #need to aggregate data across all results
     for s in total_results:
-        stats.aggregate(s)
+        stats.aggregate(s,["total_encoded_strands","header_strand_length","payload_strand_length"]) #just want to copy information about total strands/strand_length
     stats["total_runs"]=args.num_sims
     stats.persist()
     stats_fd.close()

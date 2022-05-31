@@ -83,13 +83,13 @@ class dnastats(object):
             pickle.dump(self.all_stats,self.pickle_fd)
 
 
-    def aggregate(self,other_stats):
+    def aggregate(self,other_stats,copy_list=[]):
         assert isinstance(other_stats,dnastats)
         #aggregate other_stats into this stats
         for x in other_stats.all_stats:
             if x not in self.all_stats:
                 self.all_stats[x] = other_stats.all_stats[x]
-            else:
+            elif x not in copy_list:
                 self.all_stats[x]=self.all_stats[x]+other_stats.all_stats[x]    
             
     def __del__(self):
