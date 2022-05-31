@@ -37,7 +37,7 @@ def customize_RS_CFC8_pipeline(pf,**kwargs):
     upper_strand_length = kwargs.get("dna_length",200)
     index_bytes=kwargs.get("index_bytes",0)
     index_bit_set=kwargs.get("index_bit_set",None)
-
+    pipeline_title=kwargs.get("title","")
     
     #create the components we are gonna use
     rsOuter = ReedSolomonOuterPipeline(blockSizeInBytes//strandSizeInBytes,outerECCStrands)
@@ -52,10 +52,10 @@ def customize_RS_CFC8_pipeline(pf,**kwargs):
         return pipeline.PipeLine((rsOuter,rsInner,commafree,p3,magic,p5),consolidator,blockSizeInBytes,strandSizeInBytes,upper_strand_length,1,packetizedfile=pf,index_bytes=index_bytes
                                  ,index_bit_set=index_bit_set)
     else:
-        innerECCprobe = CodewordErrorRateProbe(probe_name="RSInner")
-        commafreeprobe = CodewordErrorRateProbe(probe_name="CommaFree")
-        return pipeline.PipeLine((rsOuter,innerECCProbe,rsInner,commafreeprobe,commafree,p3,magic,p5),consolidator,
-                                 blockSizeInBytes,strandSizeInBytes,upper_strand_length,1,packetizedFile=pf,index_bytes=index_bytes,index_bit_set=index_bit_set)
+        innerECCprobe = CodewordErrorRateProbe(probe_name="{}::RSInner".format(pipeline_title))
+        commafreeprobe = CodewordErrorRateProbe(probe_name="{}::CommaFree".format(pipeline_title))
+        return pipeline.PipeLine((rsOuter,innerECCprobe,rsInner,commafreeprobe,commafree,p3,magic,p5),consolidator,
+                                 blockSizeInBytes,strandSizeInBytes,upper_strand_length,1,packetizedfile=pf,index_bytes=index_bytes,index_bit_set=index_bit_set)
 
 def customize_RS_CFC8(is_enc,pf,primer5,primer3,intraBlockIndex=1,\
                       interBlockIndex=2,innerECC=2,strandSizeInBytes=15,\

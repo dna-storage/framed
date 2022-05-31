@@ -58,12 +58,14 @@ def _monte_kernel(monte_start,monte_end,args): #function that will run per proce
     stats["total_encoded_strands"]=len(write_dna.strands)
     stats["header_strand_length"]=len(write_dna.strands[0].dna_strand) #header strands should be first
     stats["payload_strand_length"]=len(write_dna.strands[-1].dna_strand)#strands with real payload should be at the end
-    
+    stats["dead_header"]=0
+    stats["file_to_inject_size"]=file_to_inject_size
+
     #Encode file we are fault injecting on
     fault_environment =  Fi_Env(args.strand_distribution, args.fault_model,write_dna.strands,fault_rate=args.fault_rate,
                                 missing=args.faulty_count, faulty=args.faulty_count,error_run=args.run,fails=args.fail_count,
                                 fault_file=args.fault_rate_file,mean=args.mean,var=args.var)
-    
+
     for sim_number in range(monte_start,monte_end+1):
         logging.info("Monte Carlo Sim: {}".format(sim_number))
         fault_environment.Run()
@@ -93,8 +95,7 @@ def _monte_kernel(monte_start,monte_end,args): #function that will run per proce
             else:
                 total_mismatch_data+=1
         stats.inc("total_mismatch_data",total_mismatch_data)
-        stats.inc("file_size_difference",file_to_inject_size-length_fi_data)
-        stats.inc("file_to_inject_size",file_to_inject_size)
+        stats.inc("file_size_difference",abs(file_to_inject_size-length_fi_data))
         if stats["total_mismatch_data"]>0:
             stats["error"]=1
         else:
@@ -139,7 +140,8 @@ def run_monte(args):
     stats.set_pickle_fd(pickle_fd)
     #need to aggregate data across all results
     for s in total_results:
-        stats.aggregate(s,["total_encoded_strands","header_strand_length","payload_strand_length"]) #just want to copy information about total strands/strand_length
+        stats.aggregate(s,["total_encoded_strands","header_strand_length","payload_strand_length"
+                           "file_to_inject_size"]) #just want to copy information about total strands/strand_length
     stats["total_runs"]=args.num_sims
     stats.persist()
     stats_fd.close()
