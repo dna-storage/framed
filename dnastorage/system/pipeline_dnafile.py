@@ -18,7 +18,7 @@ class DNAFilePipeline:
         return
     
     @classmethod
-    def open(self, filename, op, format_name="", write_incomplete_file=False, fsmd_abbrev='FSMD',fsmd_header_filename=None,input_strands=None,encoder_params={}):
+    def open(self, filename, op, format_name="", write_incomplete_file=False, header_version="0.1",fsmd_abbrev='FSMD',fsmd_header_filename=None,input_strands=None,encoder_params={},header_params={}):
         # check if we are reading or writing
         if op=="rf":
             return  SegmentedReadDNAFile(write_incomplete_file=write_incomplete_file,\
@@ -43,7 +43,7 @@ class DNAFilePipeline:
 
           
             assert strands is not None
-            header = Header("0.1",encoder_params["primer5"],encoder_params["primer3"])
+            header = Header(header_version,header_params)
             if fsmd_header_filename!=None:
                 with open(fsmd_header_filename,"rb") as serialized_header_pipeline_data:
                     header.set_pipeline_data(serialized_header_pipeline_data.read())
@@ -60,14 +60,16 @@ class DNAFilePipeline:
                                             fsmd_abbrev=fsmd_abbrev)
             else:
                 return ReadDNAFilePipeline(input=filename,
-                                           fsmd_abbrev=fsmd_abbrev,input_strands=input_strands,encoder_params=encoder_params,fsmd_header_filename=fsmd_header_filename)
+                                           fsmd_abbrev=fsmd_abbrev,input_strands=input_strands,encoder_params=encoder_params,
+                                           header_version=header_version,header_params=header_params,fsmd_header_filename=fsmd_header_filename)
             
         elif "w" in op and "s" in op:
             return SegmentedWriteDNAFilePipeline(output=filename,
                                                  format_name=format_name,fsmd_abbrev=fsmd_abbrev,fsmd_header_filename=fsmd_header_filename)       
         elif op=="w":
             return WriteDNAFilePipeline(output=filename,
-                                        format_name=format_name,fsmd_abbrev=fsmd_abbrev,encoder_params=encoder_params,fsmd_header_filename=fsmd_header_filename)
+                                        format_name=format_name,fsmd_abbrev=fsmd_abbrev,encoder_params=encoder_params,
+                                        header_version=header_version,header_params=header_params,fsmd_header_filename=fsmd_header_filename)
         else:
             return None
 
@@ -101,6 +103,8 @@ class ReadDNAFilePipeline(DNAFilePipeline):
     def __init__(self,**kwargs):
         DNAFilePipeline.__init__(self)
         self._enc_opts=kwargs["encoder_params"]
+        self._header_params=kwargs["header_params"]
+        self._header_version=kwargs["header_version"]
         if 'input' in kwargs and kwargs["input"]!=None:
             self.input_filename = kwargs['input']
             self.in_fd = open(self.input_filename,"r")
@@ -118,7 +122,7 @@ class ReadDNAFilePipeline(DNAFilePipeline):
         else:
             self.fsmd_abbrev = kwargs['fsmd_abbrev']
 
-        header = Header("0.1",self._enc_opts["primer5"],self._enc_opts["primer3"])
+        header = Header(self._header_version,self._header_params)
 
         if 'fsmd_header_filename' in kwargs and kwargs["fsmd_header_filename"]!=None: #read into the header pipeline data that described its encoding process
             with open(kwargs["fsmd_header_filename"],"rb") as serialized_header_pipeline_data:
@@ -170,6 +174,8 @@ class WriteDNAFilePipeline(DNAFilePipeline):
     def __init__(self,**kwargs):
         DNAFilePipeline.__init__(self)
         self._enc_opts=kwargs["encoder_params"]
+        self._header_params=kwargs["header_params"]
+        self._header_version=kwargs["header_version"]
         self.out_fd=None
         self._header_fd=None
         self.output_filename="none.dna"
@@ -240,7 +246,7 @@ class WriteDNAFilePipeline(DNAFilePipeline):
 
     def close(self):
         self.flush()
-        header = Header("0.1",self._enc_opts["primer5"],self._enc_opts["primer3"])
+        header = Header(self._header_version,self._header_params)
 
         
         header_dict={}

@@ -47,10 +47,15 @@ def _monte_kernel(monte_start,monte_end,args): #function that will run per proce
         with open(args.enc_params,'rb') as param_file:
                 encoding_params = json.load(param_file) #load in params for an encoding architecture through a json file
 
+    if os.path.exists(args.header_params):
+        with open(args.header_params,'rb') as param_file:
+                header_params = json.load(param_file) #load in params for an encoding architecture through a json file
+
+                
     if encoding_params is None:
         encoding_params={}
     
-    write_dna = DNAFilePipeline.open(None,"w",format_name=args.arch,fsmd_abbrev='FSMD-Pipe',encoder_params=encoding_params,fsmd_header_filename=header_data_path)
+    write_dna = DNAFilePipeline.open(None,"w",format_name=args.arch,header_params=header_params,fsmd_abbrev='FSMD-Pipe',encoder_params=encoding_params,fsmd_header_filename=header_data_path)
 
     write_dna.write(file_to_fault_inject.read())
     write_dna.close()
@@ -70,7 +75,7 @@ def _monte_kernel(monte_start,monte_end,args): #function that will run per proce
         logging.info("Monte Carlo Sim: {}".format(sim_number))
         fault_environment.Run()
 
-        read_dna = DNAFilePipeline.open(None,"r",input_strands=fault_environment.get_strands(),fsmd_abbrev='FSMD',format_name=args.arch,encoder_params=encoding_params,
+        read_dna = DNAFilePipeline.open(None,"r",input_strands=fault_environment.get_strands(),header_params=header_params,fsmd_abbrev='FSMD',format_name=args.arch,encoder_params=encoding_params,
                                         fsmd_header_filename=header_data_path)
         if read_dna is None:
             #dead header
@@ -185,8 +190,12 @@ if __name__ == "__main__":
     parser.add_argument('--cores', type=int, action="store",default=1,help="Number of threads to run monte carlo simulations")
 
     parser.add_argument('--enc_params',type=str,required=True,action="store",help="Path to json file with parameters used to set error correction in encoding")
+    parser.add_argument('--header_params',type=str,required=True,action="store",help="Path to json file with parameters used to set error correction in encoding for the header")
+    parser.add_argument('--header_version',type=str,required=True,action="store",default="0.1",help="Header version")
+     
     parser.add_argument('--out_dir',type=str,required=True,action="store",help="Directory where data will be dumped")
 
+    
 
     args = parser.parse_args()
 

@@ -7,9 +7,6 @@ import struct
 from dnastorage.system.formats import *
 import hashlib
 
-HEADER_BARCODE=0xEE
-
-
 
 def version_0_1():
     #returns a formatting dictionary for the given version
@@ -19,8 +16,7 @@ def version_0_1():
     version_dict["size"]=(None,8,int) #None values are determined from user input
     version_dict["filename"]=(None,"v",str) #assume filenames no larger than 50 bytes
     version_dict["formatid"]=(None,2,int)
-    #version_dict["magic"]=('ATCGATGC',"v",str)
-    version_dict["magic"]=('ATCGATGCGACGAGGA',"v",str)
+    version_dict["barcode"]=(0xEE,1,int)
     version_dict["decoding_format"]=('FSMD-Pipe',"v",str)
     return version_dict
 
@@ -31,13 +27,13 @@ version_formats={"0.1": version_0_1}
 
 
 class Header(object): 
-    def __init__(self, version_number,primer5="",primer3="",barcode_suffix=tuple()):
+    def __init__(self, version_number,encoder_params,barcode_suffix=tuple()):
         assert version_number in version_formats
         self._version=version_number
         self._format_dict= version_formats[self._version]()
         enc_func = file_system_encoder_by_abbrev(self._format_dict["decoding_format"][0])
-        barcode = (HEADER_BARCODE,)+barcode_suffix
-        self._pipeline = enc_func(None,primer3=primer3,primer5=primer5,barcode=barcode)#,magic=self._format_dict["magic"][0])
+        barcode = (self._format_dict["barcode"][0],)+barcode_suffix
+        self._pipeline = enc_func(None,**encoder_params,barcode=barcode)
 
     def get_header_pipeline_data(self):
         buff=self._pipeline.encode_header_data()

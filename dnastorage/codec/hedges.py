@@ -835,6 +835,7 @@ class HedgesPipeline(BaseCodec,CWtoDNA):
         pos+=4
         message_bits = convertBytestoInt(buff[pos:pos+4])
         pos+=4
+        self._hedges.set_bit_sizes(seqnum_bits,message_bits)
         return buff[pos:]
     
 def inject(strand,rate):

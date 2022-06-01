@@ -42,9 +42,9 @@ def customize_RS_CFC8_pipeline(pf,**kwargs):
     rsOuter = ReedSolomonOuterPipeline(blockSizeInBytes//strandSizeInBytes,outerECCStrands)
     commafree = CommaFreeCodecPipeline(numberBytes=innerECC+strandSizeInBytes)
     rsInner = ReedSolomonInnerCodecPipeline(innerECC)
-    magic = PrependSequencePipeline(magic_strand)
-    p5 = PrependSequencePipeline(primer5)
-    p3 = AppendSequencePipeline(reverse_complement(primer3))
+    magic = PrependSequencePipeline(magic_strand,handler="align")
+    p5 = PrependSequencePipeline(primer5,handler="align")
+    p3 = AppendSequencePipeline(reverse_complement(primer3),handler="align")
     consolidator = SimpleMajorityVote()
 
     if fault_injection is False:
@@ -56,6 +56,46 @@ def customize_RS_CFC8_pipeline(pf,**kwargs):
         return pipeline.PipeLine((rsOuter,innerECCprobe,rsInner,commafreeprobe,commafree,p3,magic,p5),consolidator,
                                  blockSizeInBytes,strandSizeInBytes,upper_strand_length,1,packetizedfile=pf,barcode=barcode)
 
+
+
+def SDC_pipeline(pf,**kwargs):
+    print(kwargs)
+    blockSizeInBytes=kwargs.get("blockSizeInBytes",150)
+    strandSizeInBytes=kwargs.get("strandSizeInBytes",15)
+    primer5 = kwargs.get("primer5","")
+    primer3 = kwargs.get("primer3","")
+    
+    innerECC = kwargs.get("innerECC",0)
+    outerECCStrands = kwargs.get("outerECCStrands",0)
+    magic_strand = kwargs.get("magic","")
+    cut = kwargs.get("cut","")
+    fault_injection= kwargs.get("fi",False)
+    upper_strand_length = kwargs.get("dna_length",200)
+    pipeline_title=kwargs.get("title","")
+    barcode = kwargs.get("barcode",tuple())
+    
+    #create the components we are gonna use
+    rsOuter = ReedSolomonOuterPipeline(blockSizeInBytes//strandSizeInBytes,outerECCStrands)
+    commafree = CommaFreeCodecPipeline(numberBytes=innerECC+strandSizeInBytes)
+    rsInner = ReedSolomonInnerCodecPipeline(innerECC)
+    magic = PrependSequencePipeline(magic_strand,handler="align")
+    p5 = PrependSequencePipeline(primer5,handler="align")
+    p3 = AppendSequencePipeline(reverse_complement(primer3),handler="align")
+    consolidator = SimpleMajorityVote()
+
+    if fault_injection is False:
+        return pipeline.PipeLine((rsOuter,rsInner,commafree,p3,magic,p5),consolidator,blockSizeInBytes,strandSizeInBytes,upper_strand_length,1,packetizedfile=pf,
+                                 barcode=barcode)
+    else:
+        innerECCprobe = CodewordErrorRateProbe(probe_name="{}::RSInner".format(pipeline_title))
+        commafreeprobe = CodewordErrorRateProbe(probe_name="{}::CommaFree".format(pipeline_title))
+        return pipeline.PipeLine((rsOuter,innerECCprobe,rsInner,commafreeprobe,commafree,p3,magic,p5),consolidator,
+                                 blockSizeInBytes,strandSizeInBytes,upper_strand_length,1,packetizedfile=pf,barcode=barcode)
+
+
+
+
+    
 def customize_RS_CFC8(is_enc,pf,primer5,primer3,intraBlockIndex=1,\
                       interBlockIndex=2,innerECC=2,strandSizeInBytes=15,\
                       blockSizeInBytes=15*185,Policy=None,\

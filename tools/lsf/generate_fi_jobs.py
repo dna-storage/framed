@@ -77,6 +77,7 @@ if __name__=="__main__":
         encoder_params = params_dict["encoder_params"]
         distribution_params=params_dict["distribution_params"]
         fault_model_params=params_dict["fault_params"]
+        header_params = params_dict["header_params"]
         
         encoding_architecture = params_dict["arch"]
         fault_model = params_dict["fault_model"]
@@ -100,6 +101,7 @@ if __name__=="__main__":
     fault_model_param_list=recursive_param_aggregation([(_[0],_[1]) for _ in fault_model_params.items()])
     distribution_param_list=recursive_param_aggregation([(_[0],_[1]) for _ in distribution_params.items()])
     encoder_param_list=recursive_param_aggregation([(_[0],_[1]) for _ in encoder_params.items()])
+    header_instance=recursive_param_aggregation([(_[0],_[1]) for _ in header_params.items()])[0]
 
     
     for distribution_instance in distribution_param_list:
@@ -115,6 +117,8 @@ if __name__=="__main__":
                 #round out the param string
                 complete_param_string= distribution_instance[0]+fault_model_instance[0]+"--enc_params "+os.path.join(final_run_path,"encoder_params.json")
                 complete_param_string+=" --out_dir {} ".format(final_run_path) + " --cores {} ".format(args.cores)
+                complete_param_string+=" --header_params {} ".format(os.path.join(final_run_path,"header_params.json"))
+            
                 #round out the param string with stuff from the params dictionary
                 for param in params_dict:
                     if not isinstance(params_dict[param],dict):
@@ -123,7 +127,8 @@ if __name__=="__main__":
                 json.dump(distribution_instance[2],open(os.path.join(final_run_path,"dist_params.json"),"w+"),cls=NpEncoder)
                 json.dump(fault_model_instance[2],open(os.path.join(final_run_path,"fault_params.json"),"w+"),cls=NpEncoder)
                 json.dump(encoder_instance[2],open(os.path.join(final_run_path,"encoder_params.json"),"w+"),cls=NpEncoder)
-
+                json.dump(header_instance[2],open(os.path.join(final_run_path,"header_params.json"),"w+"),cls=NpEncoder)
+                
                 print(final_run_path)
                 
                 command = "python "+ fault_injection_path + complete_param_string

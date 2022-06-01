@@ -3,6 +3,8 @@ from dnastorage.primer.primer_util import *
 from dnastorage.exceptions import *
 from dnastorage.codec_types import *
 from dnastorage.strand_representation import *
+from Bio import pairwise2
+
 
 class CombineCodewords(BaseCodec):
     def __init__(self,CodecObj=None,Policy=None):
@@ -84,12 +86,27 @@ class InsertMidSequence(BaseCodec):
                 raise err
 
 
+
+def find_ed(strand,seq,distance):
+    results=[]
+    for strand_index, base in enumerate(strand):
+        check = strand[strand_index:len(seq)+strand_index]
+        results.append(ed.eval(check,seq))
+    if len(results)==0: return None
+    m = min(results)
+    if m <=distance: return results.index(m)
+    else: return None
+    
+            
+            
+
 class PrependSequence(BaseCodec):
-    def __init__(self,seq,CodecObj=None,Policy=None,isPrimer=False):
+    def __init__(self,seq,CodecObj=None,Policy=None,isPrimer=False,handler="ed",search_range=50):
         BaseCodec.__init__(self,CodecObj=CodecObj,Policy=Policy)
         self._seq = seq[:]
         self.is_primer = isPrimer
-
+        self._handler=handler
+        self._search_range=search_range
     def _encode(self,strand):
         if strand.find(self._seq) != -1:
             err = DNAStrandPoorlyFormed("Found sequence already present while prepending {}"\
@@ -101,43 +118,45 @@ class PrependSequence(BaseCodec):
         return self._seq + strand
 
     def _decode(self,strand):
+        slen = len(self._seq)
         index = strand.find(self._seq)
         if index != -1: # expected at beginning
             return strand[index+len(self._seq):]
-        else:
+        elif self._handler=="ed":
             err = DNAStrandMissingSequence("{} should have had {} at beginning.".format(strand,self._seq))
             # there could be errors in the cut preventing us from seeing it
             # with an exact match, so now we look for an inexact match
             if self._Policy.allow(err):
-                slen = len(self._seq)
-                res = []
-                # FIXME: how far in should we look?
-                for m in range(0,50):
-                    sli = strand[m:m+slen]
-                    res.append( ed.eval(sli,self._seq) )
-                mn = min(res)
-                
-                idx = res.index(mn)
-                #print res,mn
-                if mn < 5:
+                idx = find_ed(strand[0:self._search_range+slen],self._seq,5)
+                if idx!=None:
                     return strand[idx+slen:]
                 else:
                     if self.is_primer:
                         raise DNAMissingPrimer("Missing primer {}".format(self._seq))
                     # just leave the strand along, and hopefully codewords can
                     # still be extracted properly
-                    return strand
+                    return strand 
             else:
                 raise err
+        elif self._handler=="align":
+            align = pairwise2.align.localms(strand[0:self._search_range+slen],self._seq,1,-1,-1,-1,one_alignment_only=True)
+            if len(align)==0: return strand
+            align=align[0]
+            score= align[2]
+            if score<(len(self._seq)-5):
+                return strand #finding alignment unsuccessful
+            else:
+                return align[0][align[4]:]
 
 
 
 class AppendSequence(BaseCodec):
-    def __init__(self,seq,CodecObj=None,Policy=None,isPrimer=False):
+    def __init__(self,seq,CodecObj=None,Policy=None,isPrimer=False,handler="ed",search_range=50):
         BaseCodec.__init__(self,CodecObj=CodecObj,Policy=Policy)
         self._seq = seq
         self.is_primer = isPrimer
-
+        self._handler=handler
+        self._search_range=search_range
     def _encode(self,strand):
         if strand.find(self._seq) != -1:
             err = DNAStrandPoorlyFormed("Found sequence already present while appending {}"\
@@ -154,20 +173,15 @@ class AppendSequence(BaseCodec):
         slen = len(self._seq)
         if index != -1: # expected at end
             return strand[:index]
-        else:
+        elif self._handler=="ed":
             err = DNAStrandMissingSequence("{} should have had {} at end.".format(strand,self._seq))
             # there could be errors in the cut preventing us from seeing it
             # with an exact match, so now we look for an inexact match
             if self._Policy.allow(err):
-                slen = len(self._seq)
-                res = []
-                for m in range(len(strand)-2*slen,len(strand)):
-                    sli = strand[m:m+slen]
-                    res.append( ed.eval(sli,self._seq) )
-                mn = min(res)
-                idx = res.index(mn)
-                if mn < 5:
-                    return strand[:idx+len(strand)-2*slen]
+                idx = find_ed(strand[(len(strand)-self._search_range):len(strand)],self._seq,5)
+                if idx!=None:
+                    idx+=(len(strand)-self._search_range)
+                    return strand[:idx+len(strand)-self._search_range]
                 else:
                     if self.is_primer:
                         raise DNAMissingPrimer("Missing primer".format(self._seq))
@@ -176,18 +190,27 @@ class AppendSequence(BaseCodec):
                     return strand
             else:
                 raise err
-
+        elif self._handler=="align":
+            align = pairwise2.align.localms(strand[len(strand)-self._search_range:len(strand)],self._seq,1,-1,-1,-1,one_alignment_only=True)
+            if len(align)==0:return strand
+            align=align[0]
+            score= align[2]
+            if score<(len(self._seq)-5):
+                return strand
+            else:
+                return align[0][0:align[3]+len(strand)-self._search_range]
 
 class PrependSequencePipeline(PrependSequence,DNAtoDNA):
-    def __init__(self,seq,CodecObj=None,Policy=None,isPrimer=False):
-        PrependSequence.__init__(self,seq,CodecObj=CodecObj,Policy=Policy)
+    def __init__(self,seq,CodecObj=None,Policy=None,isPrimer=False,ignore=False,handler="ed",search_range=50):
+        PrependSequence.__init__(self,seq,CodecObj=CodecObj,Policy=Policy,isPrimer=isPrimer,handler=handler,search_range=search_range)
         DNAtoDNA.__init__(self)
+        self._ignore=ignore
     def _encode(self,strand):
         #this is a wrapper around the basic PrependSequence _encode so that the strand interface
         strand.dna_strand=PrependSequence._encode(self,strand.dna_strand)
         return strand
     def _decode(self,strand):
-        if strand.dna_strand is None: return strand
+        if strand.dna_strand is None or self._ignore or self._seq=="": return strand
         strand_before =strand.dna_strand
         strand.dna_strand=PrependSequence._decode(self,strand.dna_strand)
         if strand_before==strand.dna_strand and self._seq != "":
@@ -195,18 +218,19 @@ class PrependSequencePipeline(PrependSequence,DNAtoDNA):
         return strand
 
 class AppendSequencePipeline(AppendSequence,DNAtoDNA):
-    def __init__(self,seq,CodecObj=None,Policy=None,isPrimer=False):
-        AppendSequence.__init__(self,seq,CodecObj=CodecObj,Policy=Policy)
+    def __init__(self,seq,CodecObj=None,Policy=None,isPrimer=False,ignore=False,handler="ed",search_range=50):
+        AppendSequence.__init__(self,seq,CodecObj=CodecObj,Policy=Policy,isPrimer=isPrimer,handler=handler,search_range=search_range)
         DNAtoDNA.__init__(self)
+        self._ignore=ignore
     def _encode(self,strand):
         #this is a wrapper around the basic AppendSequence _encode so that the strand interface
         strand.dna_strand=AppendSequence._encode(self,strand.dna_strand)
         return strand
     def _decode(self,strand):
-        if strand.dna_strand is None: return strand
+        if strand.dna_strand is None or self._ignore or self._seq=="": return strand
         strand_before =strand.dna_strand
         strand.dna_strand=AppendSequence._decode(self,strand.dna_strand)
-        if strand_before==strand.dna_strand and self._seq != "":
+        if strand_before==strand.dna_strand:
             strand.dna_strand = None
         return strand
  

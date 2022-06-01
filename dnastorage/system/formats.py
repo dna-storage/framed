@@ -157,7 +157,6 @@ def PIPE_250_FSMD(pf,**kwargs):
     blockSizeInBytes=90
     outerECCStrands=40
     strandSizeInBytes=15
-    
     #pipeline implementation fo FSMD
     pipe = customize_RS_CFC8_pipeline(pf,**kwargs,innerECC=2,strandSizeInBytes=strandSizeInBytes,
                                       blockSizeInBytes=blockSizeInBytes,outerECCStrands=outerECCStrands,dna_length=250)
