@@ -1,0 +1,29 @@
+{
+    "fault_model":"fixed_rate",
+    "file":"/tuck_data/kvolkel/dnastorage/tools/test_fault_injection/Downsized-Phosphorous.png",
+    "strand_distribution":"poisson",
+    "arch":"Pipe-RS+CFC8",
+    "header_version":"0.1",
+    "simulation_runs":10,
+    "encoder_params":{
+	"title":"payload",
+	"primer3":"AAAAAAAAAA",                                                                                                                                                              
+	"primer5":"TTTTTTTTTT",                                                                                                                                                             
+	"blockSizeInBytes":["value_list",100,200],                                                                                                                                                      
+	"strandSizeInBytes":["value_list",10],                                                                                                                                                          
+	"innerECC":[2,3,1],                                                                                                                                                                        
+	"outerECCStrands":[40,41,1],                                                                                                                                                                
+	"dna_length":300,
+	"fi":true
+    },
+    "header_params":{
+	"primer3":"AAAAAAAAAA",
+	"primer5":"TTTTTTTTTT"
+    },
+    "fault_params":{
+	"fault_rate":[0.01,0.02,0.01]
+    },
+    "distribution_params":{
+	"mean":[10,11,1]
+    }
+}
