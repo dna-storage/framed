@@ -64,14 +64,14 @@ def _monte_kernel(monte_start,monte_end,args): #function that will run per proce
     stats["header_strand_length"]=len(write_dna.strands[0].dna_strand) #header strands should be first
     stats["payload_strand_length"]=len(write_dna.strands[-1].dna_strand)#strands with real payload should be at the end
     stats["dead_header"]=0
-    stats["file_to_inject_size"]=file_to_inject_size
+    stats["file_size_bytes"]=file_to_inject_size
 
     #Encode file we are fault injecting on
     fault_environment =  Fi_Env(args.strand_distribution, args.fault_model,write_dna.strands,fault_rate=args.fault_rate,
                                 missing=args.faulty_count, faulty=args.faulty_count,error_run=args.run,fails=args.fail_count,
                                 fault_file=args.fault_rate_file,mean=args.mean,var=args.var)
 
-    for sim_number in range(monte_start,monte_end+1):
+    for sim_number in range(monte_start,monte_end):
         logging.info("Monte Carlo Sim: {}".format(sim_number))
         fault_environment.Run()
 
@@ -79,8 +79,8 @@ def _monte_kernel(monte_start,monte_end,args): #function that will run per proce
                                         fsmd_header_filename=header_data_path)
         if read_dna is None:
             #dead header
-            stats["dead_header"]=1
-            stats["error"]=1
+            stats.inc("dead_header",1)
+            stats.inc("error",1)
             results.append(copy.deepcopy(stats))
             continue
         #calculate missing bytes
@@ -99,16 +99,19 @@ def _monte_kernel(monte_start,monte_end,args): #function that will run per proce
                 continue
             else:
                 total_mismatch_data+=1
-        stats.inc("total_mismatch_data",total_mismatch_data)
-        stats.inc("file_size_difference",abs(file_to_inject_size-length_fi_data))
-        if stats["total_mismatch_data"]>0:
-            stats["error"]=1
+        print(len(fault_environment.get_strands()))
+        stats.inc("total_mismatch_bytes",total_mismatch_data)
+        stats.inc("file_size_difference_bytes",abs(file_to_inject_size-length_fi_data))
+        stats.inc("total_file_data_bytes",stats["file_size_bytes"])
+        stats.inc("total_strands_analyzed",len(fault_environment.get_strands()))
+        if stats["total_mismatch_bytes"]>0:
+            stats.inc("error",1)
         else:
-            stats["error"]=0
+            stats.inc("error",0)
         logging.info("Finished decoding erroneous file")
-        results.append(copy.deepcopy(stats))
-
-    if monte_end+1 <args.num_sims: #save last header data incase we want to keep it
+    results.append(copy.deepcopy(stats))
+    
+    if monte_end!=args.num_sims: #save last header data incase we want to keep it
         os.remove(header_data_path)
     file_to_fault_inject.close()    
     return results
@@ -127,13 +130,16 @@ def run_monte(args):
     pickle_fd=open(stats_pickle_path,'wb+')
     dist=[]
     monteIters=args.num_sims//args.cores
+    last_monte_iter = args.num_sims%args.cores
     processIters=0
     tasks=[] #list of arguments for each task
-    parallel=Parallel(n_jobs=args.cores,backend="threading")
+    parallel=Parallel(n_jobs=args.cores,backend="multiprocessing")
     for i in range(args.cores):
-        tasks.append((processIters,processIters+(monteIters-1),args))
+        if i==args.cores-1:
+            tasks.append((processIters,processIters+monteIters+last_monte_iter,args))
+        else:
+            tasks.append((processIters,processIters+monteIters,args))
         processIters+=monteIters #set up next range of montecarlo simulations
-        
     results=parallel(delayed(_monte_parallel_wrapper)(*t) for t in tasks )
     total_results=[]
     for job_res in results:#unpack results from jobs
@@ -145,8 +151,8 @@ def run_monte(args):
     stats.set_pickle_fd(pickle_fd)
     #need to aggregate data across all results
     for s in total_results:
-        stats.aggregate(s,["total_encoded_strands","header_strand_length","payload_strand_length"
-                           "file_to_inject_size"]) #just want to copy information about total strands/strand_length
+        stats.aggregate(s,["total_encoded_strands","header_strand_length","payload_strand_length",
+                           "file_size_bytes"]) #just want to copy information about total strands/strand_length
     stats["total_runs"]=args.num_sims
     stats.persist()
     stats_fd.close()

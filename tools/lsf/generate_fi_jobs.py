@@ -36,7 +36,10 @@ def recursive_param_aggregation(l,out_list=None,previous=[]):
         return_list=out_list
     entry_name= l[0][0]
     if type(l[0][1]) is list:
-        param_values = np.arange(*(l[0][1]))
+        if l[0][1][0] == "value_list":
+            param_values=l[0][1][1:] #not a range
+        else:
+            param_values = np.arange(*(l[0][1]))
     else:
         param_values=[l[0][1]]
     for v in param_values:

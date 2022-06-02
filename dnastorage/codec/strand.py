@@ -81,14 +81,14 @@ class ReedSolomonInnerCodec(BaseCodec):
             corrected_message, corrected_ecc = self.rs.rs_correct_msg(message,self._numberECCBytes, erase_pos=erasures)
             value = corrected_message
             #print "corrected message"
-            stats.inc("RSInnerCodec::decode::succeeded")
+            #stats.inc("RSInnerCodec::decode::succeeded")
         except ReedSolomonError as e:
-            stats.inc("RSInnerCodec::decode::failed")
+            #stats.inc("RSInnerCodec::decode::failed")
             #print "Inner: Couldn't correct message: {}".format(message)
-            stats.inc("RSInnerCodec.ReedSolomonError")
+            #stats.inc("RSInnerCodec.ReedSolomonError")
             if self._Policy.allow(e):
                 # leave erasures, may be helpful for outer decoder
-                value = message[0:(self._numberECCBytes)]
+                value = message[0:-(self._numberECCBytes)]
                 pass # nothing to do
             else:
                 print (str(e))
@@ -96,7 +96,7 @@ class ReedSolomonInnerCodec(BaseCodec):
             # just proceed without further error correction
             pass
         except ZeroDivisionError as e:
-            stats.inc("RSInnerCodec.ZeroDivision")
+            #stats.inc("RSInnerCodec.ZeroDivision")
             if self._Policy.allow(e):
                 # leave erasures, may be helpful for outer decoder
                 value = message[0:(self._numberECCBytes)]

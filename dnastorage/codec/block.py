@@ -352,7 +352,7 @@ class ReedSolomonOuterPipeline(BaseOuterCodec):
                                                 erase_pos=erasures)
                 except ReedSolomonError as e:
                     #just gonna assume we can't fix this, hopefully someone else will
-                    stats.inc("RSOuterCodec::ReedSolomonError")
+                    #stats.inc("RSOuterCodec::ReedSolomonError")
                     wr_e = DNAReedSolomonOuterCodeError(msg=\
                              "RSOuterCodec found error at sub-packet index".format(strands[0].index_ints[:self._level]))
                     corrected_message = message

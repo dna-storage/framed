@@ -39,7 +39,7 @@ class LSFJob(object):
         assert self.command!=None
         current_path = os.environ["PWD"]
         generate_name = self.generate()
-        shutil.move(generate_name,self.run_path)
+        shutil.copy(generate_name,self.run_path)
         os.chdir(self.run_path)
         os.system('bsub <' +generate_name)
         os.chdir(current_path)

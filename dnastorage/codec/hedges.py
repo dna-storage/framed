@@ -576,6 +576,8 @@ class HEDGE:
         self.index_bits = int(ceil(log2((self.adj_seqnum_bits + self.adj_message_bits) / 4 / rate)))
         self.index_range = self._get_index_range(self.rate, self.adj_seqnum_bits + self.adj_message_bits)
 
+        if self.adj_seqnum_bits<self.salt_bits:
+            self.salt_bits=self.adj_seqnum_bits #KV: upper bound off the salt bits
 
         
     def _get_pattern(self, rate):

@@ -62,7 +62,7 @@ class dnastats(object):
         if not (self.fd is None):
             if len(self.msg) > 0:
                 self.fd.write(self.msg+"\n")
-                logger.info(self.msg)
+                logger.info(self.msg.strip("\n"))
 
             items = self.all_stats.items()
             items=sorted(items,key=lambda x: x[0])

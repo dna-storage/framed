@@ -15,6 +15,7 @@ from dnastorage.arch.strand import *
 from dnastorage.exceptions import *
 from dnastorage.codec.binarystringcodec import *
 from dnastorage.codec.consolidation import *
+from dnastorage.codec.hedges import *
 
 from dnastorage.fi.probes import *
 
@@ -60,36 +61,45 @@ def customize_RS_CFC8_pipeline(pf,**kwargs):
 
 def SDC_pipeline(pf,**kwargs):
     print(kwargs)
+
+    fault_injection= kwargs.get("fi",False)
     blockSizeInBytes=kwargs.get("blockSizeInBytes",150)
     strandSizeInBytes=kwargs.get("strandSizeInBytes",15)
     primer5 = kwargs.get("primer5","")
     primer3 = kwargs.get("primer3","")
+    t7_seq = kwargs.get("T7","CGACTAATACGACTCACTATAGC")
+    rt_pcr_seq = kwargs.get("RT-PCR","")
+
     
-    innerECC = kwargs.get("innerECC",0)
+    hedges_rate = kwargs.get("rate",1/2)
+    hedges_pad_bits=kwargs.get("pad",0)
+    hedges_previous = kwargs.get("prev_bits",16)
+    hedges_salt_bits = kwargs.get("salt_bits",500)
+    
     outerECCStrands = kwargs.get("outerECCStrands",0)
-    magic_strand = kwargs.get("magic","")
-    cut = kwargs.get("cut","")
-    fault_injection= kwargs.get("fi",False)
     upper_strand_length = kwargs.get("dna_length",200)
     pipeline_title=kwargs.get("title","")
     barcode = kwargs.get("barcode",tuple())
+
     
-    #create the components we are gonna use
+    #Error correction components
     rsOuter = ReedSolomonOuterPipeline(blockSizeInBytes//strandSizeInBytes,outerECCStrands)
-    commafree = CommaFreeCodecPipeline(numberBytes=innerECC+strandSizeInBytes)
-    rsInner = ReedSolomonInnerCodecPipeline(innerECC)
-    magic = PrependSequencePipeline(magic_strand,handler="align")
-    p5 = PrependSequencePipeline(primer5,handler="align")
-    p3 = AppendSequencePipeline(reverse_complement(primer3),handler="align")
+    hedges = HedgePipeline(hedges_rate,hedges_pad_bits,hedges_previous,hedges_salt_bits)
+    
+    #components related to DNA functionality
+    p5 = PrependSequencePipeline(primer5,ignore=True)
+    t7 = PrependSequencePipeline(t7_seq,ignore=True)
+    rt_pcr = PrependSequencePipeline(rt_pcr_seq,handler="align",search_range=70)
+    p3 = AppendSequencePipeline(reverse_complement(primer3),handler="align",search_range=30)
+
     consolidator = SimpleMajorityVote()
 
     if fault_injection is False:
-        return pipeline.PipeLine((rsOuter,rsInner,commafree,p3,magic,p5),consolidator,blockSizeInBytes,strandSizeInBytes,upper_strand_length,1,packetizedfile=pf,
+        return pipeline.PipeLine((rsOuter,hedges,p3,rt_pcr,t7,p5),consolidator,blockSizeInBytes,strandSizeInBytes,upper_strand_length,1,packetizedfile=pf,
                                  barcode=barcode)
     else:
-        innerECCprobe = CodewordErrorRateProbe(probe_name="{}::RSInner".format(pipeline_title))
-        commafreeprobe = CodewordErrorRateProbe(probe_name="{}::CommaFree".format(pipeline_title))
-        return pipeline.PipeLine((rsOuter,innerECCprobe,rsInner,commafreeprobe,commafree,p3,magic,p5),consolidator,
+        hedges_probe = CodewordErrorRateProbe(probe_name="{}::hedges".format(pipeline_title))
+        return pipeline.PipeLine(((rsOuter,hedges_probe,hedges,p3,rt_pcr,t7,p5)),consolidator,
                                  blockSizeInBytes,strandSizeInBytes,upper_strand_length,1,packetizedfile=pf,barcode=barcode)
 
 
