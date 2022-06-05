@@ -24,8 +24,6 @@ class RandomizeCodec(BaseCodec):
         return array[:self._numRandBytes]
 
 
-
-
 class ReedSolomonInnerCodec(BaseCodec):
     """
     ReedSolomonInnerCodec takes a key,value pair as input to the _encode function and

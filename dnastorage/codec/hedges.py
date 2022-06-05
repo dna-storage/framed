@@ -6,6 +6,8 @@ import heapq
 from dnastorage.codec_types import*
 from math import log10, log2, ceil, sqrt
 
+import dnastorage.codec.fasthedges as fasthedges
+
 from random import randint
 try:
     from random import randbytes
@@ -289,6 +291,12 @@ class Node:
         self.corrected = None
         self.seqnum_vector = None
         self.message_vector = None
+
+    def atObserved(self, at):
+        if at >= len(self.observed):
+            return 'A'
+        else:
+            return self.observed[at]        
     
     def giveUp(self):
         return self.offset >= len(self.observed)
@@ -386,15 +394,25 @@ class Node:
         return [insert]
 
     def _addIns2(self, s, b):
-        assert self.observed[self.offset+1] == s
-        if self.hedge._inSeqNumber(self.index):
-            insert = Node(self.hedge,self.observed,self.offset+2,self.index+1,\
-                          BitTree(self.seqnum_bt,b), self.message_bt, StrandTree(self.corrected_bt,s),\
-                          self.score+Node.substitution_penalty+Node.match_reward, self.fails+1)
+        if self.atObserved(self.offset+1) == s:
+            if self.hedge._inSeqNumber(self.index):
+                insert = Node(self.hedge,self.observed,self.offset+2,self.index+1,\
+                              BitTree(self.seqnum_bt,b), self.message_bt, StrandTree(self.corrected_bt,s),\
+                              self.score+Node.insertion_penalty+Node.match_reward, self.fails+1)
+            else:
+                insert = Node(self.hedge,self.observed,self.offset+2,self.index+1,\
+                              self.seqnum_bt, BitTree(self.message_bt,b), StrandTree(self.corrected_bt,s),\
+                              self.score+Node.insertion_penalty+Node.match_reward, self.fails+1)
         else:
-            insert = Node(self.hedge,self.observed,self.offset+2,self.index+1,\
-                          self.seqnum_bt, BitTree(self.message_bt,b), StrandTree(self.corrected_bt,s),\
-                          self.score+Node.substitution_penalty+Node.match_reward, self.fails+1)
+            if self.hedge._inSeqNumber(self.index):
+                insert = Node(self.hedge,self.observed,self.offset+2,self.index+1,\
+                              BitTree(self.seqnum_bt,b), self.message_bt, StrandTree(self.corrected_bt,s),\
+                              self.score+Node.substitution_penalty+Node.insertion_penalty, self.fails+1)
+            else:
+                insert = Node(self.hedge,self.observed,self.offset+2,self.index+1,\
+                              self.seqnum_bt, BitTree(self.message_bt,b), StrandTree(self.corrected_bt,s),\
+                              self.score+Node.substitution_penalty+Node.insertion_penalty, self.fails+1)
+            
         return [insert]
         
 
@@ -428,17 +446,18 @@ class Node:
 
         children = []
         
-        if s_0 == self.observed[self.offset]:
+        if s_0 == self.atObserved(self.offset):
             # Actual match
             children += self._addMatch(s_0,b0)
         else:
             children += self._addSubst(s_0,b0)
-            children += self._addDel(s_0,b0)
 
-        if self.offset + 1 < len(self.observed) and (self.observed[self.offset+1] == s_0):
-            children += self._addIns2(s_0, b0)
-        else:
-            children += self._addIns()
+        children += self._addDel(s_0,b0)
+        children += self._addIns2(s_0, b0)
+        
+        # if self.atObserved(self.offset+1) == s_0:
+        # else:
+        #     children += self._addIns()
                 
         return children
         
@@ -460,32 +479,37 @@ class Node:
 
         children = []
         
-        if s_0 == self.observed[self.offset]:
+        if s_0 == self.atObserved(self.offset):
             # Actual match
             children += self._addMatch(s_0,b0)
         else:
             children += self._addSubst(s_0,b0)
-            children += self._addDel(s_0,b0)
 
-        if s_1 == self.observed[self.offset]:
+        children += self._addDel(s_0,b0)
+
+        if s_1 == self.atObserved(self.offset):
             children += self._addMatch(s_1,b1)
         else:
             children += self._addSubst(s_1,b1)
-            children += self._addDel(s_1,b1)
 
+        children += self._addDel(s_1,b1)
+
+        children += self._addIns2(s_0, b0)
+        children += self._addIns2(s_1, b1)
+        
         # For insertions, take into account the next position. If they match, it increases
         # the odds that the insertion actually occured here.
-        if self.offset + 1 < len(self.observed) and (self.observed[self.offset+1] == s_0 or \
-                                                     self.observed[self.offset+1] == s_1):
-            if self.observed[self.offset+1] == s_0:                
-                children += self._addIns2(s_0, b0)
-            else:
-                children += self._addIns2(s_1, b1)
-        else:
-            children += self._addIns()
+        # if self.offset + 1 < len(self.observed) and (self.atObserved(self.offset+1) == s_0 or \
+        #                                              self.atObserved(self.offset+1) == s_1):
+        #     if self.atObserved(self.offset+1) == s_0:                
+        #         children += self._addIns2(s_0, b0)
+        #     else:
+        #         children += self._addIns2(s_1, b1)
+        # else:
+        #     children += self._addIns()
                 
         return children
-    
+
     def make2bitGuesses(self):
         # Generate all possible guesses from this index. We do it this way
         # so that we never need to visit this node again once it's popped
@@ -510,32 +534,31 @@ class Node:
         
         children += self._addIns()
         
-        if s_00 == self.observed[self.offset]:
+        if s_00 == self.atObserved(self.offset):
             # Actual match
             children += self._addMatch(s_00,b00)
         else:
             children += self._addSubst(s_00,b00)
             children += self._addDel(s_00,b00)
                         
-        if s_01 == self.observed[self.offset]:
+        if s_01 == self.atObserved(self.offset):
             children += self._addMatch(s_01,b01)
         else:
             children += self._addSubst(s_01,b01)
             children += self._addDel(s_01,b01)
 
-        if s_10 == self.observed[self.offset]:
+        if s_10 == self.atObserved(self.offset):
             children += self._addMatch(s_10,b10)
         else:
             children += self._addSubst(s_10,b10)
             children += self._addDel(s_10,b10)
 
-        if s_11 == self.observed[self.offset]:
+        if s_11 == self.atObserved(self.offset):
             children += self._addMatch(s_11,b11)
         else:
             children += self._addSubst(s_11,b11)
             children += self._addDel(s_11,b11)
             
-
         return children
         
 class HEDGE:
@@ -550,20 +573,26 @@ class HEDGE:
     '''
     rates = [1.0, .75, 0.5, 1/3, 0.25, 1/6, 1/8, 1/16]
     
-    def __init__(self, rate, pad_bits, prev_bits, salt_bits,seqnum_bits=8, message_bits=80):
+    def __init__(self, rate, pad_bits, prev_bits, seqnum_bits=8, message_bits=80):
         self.rate = rate
         assert self.rate in HEDGE.rates       
         self.seqnum_bits = seqnum_bits
         self.message_bits = message_bits
         self.pad_bits = pad_bits
         self.prev_bits = prev_bits
-        self.salt_bits = salt_bits
+        self.salt_bits = seqnum_bits
         self._bits_hash = {}
         self._set_pad()
 
 
     def set_bit_sizes(self,seqnum_bits,message_bits): #interface to allow for easing setting of seqnum_bits
         self.seqnum_bits = seqnum_bits
+        if seqnum_bits < 32:
+            self.salt_bits = seqnum_bits
+        else:
+            # unlikely to have more than 4 bytes of index, but even if we do, just use the lower
+            # 32 bits. We can revisit this later.
+            self.salt_bits = 32 
         self.message_bits = message_bits
         self._set_pad()
 
@@ -579,7 +608,8 @@ class HEDGE:
         if self.adj_seqnum_bits<self.salt_bits:
             self.salt_bits=self.adj_seqnum_bits #KV: upper bound off the salt bits
 
-        
+        assert self.salt_bits + self.index_bits + self.prev_bits <= 64
+            
     def _get_pattern(self, rate):
         if rate == 1.0:
             return [2]
@@ -779,7 +809,7 @@ class HEDGE:
             
         return strand
 
-    def decode(self, observed, rates=[0.01,0.01,0.01], best_guess=False, max_guesses=100000):
+    def decode(self, observed, best_guess=False, max_guesses=100000):
         strand_pos = 0
         index = 0        
         Node.init(self.rate)
@@ -801,10 +831,9 @@ class HEDGE:
             return None,None,None
 
 
-class HedgesPipeline(BaseCodec,CWtoDNA):
-    def __init__(self,rate,pad_bits,prev_bits,salt_bits,error_profile=[0.01,0.01,0.01],guess_limit=100000,CodecObj=None,Policy=None):
-        self._hedges = HEDGE(rate,pad_bits,prev_bits,salt_bits)
-        self._error_profile=error_profile
+class PyHedgesPipeline(BaseCodec,CWtoDNA):
+    def __init__(self,rate,pad_bits,prev_bits,guess_limit=100000,CodecObj=None,Policy=None):
+        self._hedges = HEDGE(rate,pad_bits,prev_bits)
         self._guess_limit=guess_limit
         CWtoDNA.__init__(self)
         BaseCodec.__init__(self,CodecObj=CodecObj,Policy=Policy)
@@ -822,7 +851,7 @@ class HedgesPipeline(BaseCodec,CWtoDNA):
         return strand
         
     def _decode(self,strand):
-        index,data,corr = self._hedges.decode(strand.dna_strand,rates=self._error_profile,best_guess=True,max_guesses=self._guess_limit)
+        index,data,corr = self._hedges.decode(strand.dna_strand,best_guess=True,max_guesses=self._guess_limit)
         strand.codewords =[_ for _ in index.tobytes()+data.tobytes()] 
         return strand
     #store some pertinent information like bit lengths of data seen to be able to reinstantiate the decoder in a correct state    
@@ -839,6 +868,65 @@ class HedgesPipeline(BaseCodec,CWtoDNA):
         pos+=4
         self._hedges.set_bit_sizes(seqnum_bits,message_bits)
         return buff[pos:]
+
+
+class FastHedgesPipeline(BaseCodec,CWtoDNA):
+
+    class hedges_state:
+        def __init__(self, rate=1.0/4, seq_bytes=2, message_bytes=14, pad_bits=8, prev_bits = 8):
+            self.rate = rate
+            self.seq_bytes = seq_bytes
+            self.message_bytes = message_bytes
+            self.pad_bits = pad_bits
+            self.prev_bits = prev_bits
+            self.salt_bits = seq_bytes * 8
+            if self.salt_bits > 32:
+                self.salt_bits = 32
+
+        def set_message_bytes(self,message_bytes):
+            self.message_bytes = message_bytes
+
+        def set_seqnum_bytes(self,seq_bytes):
+            self.seq_bytes = seq_bytes
+            if seq_bytes < 4:
+                self.salt_bits = seq_bytes * 8
+            else:
+                self.salt_bits = 32
+    
+    def __init__(self,rate,pad_bits=8,prev_bits=8,guess_limit=100000,CodecObj=None,Policy=None):
+        self._hedges_state = FastHedgesPipeline.hedges_state(rate=rate,pad_bits=pad_bits,prev_bits=prev_bits)
+        self._guess_limit=guess_limit
+        CWtoDNA.__init__(self)
+        BaseCodec.__init__(self,CodecObj=CodecObj,Policy=Policy)
+
+    def _encode(self,strand):
+        index_bytes = strand.codewords[:strand.index_bytes]
+        self._hedges_state.set_message_bytes(len(strand.codewords)-strand.index_bytes)
+        self._hedges_state.set_seqnum_bytes(strand.index_bytes)
+        #fasthedges.echo(self._hedges_state)        
+        strand.dna_strand = fasthedges.encode(bytes(strand.codewords),self._hedges_state)
+        return strand
+        
+    def _decode(self,strand):
+        strand.codewords = fasthedges.decode(strand.dna_strand, self._hedges_state, self._guess_limit)        
+        return strand
+    
+    #store some pertinent information like bit lengths of data seen to be able to reinstantiate the decoder in a correct state    
+    def _encode_header(self):
+        data = []
+        data+=convertInttoBytes(self._hedges_state.seqnum_bytes,4)
+        data+=convertIntoBytes(self._hedges_state.message_bytes,4)
+        return data
+    def _decode_header(self,buff):
+        pos=0
+        seqnum_bytes = convertBytestoInt(buff[pos:pos+4])
+        pos+=4
+        message_bytes = convertBytestoInt(buff[pos:pos+4])
+        pos+=4
+        self._hedges_state.set_message_bytes(message_bytes)
+        self._hedges_state.set_seqnum_bytes(seqnum_bytes)
+        return buff[pos:]
+
     
 def inject(strand,rate):
     strand_list = [ _ for _ in strand ]
@@ -889,16 +977,16 @@ def diff(A,B,leading=""):
 
 def test(rate,fi_rate=0.01,length=10):
     #h = HEDGE(rate, 8, 16, 8, seqnum_bits= 8, message_bits=length*8)
-    h = HedgesPipeline(rate,8,16,8)
+    h = FastHedgesPipeline(rate)
     rb = buffer=randbytes(length)
-    rseq = buffer=randbytes(1)
-    print([_ for _ in rb+rseq])
-    s = BaseDNA(codewords=[_ for _ in rb+rseq])
+    print([_ for _ in rb])
+    s = BaseDNA(codewords=[_ for _ in rb])
+    s.index_bytes = 2
     h.encode(s)
     s.dna_strand = inject(s.dna_strand,fi_rate)
     h.decode(s)
     print(s.codewords)
-    if s.codewords==[_ for _ in rb+rseq]:
+    if s.codewords==[_ for _ in rb]:
         return True
     else:          
         return False

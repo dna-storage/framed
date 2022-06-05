@@ -1,7 +1,16 @@
-from dnastorage.codec.phys import CombineCodewords
-from dnastorage.codec.block import *
-from dnastorage.codec.codecfile import *
+from random import randint
 from math import ceil,log
+
+import dnastorage.exceptions as err
+from dnastorage.codec.codecfile import EncodePacketizedFile, DecodePacketizedFile
+from dnastorage.codec.phys import CombineCodewords
+from dnastorage.codec.block import doMajorityVote, partitionStrandsIntoBlocks
+from dnastorage.codec.block import reportBlockStatus
+
+from dnastorage.util.stats import stats
+
+import logging
+logger = logging.getLogger('dna.storage.codec.LayeredCodec')
 
 class LayeredEncoder(EncodePacketizedFile):
 
@@ -47,6 +56,7 @@ class LayeredEncoder(EncodePacketizedFile):
         tmp_strands = []
         for s in strands:
             ecc_s = self.strandCodec.encode(s)
+            tmp_strands.append(ecc_s)
             cw_s = self.strandToCodewordCodec.encode(ecc_s)
             # phys codecs expect a DNA sequnce as a string
             phys_s = self.codewordToPhysCodec.encode(cw_s)            
@@ -108,6 +118,14 @@ class LayeredDecoder(DecodePacketizedFile):
         self.blockIndexSize = blockIndexSize
         self.intraBlockIndexSize = intraBlockIndexSize
         self._Policy = Policy
+
+        self.strand_errors = 0
+        self.block_errors = 0
+        
+        logger.info("strandSizeInBytes = {}".format(strandSizeInBytes))
+        logger.info("blockSizeInBytes = {}".format(blockSizeInBytes))
+        logger.info("blockIndexSize = {}".format(blockIndexSize))
+        logger.info("intraBlockIndexSize = {}".format(intraBlockIndexSize))
         return
 
 
@@ -116,15 +134,13 @@ class LayeredDecoder(DecodePacketizedFile):
         try:
             phys_s = self.physCodec.decode(phys_strand)
             cw_s = self.physToStrandCodec.decode(phys_s)
-        except DNAStorageError as p:
-            cw_s = [-1] + [ 0 for _ in range(self.strandSizeInBytes-1) ]
-            return cw_s
-        
-        try:
             s = self.strandCodec.decode(cw_s)
-        except DNAStorageError as p:
+            stats.inc("LayeredDecoder::phys_to_strand::succeeded")
+        except err.DNAStorageError as p:
+            stats.inc("LayeredDecoder::phys_to_strand::failed")
             s = [-1] + [ 0 for _ in range(self.strandSizeInBytes-1) ]
-        
+            self.strand_errors += 1
+                
         return s
 
     def decode_from_phys_to_strand(self, s):
@@ -135,10 +151,10 @@ class LayeredDecoder(DecodePacketizedFile):
             try:            
                 s = self._layered_decode_phys_to_strand(phys_strand)
                 self.all_strands.append(s)
-            except DNAMissingPrimer as p:
+            except err.DNAMissingPrimer as p:
                 # just ignore strands that don't have a required primer
                 pass
-            except DNAStorageError as e:
+            except err.DNAStorageError as e:
                 if self._Policy.allow(e):
                     pass
                 else:
@@ -162,6 +178,7 @@ class LayeredDecoder(DecodePacketizedFile):
         #blocks.sort()
         for b in blocks:
             idx = b[0]
+            #print (idx,self.minIndex,self._packetizedFile.maxKey)
             if idx < self.minIndex or idx >= self._packetizedFile.maxKey:
                 # this happens due to errors in strands, and we should just
                 # discard these erroneous blocks
@@ -179,30 +196,41 @@ class LayeredDecoder(DecodePacketizedFile):
                 #print "attempt",b_noecc[0],len(b_noecc[1])
                 self.writeToFile(b_noecc[0],b_noecc[1])
 
-            except DNAStorageError as e:
+            except err.DNAStorageError as e:
+                self.block_errors += 1
                 if self._Policy.allow(e):
                     continue                
                 else:
                     raise e
             except Exception as e:
-                print (str(e))
+                print("LayeredCodec._attempt_final_decoding caught error: "+str(e))
+                self.block_errors += 1
                 print (b)
                 
             
     def write(self):
         self._attempt_final_decoding()
         super(LayeredDecoder,self).write()
-            
+
+    def only_write(self):
+        super(LayeredDecoder,self).write()
+
     def dummy_write(self):
         self._attempt_final_decoding()
         return self._packetizedFile.dummy_write()
         
+   
 if __name__ == "__main__":
-    from dnastorage.codec.rscodec import ReedSolomonOuterCodec
+    from dnastorage.codec.block import BlockToStrand, ReedSolomonOuterCodec
     from dnastorage.codec.strand import ReedSolomonInnerCodec
     from dnastorage.exceptions import *
     from dnastorage.codec.commafreecodec import *
     from dnastorage.codec.phys import *
+    from dnastorage.codec.codecfile import *
+
+    if len(sys.argv) < 3:
+        print ("usage: LayeredCodec.py [what to read] [where to write]")
+        sys.exit(0)
     
     pol = NoTolerance()
 
@@ -263,7 +291,4 @@ if __name__ == "__main__":
             
     dec.write()
             
-
-    #keys = wpf.getMissingKeys()
-    #print keys
     

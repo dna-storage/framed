@@ -68,14 +68,14 @@ class InsertMidSequence(BaseCodec):
             # there could be errors in the cut preventing us from seeing it
             # with an exact match, so now we look for an inexact match
             if self._Policy.allow(err):
-                middle = len(strand)/2
+                middle = len(strand)//2
                 slen = len(self._seq)
                 res = []
                 for m in range(middle-slen,middle):
                     sli = strand[m:m+slen]
                     res.append( ed.eval(sli,self._seq) )
                 mn = min(res)
-                if mn < slen/3:
+                if mn < slen//3:
                     place = middle - slen + res.index(mn)
                     return strand[0:place]+strand[place+slen:]
                 else:

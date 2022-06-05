@@ -13,14 +13,27 @@ from dnastorage.exceptions import *
 
 # FIXME: All of these formats need to implement the LayeredCodec.
 
-def ENC_OH_BITSTRING_XXX(pf, primer5, primer3,strand_length=512,num_overhangs=3,bits_per_block=1): #encoding used to experimentally evaluate overhang construction
+def ENC_OH_BITSTRING_XXX(*args, **kwargs): #encoding used to experimentally evaluate overhang construction
+    assert len(args) >= 3
+    pf = args[0]
+    primer5 = args[1]
+    primer3 = args[2]
+    strand_length = kwargs.get('strand_length',512)
+    num_overhangs = kwargs.get('num_overhangs',3)
+    bits_per_block = kwargs.get('bits_per_block',1)    
     enc = build_overhang_bitstring_strand(True,pf,primer5,primer3,strand_length,num_overhangs,bits_per_block)
     return enc
 
 def DEC_OH_BITSTRING_XXX(pf, primer5,primer3,strand_length,num_overhangs,bits_per_block):
     assert 0 #not implemented
     
-def ENC_FSMD_200(pf, primer5, primer3, bIndex=0, policy=NoTolerance(),withCut=None):
+def ENC_FSMD_200(*args, **kwargs):
+    pf = args[0]
+    primer5 = args[1]
+    primer3 = args[2]
+    bIndex = kwargs.get("bIndex",0)
+    policy = kwargs.get("policy",NoTolerance())
+    withCut = kwargs.get("withCut",None)
     enc = customize_RS_CFC8(True,pf,primer5,primer3,1,0,2,15,90,policy,withCut=withCut,outerECCStrands=20,minIndex=bIndex)
     return enc    
 
@@ -38,58 +51,108 @@ def DEC_FSMD_WCUT_160(pf, primer5, primer3, bIndex=0,policy=AllowAll(),withCut=N
     dec = customize_RS_CFC8(False,pf,primer5,primer3,1,0,2,10,120,policy,withCut=withCut,outerECCStrands=20,minIndex=bIndex)
     return dec
 
-def ENC_RS_CFC8_200(pf, primer5, primer3, bIndex=0, policy=NoTolerance()):
+def ENC_RS_CFC8_200(*args, **kwargs):
+    pf = args[0]
+    primer5 = args[1]
+    primer3 = args[2]
+    bIndex = kwargs.get("bIndex",0)
+    policy = kwargs.get("policy",NoTolerance())
     enc = customize_RS_CFC8(True,pf,primer5,primer3,1,2,2,15,185*15,policy,minIndex=bIndex)
     return enc    
 
-def DEC_RS_CFC8_200(pf, primer5, primer3, bIndex=0, policy=AllowAll()):
+def DEC_RS_CFC8_200(*args, **kwargs):
+    pf = args[0]
+    primer5 = args[1]
+    primer3 = args[2]
+    bIndex = kwargs.get("bIndex",0)
+    policy = kwargs.get("policy",AllowAll())
     dec = customize_RS_CFC8(False,pf,primer5,primer3,1,2,2,15,185*15,policy,minIndex=bIndex)
     return dec    
 
 
-def ENC_RS_CFC8_RE1_160(pf, primer5, primer3, bIndex=0, policy=NoTolerance()):
+def ENC_RS_CFC8_RE1_160(*args, **kwargs):#
+    pf = args[0]
+    primer5 = args[1]
+    primer3 = args[2]
+    bIndex = kwargs.get("bIndex",0)
+    policy = kwargs.get("policy",NoTolerance())   
     withCut="AGGTACCA"
     enc = customize_RS_CFC8(True,pf,primer5,primer3,1,1,3,9,185*9,policy,minIndex=bIndex,
                             withCut=withCut)
     return enc    
 
-def DEC_RS_CFC8_RE1_160(pf, primer5, primer3, bIndex=0, policy=AllowAll()):
+def DEC_RS_CFC8_RE1_160(*args, **kwargs):#(pf, primer5, primer3, bIndex=0, policy=AllowAll()):
+    pf = args[0]
+    primer5 = args[1]
+    primer3 = args[2]
+    bIndex = kwargs.get("bIndex",0)
+    policy = kwargs.get("policy",AllowAll())
     withCut="AGGTACCA"
     dec = customize_RS_CFC8(False,pf,primer5,primer3,1,1,3,9,185*9,policy,minIndex=bIndex,\
                             withCut=withCut)
     return dec    
 
-def ENC_RS_CFC8_RE2_160(pf, primer5, primer3, bIndex=0, policy=NoTolerance()):
+def ENC_RS_CFC8_RE2_160(*args, **kwargs):#(pf, primer5, primer3, bIndex=0, policy=NoTolerance()):
+    pf = args[0]
+    primer5 = args[1]
+    primer3 = args[2]
+    bIndex = kwargs.get("bIndex",0)
+    policy = kwargs.get("policy",NoTolerance())   
     withCut="CCTGCAGG"
     enc = customize_RS_CFC8(True,pf,primer5,primer3,1,1,3,9,185*9,policy,minIndex=bIndex,
                             withCut=withCut)
     return enc    
 
-def DEC_RS_CFC8_RE2_160(pf, primer5, primer3, bIndex=0, policy=AllowAll()):
+def DEC_RS_CFC8_RE2_160(*args, **kwargs):#(pf, primer5, primer3, bIndex=0, policy=AllowAll()):
+    pf = args[0]
+    primer5 = args[1]
+    primer3 = args[2]
+    bIndex = kwargs.get("bIndex",0)
+    policy = kwargs.get("policy",AllowAll())
     withCut="CCTGCAGG"
     dec = customize_RS_CFC8(False,pf,primer5,primer3,1,1,3,9,185*9,policy,minIndex=bIndex,\
                             withCut=withCut)
     return dec    
 
-def ENC_RS_CFC8_RE3_160(pf, primer5, primer3, bIndex=0, policy=NoTolerance()):
+def ENC_RS_CFC8_RE3_160(*args, **kwargs):#(pf, primer5, primer3, bIndex=0, policy=NoTolerance()):
+    pf = args[0]
+    primer5 = args[1]
+    primer3 = args[2]
+    bIndex = kwargs.get("bIndex",0)
+    policy = kwargs.get("policy",NoTolerance())   
     withCut="GCGGCCGC"
     enc = customize_RS_CFC8(True,pf,primer5,primer3,1,1,3,9,185*9,policy,minIndex=bIndex,
                             withCut=withCut)
     return enc    
 
-def DEC_RS_CFC8_RE3_160(pf, primer5, primer3, bIndex=0, policy=AllowAll()):
+def DEC_RS_CFC8_RE3_160(*args, **kwargs):#(pf, primer5, primer3, bIndex=0, policy=AllowAll()):
+    pf = args[0]
+    primer5 = args[1]
+    primer3 = args[2]
+    bIndex = kwargs.get("bIndex",0)
+    policy = kwargs.get("policy",AllowAll())
     withCut="GCGGCCGC"
     dec = customize_RS_CFC8(False,pf,primer5,primer3,1,1,3,9,185*9,policy,minIndex=bIndex,\
                             withCut=withCut)
     return dec    
 
-def ENC_RS_CFC8_RE4_160(pf, primer5, primer3, bIndex=0, policy=NoTolerance()):
+def ENC_RS_CFC8_RE4_160(*args, **kwargs):#(pf, primer5, primer3, bIndex=0, policy=NoTolerance()):
+    pf = args[0]
+    primer5 = args[1]
+    primer3 = args[2]
+    bIndex = kwargs.get("bIndex",0)
+    policy = kwargs.get("policy",NoTolerance())   
     withCut="GTTTAAAC"
     enc = customize_RS_CFC8(True,pf,primer5,primer3,1,1,3,9,185*9,policy,minIndex=bIndex,
                             withCut=withCut)
     return enc    
 
-def DEC_RS_CFC8_RE4_160(pf, primer5, primer3, bIndex=0, policy=AllowAll()):
+def DEC_RS_CFC8_RE4_160(*args, **kwargs):#(pf, primer5, primer3, bIndex=0, policy=AllowAll()):
+    pf = args[0]
+    primer5 = args[1]
+    primer3 = args[2]
+    bIndex = kwargs.get("bIndex",0)
+    policy = kwargs.get("policy",AllowAll())
     withCut="GTTTAAAC"
     dec = customize_RS_CFC8(False,pf,primer5,primer3,1,1,3,9,185*9,policy,minIndex=bIndex,\
                             withCut=withCut)
@@ -180,7 +243,7 @@ FileSystemFormats = {
     0x0020 : [0x0020, 200, 16, "RS+CFC8", "Reed-Solomon coded with Comma-free codewords",
               ENC_RS_CFC8_200, DEC_RS_CFC8_200 ],
     #0x0100 : [0x0100, 200, "Dense", "Dense encoding", ENC_Dense_200, DEC_Dense_200 ],
-    0x0110 : [0x0110, 200, 5, "Goldman", "Goldman with 4-way repetition", ENC_Goldman_200, DEC_Goldman_200],
+    #0x0110 : [0x0110, 200, 5, "Goldman", "Goldman with 4-way repetition", ENC_Goldman_200, DEC_Goldman_200],
     0x0120 : [0x0120, 200, 20, "XOR+ROT", "XOR architecture with Rotating Huffman Encoding",
               ENC_XOR_ROT_200, DEC_XOR_ROT_200],
     0x0030 : [0x0030, 200, 11, "RS+ROT", "Inner/Outer RS with Rotating Huffman encoding", ENC_RS_ROT_200,

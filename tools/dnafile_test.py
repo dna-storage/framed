@@ -8,8 +8,9 @@ from dnastorage.codec import huffman
 from dnastorage.codec import fountain
 from dnastorage.codec.deprecated.rscodec import *
 from dnastorage.arch.strand import *
-from dnastorage.system.formats import file_system_formats
-from dnastorage.system.dnafile import *
+from dnastorage.system.formats import file_system_formats, file_system_encoder_by_abbrev
+from dnastorage.system.dnafile import DNAFile 
+from dnastorage.system.pipeline_dnafile import DNAFilePipeline
 #from dnastorage.arch.builder import *
 #from dnastorage.primer.primer_util import *
 
@@ -45,19 +46,32 @@ if __name__ == "__main__":
     succeeds = 0
     
     formats = file_system_formats()
-    for f in formats:
+    print (formats)
     
+    for f in formats:
+
+        if file_system_encoder_by_abbrev(f) == None:
+            continue
+        
         tmp_fd,tmpname = tempfile.mkstemp()
         os.close(tmp_fd)
         # don't need this
 
         orig_tmp_fd,orig_tmp = tempfile.mkstemp()
 
+        encoder_params = {
+            "primer3":args.primer3,
+            "primer5":args.primer5
+        }
+        
         try:
             wf = DNAFile.open(tmpname, "w", \
-                              args.primer5,\
-                              args.primer3,\
-                              format_name=f)
+                             args.primer5,\
+                             args.primer3,\
+                             format_name=f)
+            # wf = DNAFile.open(tmpname, "w", \
+            #                    encoder_params=encoder_params,
+            #                    format_name=f)
 
             with open(args.input_file,"rb") as input_file:
                 while True:
@@ -66,10 +80,14 @@ if __name__ == "__main__":
                         break
                     wf.write(b)
             wf.close()
-        
+
+            print ("Encode {} succeeded.".format(f))
+            
             rf = DNAFile.open(tmpname,"r", \
-                              primer5=args.primer5,\
-                              primer3=args.primer3)
+                             primer5=args.primer5,\
+                             primer3=args.primer3)
+            # rf = DNAFile.open(tmpname,"r", \
+            #                   encoder_params=encoder_params)
 
             while True:
                 b = rf.read(1000)
@@ -79,16 +97,20 @@ if __name__ == "__main__":
             os.close(orig_tmp_fd)            
                                 
         except Exception as e:
-            print (e)
+            print (type(e),e)
             print ("Exception when using {}.".format(f))
-            
-        if filecmp.cmp(args.input_file, orig_tmp,shallow=False)==False:
+
+        try:
+            if filecmp.cmp(args.input_file, orig_tmp,shallow=False)==False:
+                print ("{} failed.".format(f))
+                fails += 1
+            else:
+                print ("{} succeeded.".format(f))
+                succeeds += 1
+        except:
             print ("{} failed.".format(f))
             fails += 1
-        else:
-            print ("{} succeeded.".format(f))
-            succeeds += 1
-
+                
         # Remove tmp files
         try:
             os.remove(tmpname)

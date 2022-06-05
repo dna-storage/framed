@@ -21,7 +21,6 @@ def version_0_1():
     return version_dict
 
 
-
 global versional_formats
 version_formats={"0.1": version_0_1}
 

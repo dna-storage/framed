@@ -302,7 +302,7 @@ class SegmentedWriteDNAFilePipeline(WriteDNAFilePipeline):
         # cursor positioning problems (JMT: not sure if this is the best way)
         self.mem_buffer = BytesIO()
         self.pf = ReadPacketizedFilestream(self.mem_buffer)
-        self.enc = enc_func(self.pf,flanking_primer5+primer5,flanking_primer3+primer3,self.beginIndex)
+        self.enc = enc_func(self.pf,flanking_primer5+primer5,flanking_primer3+primer3,bIndex=self.beginIndex)
         self.size=0
 
     def encode_segments_header(self,segments):

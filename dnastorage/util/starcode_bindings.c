@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include "starcode.h"
 
+static PyObject *starcode_bindingsError;
 
 //Python module to help with random integers, generates a random integer in a specified range
 static PyObject* starcode_top(PyObject *self, PyObject *args){
@@ -32,8 +33,15 @@ static PyObject* starcode_top(PyObject *self, PyObject *args){
       free(input_strands);
       assert(0);
     }
-    input_strands[i]=(char*)malloc(strlen(PyString_AsString(item))+1); //allocate space for a c string
-    strcpy(input_strands[i],PyString_AsString(item)); //copy string from Python's memory space
+    if (PyUnicode_Check(item)) {
+      char *s = PyUnicode_AsUTF8(item);
+      input_strands[i]=(char*)malloc(strlen(s)+1); //allocate space for a c string
+      strcpy(input_strands[i],s); //copy string from Python's memory space
+    } else {
+      PyErr_SetString(starcode_bindingsError, "Expected a string type object.");      
+      assert(0 && "Not a valid string");
+      
+    }
     //Py_XDECREF(item);
   }
   //Py_XDECREF(strand_array);
@@ -80,13 +88,38 @@ static PyObject* starcode_get_cluster(PyObject *self){
  
 }
 
-
 static PyMethodDef starcode_methods[] = {
    { "starcode_top", (PyCFunction)starcode_top, METH_VARARGS, NULL },
    {"starcode_get_cluster",(PyCFunction)starcode_get_cluster,METH_NOARGS,NULL},
    { NULL, NULL, 0, NULL }
 };
 
-PyMODINIT_FUNC initstarcode_bindings() {
-   Py_InitModule3("starcode_bindings", starcode_methods, "Starcode clustering algorithm interface");
+static struct PyModuleDef starcode_bindings_module = {
+    PyModuleDef_HEAD_INIT,
+    "starcode_bindings",   /* name of module */
+    "Starcode clustering algorithm interface", /* module documentation, may be NULL */
+    -1,       /* size of per-interpreter state of the module,
+                 or -1 if the module keeps state in global variables. */
+    starcode_methods
+};
+
+PyMODINIT_FUNC PyInit_starcode_bindings(void)
+{
+    PyObject *m;
+
+    m = PyModule_Create(&starcode_bindings_module);
+    if (m == NULL)
+        return NULL;
+
+    starcode_bindingsError = PyErr_NewException("starcode_bindings.error", NULL, NULL);
+    Py_XINCREF(starcode_bindingsError);
+
+    if (PyModule_AddObject(m, "error", starcode_bindingsError) < 0) {
+        Py_XDECREF(starcode_bindingsError);
+        Py_CLEAR(starcode_bindingsError);
+        Py_DECREF(m);
+        return NULL;
+    }
+
+    return m;
 }

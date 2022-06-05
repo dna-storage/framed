@@ -7,6 +7,7 @@ import logging
 logger = logging.getLogger('dna.storage.system.dnafile')
 logger.addHandler(logging.NullHandler())
 
+
 class DNAFile:
     def __init__(self):
         return
@@ -110,10 +111,12 @@ class ReadDNAFile(DNAFile):
         if 'input' in kwargs:
             self.input_filename = kwargs['input']
             self.in_fd = open(self.input_filename,"r")
+            self.need_to_close = True
             
         elif 'in_fd' in kwargs:
             self.in_fd = kwargs['in_fd']
             self.input_filename = ""
+            self.need_to_close = False
 
         if not ('fsmd_abbrev' in kwargs):
             self.fsmd_abbrev = 'FSMD'
@@ -417,7 +420,7 @@ class SegmentedWriteDNAFile(WriteDNAFile):
         # cursor positioning problems (JMT: not sure if this is the best way)
         self.mem_buffer = BytesIO()
         self.pf = ReadPacketizedFilestream(self.mem_buffer)
-        self.enc = enc_func(self.pf,flanking_primer5+primer5,flanking_primer3+primer3,self.beginIndex)
+        self.enc = enc_func(self.pf,flanking_primer5+primer5,flanking_primer3+primer3,bIndex=self.beginIndex)
         self.size=0
 
     def encode_segments_header(self,segments):
@@ -573,7 +576,7 @@ class SegmentedReadDNAFile(ReadDNAFile):
 
             for s in self.strands:
                 if s.find(primer5)!=-1:
-                    print ("dnafile.py",self.dec.decode_from_phys_to_strand(s))
+                    #print ("dnafile.py",self.dec.decode_from_phys_to_strand(s))
                     self.dec.decode(s)
 
             self.dec.write()
@@ -602,32 +605,34 @@ class SegmentedReadDNAFile(ReadDNAFile):
 if __name__ == "__main__":
     import io
     import sys
+
+    fsmd_abbrev='FSMD-1'
     
-    wf = SegmentedWriteDNAFile(primer3='T'*19+'G',primer5='A'*19+'G',format_name='RS+CFC8+RE1',output="out.dna",fsmd_abbrev='FSMD-1')
+    wf = SegmentedWriteDNAFile(primer3='T'*19+'G',primer5='A'*19+'G',format_name='RS+CFC8+RE1',output="out.dna",fsmd_abbrev=fsmd_abbrev)
     
     #wf = DNAFile.open(primer3='TTTG',primer5='AAAG',format_name='FSMD',filename="out.dna2",op="w")
     
-    for i in range(1000):
+    for i in range(30):
         wf.write( bytearray(convertIntToBytes(i,4)) )
 
     wf.new_segment('RS+CFC8+RE2','AT'+'A'*17+'G','TA'+'T'*17+'G')
         
-    for i in range(10,30):
+    for i in range(30,41):
         wf.write( bytearray([x for x in convertIntToBytes(i,4)]) )
 
     wf.close()
 
-    rf = SegmentedReadDNAFile(primer3='T'*19+'G',primer5='A'*19+'G',input="out.dna",fsmd_abbrev='FSMD-1')
+    rf = SegmentedReadDNAFile(primer3='T'*19+'G',primer5='A'*19+'G',input="out.dna",fsmd_abbrev=fsmd_abbrev)
 
-    print ("Should print out 0 to 30: ")
+    print ("Should print out 0 to 40: ")
     while True:
         s = rf.read(4)
         if len(s)==0:
             break
         n = convertBytesToInt([x for x in s])
-        print (n)
-
-    print ("Done.")
+        print (n,end=" ")
+        
+    print ("\nDone.")
     
     sys.exit(0)
     

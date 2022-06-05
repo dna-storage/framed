@@ -77,7 +77,9 @@ class WritePacketizedFilestream:
                 missing.append(i)
         return missing
 
-
+    def hasMissingKeys(self):
+        return len(self.getMissingKeys()) > 0
+    
     ## Warning: requires buffering the whole file!
     def write(self):
         #emptyString = '\x00'*self.packetSize

@@ -14,7 +14,7 @@ def randomTernary(length):
 
 def convertTernaryHelper(dec,s):
     m = dec % 3
-    q = dec / 3
+    q = dec // 3
     s = s + bases[m]
     if q > 0:
         return convertTernaryHelper(q,s)
@@ -28,7 +28,7 @@ def convertTernary(dec,length):
 
 def convertQuarnaryHelper(dec,s):
     m = dec % 4
-    q = dec / 4
+    q = dec // 4
     s = s + bases[m]
     if q > 0:
         return convertQuarnaryHelper(q,s)
@@ -40,17 +40,17 @@ def convertQuarnary(dec,length):
     s = s.ljust(length,bases[0])
     return s
 
-def convertBaseHelper(base,dec,s):
-    m = dec % base
-    q = dec / base
+def convertBaseHelper(base : int, dec : int, s : str, symbols = bases):
+    m = int(dec % base)
+    q = int(dec / base)
     #print(s)
-    s = s + bases[m]
+    s = s + symbols[m]
     #print(s)
     if q > 0:
-        return convertBaseHelper(base,q,s)
+        return convertBaseHelper(base,q,s,symbols)
     else:
         return s
-    
+        
 def convertBytetoBinary(x,length):
     s=convertBytetoBinaryHelper(x,'')
     s=s.ljust(length,"0")
@@ -59,17 +59,27 @@ def convertBytetoBinary(x,length):
 
 def convertBytetoBinaryHelper(x,s): #convert byte x to a binary string
     binary=['0','1']
-    m=x%2
-    q=x/2
+    m=int(x%2)
+    q=x//2
     s=s+binary[m]
     if q >0:
         return convertBytetoBinaryHelper(q,s)
     else:
         return s
 
-def convertBase(base,dec,length):
-    s = convertBaseHelper(base,dec,'')
+
+def convertBase(base, dec, length, symbols=bases):
+    assert base <= len(symbols)
+    s = convertBaseHelper(base,dec,'', bases)
     s = s.ljust(length,bases[0])
+    return s
+
+def convertToAnyBase(base : int, dec : int, length: int, symbols=bases):
+    assert base == len(symbols)
+    s = convertBaseHelper(base,dec,'', symbols)
+    while len(s) < length:
+        s += symbols[0]
+    assert length == len(s)
     return s
 
 def convertFromBase(base,s):
