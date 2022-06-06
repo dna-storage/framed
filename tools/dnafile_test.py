@@ -10,7 +10,7 @@ from dnastorage.codec.deprecated.rscodec import *
 from dnastorage.arch.strand import *
 from dnastorage.system.formats import file_system_formats, file_system_encoder_by_abbrev
 from dnastorage.system.formats import file_system_formatid_by_abbrev, file_system_abbrev
-from dnastorage.system.dnafile import DNAFile 
+from dnastorage.system.dnafile import DNAFile, get_strands
 from dnastorage.system.pipeline_dnafile import DNAFilePipeline
 #from dnastorage.arch.builder import *
 #from dnastorage.primer.primer_util import *
@@ -115,7 +115,11 @@ if __name__ == "__main__":
                     wf.write(b)
             wf.close()
 
-            
+            # with open(tmpname, "r") as dna:
+            #     s = get_strands(dna)
+            #     for ss in s:
+            #         print (f,len(ss),ss)
+            #     pass
             
             stats[f]["encoded"] = "Success"
             #print ("Encode {} succeeded.".format(f))

@@ -226,9 +226,15 @@ def PIPE_250_FSMD(pf,**kwargs):
 
 def PIPE_RS_CFC8(pf,**kwargs):
     #pipe = customize_RS_CFC8_pipeline(pf,outerECC=37,innerECC=3,dna_length=208,**kwargs)
-    pipe = customize_RS_CFC8_pipeline(pf,**kwargs)
+    pipe = customize_RS_CFC8_pipeline(pf,\
+                                      innerECC=3,\
+                                      blockSizeInBytes=150*15,\
+                                      strandSizeInBytes=15,\
+                                      outerECCStrands=255-150,\
+                                      dna_length=208,\
+                                      title='Pipe-RS+CFC8',
+                                      **kwargs)
     return pipe
-
 
 
 # DO NOT ALTER ENTRIES IN THIS TABLE, BUT YOU MAY ADD NEW ONES
@@ -256,7 +262,7 @@ FileSystemFormats = {
     #          ENC_XOR_ROT_200, DEC_XOR_ROT_200],
 
     #------ Pipelines
-    0x0100 : [0x0100, 200, 90, "Pipe-RS+CFC8","RS+CFC8 implemented with pipelines",PIPE_RS_CFC8,PIPE_RS_CFC8],
+    0x0100 : [0x0100, 208, 15, "Pipe-RS+CFC8","RS+CFC8 implemented with pipelines",PIPE_RS_CFC8,PIPE_RS_CFC8],
     0x0400 : [0x0400, 300, 0, "Hedges+RS",
               "Hedges with ReedSolomon Outer Code, pipeline implementation, fully customizable",
               PIPE_Custom_Hedges_RS,PIPE_Custom_Hedges_RS],    
