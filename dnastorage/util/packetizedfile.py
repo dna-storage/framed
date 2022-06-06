@@ -29,7 +29,8 @@ class WritePacketizedFilestream:
         if (key >= self.minKey) and (key < self.maxKey):
             self.__data[key] = value
         else:
-            print ("not in range:",key,self.minKey,self.maxKey)
+            pass
+            #print ("not in range:",key,self.minKey,self.maxKey)
     def __getitem__(self,key):
         assert key >= self.minKey and key < self.maxKey
         return self.__data[key]

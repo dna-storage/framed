@@ -75,21 +75,23 @@ class ReedSolomonInnerCodec(BaseCodec):
         # find the -1s in the list
         erasures = [ i for i in range(len(message)) if (message[i]==-1 or message[i]==None) ]
         # correct the message
+        if self._numberECCBytes == 0:
+            return array
+        
         try:
             corrected_message, corrected_ecc = self.rs.rs_correct_msg(message,self._numberECCBytes, erase_pos=erasures)
             value = corrected_message
-            #print "corrected message"
             #stats.inc("RSInnerCodec::decode::succeeded")
         except ReedSolomonError as e:
             #stats.inc("RSInnerCodec::decode::failed")
-            #print "Inner: Couldn't correct message: {}".format(message)
+            #print ("Inner: Couldn't correct message: {}".format(message))
             #stats.inc("RSInnerCodec.ReedSolomonError")
             if self._Policy.allow(e):
                 # leave erasures, may be helpful for outer decoder
                 value = message[0:-(self._numberECCBytes)]
                 pass # nothing to do
             else:
-                print (str(e))
+                #print (str(e))
                 raise DNACodingError("RSInnerCodec failed to correct message.")
             # just proceed without further error correction
             pass
@@ -100,7 +102,7 @@ class ReedSolomonInnerCodec(BaseCodec):
                 value = message[0:(self._numberECCBytes)]
                 pass # nothing to do
             else:
-                print (str(e))
+                #print (str(e))
                 raise DNACodingError("RSInnerCodec failed to correct message.")
 
         return value

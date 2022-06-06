@@ -47,8 +47,8 @@ class DNAFilePipeline:
             if fsmd_header_filename!=None:
                 with open(fsmd_header_filename,"rb") as serialized_header_pipeline_data:
                     header.set_pipeline_data(serialized_header_pipeline_data.read())
-            h = header.decode_file_header(copy.deepcopy(strands)) #TODO: this should be changed to something like getting an encoder but for the header
-            print(h)
+                    #TODO: this should be changed to something like getting an encoder but for the header
+            h = header.decode_file_header(copy.deepcopy(strands)) 
 
             if h is None: return None #couldnt decode header, don't really have much else to go off of
 
@@ -131,11 +131,11 @@ class ReadDNAFilePipeline(DNAFilePipeline):
                 
         h = header.decode_file_header(strands)
         self.strands = header.pick_nonheader_strands()
+
         
         self.formatid = h['formatid']
         self.header = h 
         self.size = h['size']
-        print(self.header)
         
         # set up mem_buffer 
         self.mem_buffer = BytesIO()
@@ -455,7 +455,7 @@ class SegmentedReadDNAFilePipeline(ReadDNAFilePipeline):
 
             for s in self.strands:
                 if s.find(primer5)!=-1:
-                    print ("dnafile.py",self.dec.decode_from_phys_to_strand(s))
+                    #print ("dnafile.py",self.dec.decode_from_phys_to_strand(s))
                     self.dec.decode(s)
 
             self.dec.write()

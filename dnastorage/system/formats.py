@@ -209,8 +209,6 @@ def DEC_Goldman_200(pf, primer5, primer3):
     return dec
 
 
-
-
 #KV: Added pipelines
 def PIPE_Custom_Hedges_RS(pf,**kwargs):
     #Pipeline implementation of Hedges and RS outer code, customization values are embedded in kwargs
@@ -221,11 +219,13 @@ def PIPE_250_FSMD(pf,**kwargs):
     outerECCStrands=40
     strandSizeInBytes=15
     #pipeline implementation fo FSMD
-    pipe = customize_RS_CFC8_pipeline(pf,**kwargs,innerECC=2,strandSizeInBytes=strandSizeInBytes,
-                                      blockSizeInBytes=blockSizeInBytes,outerECCStrands=outerECCStrands,dna_length=250)
+    pipe = customize_RS_CFC8_pipeline(pf,**kwargs,innerECC=2,strandSizeInBytes=strandSizeInBytes,\
+                                      blockSizeInBytes=blockSizeInBytes,outerECCStrands=outerECCStrands,\
+                                      dna_length=250)
     return pipe
 
 def PIPE_RS_CFC8(pf,**kwargs):
+    #pipe = customize_RS_CFC8_pipeline(pf,outerECC=37,innerECC=3,dna_length=208,**kwargs)
     pipe = customize_RS_CFC8_pipeline(pf,**kwargs)
     return pipe
 
@@ -235,20 +235,34 @@ def PIPE_RS_CFC8(pf,**kwargs):
 # ALL CHANGES NEED TO BE THOROUGHLY TESTED FOR BACKWARDS COMPATIBILITY
 
 FileSystemFormats = {
+    #------ Meta-data
     # KEY      KEY    LEN  PacketSize, Abbrev.   Description                   ENCODER       DECODR
     0x0010 : [0x0010, 200, 90, "FSMD", "File system meta-data format", ENC_FSMD_200, DEC_FSMD_200 ],
-    0x0011 : [0x0011, 160, 120, "FSMD-1", "File system meta-data format with cut", ENC_FSMD_WCUT_160, DEC_FSMD_WCUT_160 ],
-    0x0012 : [0x0012, 250, 90, "FSMD-Pipe", "File system meta-data format pipelined",PIPE_250_FSMD,PIPE_250_FSMD],
-    0x0013 : [0x0013, 200, 90, "Pipe-RS+CFC8","RS+CFC8 implemented with pipelines",PIPE_RS_CFC8,PIPE_RS_CFC8],
+    0x0011 : [0x0011, 160, 120, "FSMD-1", "File system meta-data format with cut",
+              ENC_FSMD_WCUT_160, DEC_FSMD_WCUT_160 ],
+    0x0012 : [0x0012, 250, 200, "FSMD-Pipe", "File system meta-data format pipelined",
+              PIPE_250_FSMD,PIPE_250_FSMD],
+
+    #------ ^^^ Meta-data only above here
+
+    #------ First codecs used in experiments based on CFC and RS, LayeredCodec
     0x0020 : [0x0020, 200, 16, "RS+CFC8", "Reed-Solomon coded with Comma-free codewords",
               ENC_RS_CFC8_200, DEC_RS_CFC8_200 ],
     #0x0100 : [0x0100, 200, "Dense", "Dense encoding", ENC_Dense_200, DEC_Dense_200 ],
     #0x0110 : [0x0110, 200, 5, "Goldman", "Goldman with 4-way repetition", ENC_Goldman_200, DEC_Goldman_200],
-    0x0120 : [0x0120, 200, 20, "XOR+ROT", "XOR architecture with Rotating Huffman Encoding",
-              ENC_XOR_ROT_200, DEC_XOR_ROT_200],
-    0x0030 : [0x0030, 200, 11, "RS+ROT", "Inner/Outer RS with Rotating Huffman encoding", ENC_RS_ROT_200,
-              DEC_RS_ROT_200],
-    0x1000 : [0x1000, 200, 20, "Segmented", "Segmented file format to support Preview", None, None],
+    #0x0030 : [0x0030, 200, 11, "RS+ROT", "Inner/Outer RS with Rotating Huffman encoding", ENC_RS_ROT_200,
+    #          DEC_RS_ROT_200],
+    #0x0040 : [0x0040, 200, 20, "XOR+ROT", "XOR architecture with Rotating Huffman Encoding",
+    #          ENC_XOR_ROT_200, DEC_XOR_ROT_200],
+
+    #------ Pipelines
+    0x0100 : [0x0100, 200, 90, "Pipe-RS+CFC8","RS+CFC8 implemented with pipelines",PIPE_RS_CFC8,PIPE_RS_CFC8],
+    0x0400 : [0x0400, 300, 0, "Hedges+RS",
+              "Hedges with ReedSolomon Outer Code, pipeline implementation, fully customizable",
+              PIPE_Custom_Hedges_RS,PIPE_Custom_Hedges_RS],    
+    
+    #------ Segmented
+    0x2000 : [0x2000, 200, 20, "Segmented", "Segmented file format to support Preview", None, None],
     0x2021 : [0x2021, 160, 9, "RS+CFC8+RE1", "Reed-Solomon coded with Comma-free codewords",
               ENC_RS_CFC8_RE1_160, DEC_RS_CFC8_RE1_160 ],
     0x2022 : [0x2022, 160, 9, "RS+CFC8+RE2", "Reed-Solomon coded with Comma-free codewords",
@@ -257,8 +271,11 @@ FileSystemFormats = {
               ENC_RS_CFC8_RE3_160, DEC_RS_CFC8_RE3_160 ],
     0x2024 : [0x2024, 160, 9, "RS+CFC8+RE4", "Reed-Solomon coded with Comma-free codewords",
               ENC_RS_CFC8_RE4_160, DEC_RS_CFC8_RE4_160 ],
-    0x3000 : [0x3000, "Variable", "Variable", "OH_BITSTRING_XXX", "Experimental encoding to evaluate overhang construction",ENC_OH_BITSTRING_XXX,DEC_OH_BITSTRING_XXX],
-    0x400  : [0x400, 300, 0, "Hedges+RS","Hedges with ReedSolomon Outer Code, pipeline implementation, fully customizable", PIPE_Custom_Hedges_RS,PIPE_Custom_Hedges_RS],
+
+    #------ Overhang
+    0x3000 : [0x3000, "Variable", "Variable", "OH_BITSTRING_XXX",
+              "Experimental encoding to evaluate overhang construction",
+              ENC_OH_BITSTRING_XXX,DEC_OH_BITSTRING_XXX],
 }
 
 
@@ -288,5 +305,7 @@ def file_system_decoder_by_abbrev(ab):
 def file_system_formatid_by_abbrev(ab):
     return _abbrevFileSystemDict[ab][0]
 
+def file_system_abbrev(id):
+    return FileSystemFormats[id][3]
 
 

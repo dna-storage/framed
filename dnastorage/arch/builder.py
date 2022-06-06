@@ -25,18 +25,17 @@ def available_file_architectures():
 
 
 def customize_RS_CFC8_pipeline(pf,**kwargs):
-    print(kwargs)
-    blockSizeInBytes=kwargs.get("blockSizeInBytes",150)
+    blockSizeInBytes=kwargs.get("blockSizeInBytes",150*15)
     strandSizeInBytes=kwargs.get("strandSizeInBytes",15)
     primer5 = kwargs.get("primer5","")
     primer3 = kwargs.get("primer3","")
     innerECC = kwargs.get("innerECC",0)
-    outerECCStrands = kwargs.get("outerECCStrands",0)
+    outerECCStrands = kwargs.get("outerECCStrands",255-150)
     magic_strand = kwargs.get("magic","")
     cut = kwargs.get("cut","")
     fault_injection= kwargs.get("fi",False)
-    upper_strand_length = kwargs.get("dna_length",200)
-    pipeline_title=kwargs.get("title","")
+    upper_strand_length = kwargs.get("dna_length",208)
+    pipeline_title=kwargs.get("title","anonymous_pipeline")
     barcode = kwargs.get("barcode",tuple())
     
     #create the components we are gonna use
@@ -70,11 +69,9 @@ def SDC_pipeline(pf,**kwargs):
     t7_seq = kwargs.get("T7","CGACTAATACGACTCACTATAGC")
     rt_pcr_seq = kwargs.get("RT-PCR","")
 
-    
     hedges_rate = kwargs.get("rate",1/2)
     hedges_pad_bits=kwargs.get("pad",0)
-    hedges_previous = kwargs.get("prev_bits",16)
-    hedges_salt_bits = kwargs.get("salt_bits",500)
+    hedges_previous = kwargs.get("prev_bits",8)
     
     outerECCStrands = kwargs.get("outerECCStrands",0)
     upper_strand_length = kwargs.get("dna_length",200)
@@ -84,7 +81,7 @@ def SDC_pipeline(pf,**kwargs):
     
     #Error correction components
     rsOuter = ReedSolomonOuterPipeline(blockSizeInBytes//strandSizeInBytes,outerECCStrands)
-    hedges = HedgePipeline(hedges_rate,hedges_pad_bits,hedges_previous,hedges_salt_bits)
+    hedges = FastHedgePipeline(hedges_rate,pad_bits=hedges_pad_bits,prev_bits=hedges_previous)
     
     #components related to DNA functionality
     p5 = PrependSequencePipeline(primer5,ignore=True)

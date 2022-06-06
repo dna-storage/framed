@@ -187,7 +187,7 @@ class PipeLine(EncodePacketizedFile,DecodePacketizedFile):
                 output_packet=self._outer_cascade.decode(packets[p])
 
             #data should be ordered correctly inherently coming out of decoding,filters Nones that may come from dropouts
-            out_data = [ c if c!=None else 0 for x in output_packet for c in x.codewords] 
+            out_data = [ c if c!=None else 0 for x in output_packet for c in x.codewords]
             self.writeToFile(p,out_data) #write out packet
         self.write()
 
@@ -262,6 +262,7 @@ class PipeLine(EncodePacketizedFile,DecodePacketizedFile):
             if strand.dna_strand ==None:
                 self.filter_strand(strand)
                 return
+
         strand.index_bytes = self._index_bytes
         self._decode_strands.append(strand)
    
@@ -401,7 +402,7 @@ if __name__=="__main__":
         else:
             int1 = convertBytesToInt([x for x in s1])
             int2 = convertBytesToInt([x for x in s2])
-            print("Int1 {} Int2 {}".format(int1,int2))
+            #print("Int1 {} Int2 {}".format(int1,int2))
             assert(int1==int2)
 
     

@@ -65,10 +65,10 @@ class Header(object):
         
         dhash = hashlib.md5()
         dhash.update(data)
+
         self._encoded_header_hash = dhash.digest()
         self._header_length = len(data)
-        
-        
+
         pf = ReadPacketizedFilestream(BytesIO(data))
         self._pipeline.set_read_pf(pf)
         strands = []
@@ -94,18 +94,18 @@ class Header(object):
         packetsize = file_system_format_packetsize(fid)
         pf = WritePacketizedFilestream(b,packetsize,packetsize)
         self._pipeline.set_write_pf(pf)
-        
+
         self._non_header_strands=[]
         for s in strands:
             self._pipeline.decode(s)
         #should be able to finish decoding here
+        
         self._pipeline.final_decode()
 
         try:
             data = [ ord(x) for x in b.getvalue() ]
         except Exception as e:
             data = [ x for x in b.getvalue() ]
-
 
         if self._encoded_header_hash!=None: #quick check to determine if header survived correctly
             dhash = hashlib.md5()

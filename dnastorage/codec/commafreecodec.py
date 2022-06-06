@@ -196,7 +196,7 @@ class CommaFreeCodec(BaseCodec):
                     # whether found or not, move to next possible symbol
                     if dec[n] == None:
                         prior = False
-                    i += 8        
+                    i += 8
         return dec
 
 
@@ -213,23 +213,24 @@ class CommaFreeCodec(BaseCodec):
                     key_array.append(i)
         else:
             key_array=dec[0:self._keyWidthInBytes]    
-        key = base_conversion.convertBytesToInt(key_array)        
+        key = base_conversion.convertBytesToInt(key_array)
         #return key,"".join([ chr(x) for x in dec[self._keyWidthInBytes:]])
         
         #Return an array of values rather than joining them as characters, possibly FIX_ME?
         return key,dec[self._keyWidthInBytes:]
 
 #wrapper so that the old comma free codec plays nice with pipeline based processing
-class CommaFreeCodecPipeline(CommaFreeCodec,CWtoDNA):
+class CommaFreeCodecPipeline(CommaFreeCodec,CWtoDNA): 
     def __init__(self,numberBytes=15,CodecObj=None,Policy=None):
-        CommaFreeCodec.__init__(self,numberBytes,CodecObj=CodecObj,keyBytes=0)
+        CommaFreeCodec.__init__(self,numberBytes,CodecObj=CodecObj,keyBytes=1)
         CWtoDNA.__init__(self)
     def _encode(self,strand):
-        self._numberBytes=len(strand.codewords)
-        strand.dna_strand=CommaFreeCodec._encode(self,(0,strand.codewords))
+        self._numberBytes=len(strand.codewords)        
+        strand.dna_strand=CommaFreeCodec._encode(self,(strand.codewords[0],strand.codewords[1:]))        
         return strand
     def _decode(self,strand):
-        dummy, strand.codewords=CommaFreeCodec._decode(self,strand.dna_strand)
+        a, b=CommaFreeCodec._decode(self,strand.dna_strand)
+        strand.codewords = [a]+b
         return strand
 
     def _encode_header(self):
@@ -379,8 +380,31 @@ class CommaFreeCodewords(BaseCodec):
             #         i += v[0]
             # else:
             #     i += 1
+
+#wrapper so that the old comma free codec plays nice with pipeline based processing
+class CommaFreeCodewordsPipeline(CommaFreeCodewords,CWtoDNA):
+    def __init__(self,numberBytes=15,CodecObj=None,Policy=None):
+        CommaFreeCodewords.__init__(self,numberBytes,CodecObj=CodecObj)
+        CWtoDNA.__init__(self)
+    
+    def _encode(self,strand):
+        self._numberBytes=len(strand.codewords)
+        strand.dna_strand=CommaFreeCodewords._encode(self,strand.codewords)
+        return strand
+    def _decode(self,strand):
+        strand.codewords=CommaFreeCodec._decode(self,strand.dna_strand)
+        return strand
+
+    def _encode_header(self):
+        return convertIntToBytes(self._numberBytes,1)
+
+    def _decode_header(self,buf):
+        self._numberBytes=convertBytesToInt(buf[0:1])
+        return buf[1::]
     
 
+
+    
 if __name__ == "__main__":
     from dnastorage.primer.primer_util import *
     from dnastorage.primer.design import *
