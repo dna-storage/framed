@@ -60,7 +60,7 @@ class PipeLine(EncodePacketizedFile,DecodePacketizedFile):
                 self._inner_codecs.append(component)
 
             elif isinstance(component,CWtoDNA):
-                if not index==0 and (not isinstance(prev_component,CWtoCW) and  not isinstance(prev_component,CWtoDNA) and not isinstance(prev_component,Probe)):
+                if not index==0 and (not isinstance(prev_component,CWtoCW) and  not isinstance(prev_component,CWtoDNA) and not isinstance(prev_component,Probe) and not isinstance(prev_component,BaseOuterCodec)):
                     raise PipeLineConstructionError("Error with DNA to CW constructions")
                 if isinstance(prev_component,Probe): self._cw_to_DNA.append(prev_component) #add probe 
                 self._cw_to_DNA.append(component)

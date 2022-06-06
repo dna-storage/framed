@@ -390,12 +390,9 @@ class CommaFreeCodewordsPipeline(CommaFreeCodewords,CWtoDNA):
     def _encode(self,strand):
         self._numberBytes=len(strand.codewords)
         strand.dna_strand="".join(CommaFreeCodewords._encode(self,strand.codewords))
-        print (strand.dna_strand)        
         return strand
     def _decode(self,strand):
         strand.codewords=CommaFreeCodewords._decode(self,strand.dna_strand)
-        print (strand.codewords)
-        
         return strand
 
     def _encode_header(self):

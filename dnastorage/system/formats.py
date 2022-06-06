@@ -7,7 +7,7 @@ from dnastorage.codec import huffman
 from dnastorage.codec import fountain
 from dnastorage.arch.strand import *
 from dnastorage.arch.builder import customize_RS_CFC8, customize_RS_CFC8_pipeline
-from dnastorage.arch.builder import build_overhang_bitstring_strand
+from dnastorage.arch.builder import build_overhang_bitstring_strand, SDC_pipeline, build_hedges_rs
 from dnastorage.exceptions import *
 
 
@@ -212,7 +212,19 @@ def DEC_Goldman_200(pf, primer5, primer3):
 #KV: Added pipelines
 def PIPE_Custom_Hedges_RS(pf,**kwargs):
     #Pipeline implementation of Hedges and RS outer code, customization values are embedded in kwargs
-    return build_hedges_rs(pf,**kwargs)
+    pipe = build_hedges_rs(pf,\
+                        blockSizeInBytes=180*8,\
+                        strandSizeInBytes=8,\
+                        outerECCStrands=255-180,\
+                        rate=1.0/4,\
+                        pad=8,\
+                        prev_bits=8,\
+                        dna_length=300,\
+                        **kwargs)
+
+    #pipe = customize_RS_CFC8_pipeline(pf,outerECC=37,innerECC=3,dna_length=208,**kwargs)
+    return pipe
+
 
 def PIPE_250_FSMD(pf,**kwargs):
     blockSizeInBytes=90
@@ -234,6 +246,20 @@ def PIPE_RS_CFC8(pf,**kwargs):
                                       dna_length=208,\
                                       title='Pipe-RS+CFC8',
                                       **kwargs)
+    return pipe
+
+def SDC_PIPE(pf,**kwargs):
+    pipe = SDC_pipeline(pf,\
+                        blockSizeInBytes=180*8,\
+                        strandSizeInBytes=8,\
+                        outerECCStrands=255-180,\
+                        rate=1.0/4,\
+                        pad=8,\
+                        prev_bits=8,\
+                        dna_length=300,\
+                        **kwargs)
+
+    #pipe = customize_RS_CFC8_pipeline(pf,outerECC=37,innerECC=3,dna_length=208,**kwargs)
     return pipe
 
 
@@ -266,6 +292,7 @@ FileSystemFormats = {
     0x0400 : [0x0400, 300, 0, "Hedges+RS",
               "Hedges with ReedSolomon Outer Code, pipeline implementation, fully customizable",
               PIPE_Custom_Hedges_RS,PIPE_Custom_Hedges_RS],    
+    0x0500 : [0x0500, 208, 15, "SDC","Support for SDC experiments",SDC_PIPE,SDC_PIPE],
     
     #------ Segmented
     0x2000 : [0x2000, 200, 20, "Segmented", "Segmented file format to support Preview", None, None],

@@ -107,6 +107,7 @@ if __name__ == "__main__":
                                      fsmd_abbrev='FSMD-Pipe',\
                                      fsmd_header_filename=header_data_path)                
 
+                
             with open(args.input_file,"rb") as input_file:
                 while True:
                     b = input_file.read(1000)
@@ -153,7 +154,7 @@ if __name__ == "__main__":
                                 
         except Exception as e:
             #print (type(e),e)
-            print ("Exception when using {}.".format(f))
+            print ("Exception when using {}. {}".format(f, str(e)))
 
         try:
             if filecmp.cmp(args.input_file, orig_tmp,shallow=False)==False:

@@ -59,8 +59,8 @@ def customize_RS_CFC8_pipeline(pf,**kwargs):
 
 
 
-def SDC_pipeline(pf,**kwargs):
-    print(kwargs)
+def build_hedges_rs(pf,**kwargs):
+    #print(kwargs)
 
     fault_injection= kwargs.get("fi",False)
     blockSizeInBytes=kwargs.get("blockSizeInBytes",150)
@@ -68,27 +68,69 @@ def SDC_pipeline(pf,**kwargs):
     primer5 = kwargs.get("primer5","")
     primer3 = kwargs.get("primer3","")
     t7_seq = kwargs.get("T7","CGACTAATACGACTCACTATAGC")
-    rt_pcr_seq = kwargs.get("RT-PCR","")
+    rt_pcr_seq = kwargs.get("RT-PCR","ATAGTACCAAT")
 
     hedges_rate = kwargs.get("rate",1/2)
-    hedges_pad_bits=kwargs.get("pad",0)
+    # pad_bits and prev_bits should match by default:
+    hedges_pad_bits=kwargs.get("pad",8)
     hedges_previous = kwargs.get("prev_bits",8)
     
     outerECCStrands = kwargs.get("outerECCStrands",0)
     upper_strand_length = kwargs.get("dna_length",200)
     pipeline_title=kwargs.get("title","")
     barcode = kwargs.get("barcode",tuple())
-
     
     #Error correction components
     rsOuter = ReedSolomonOuterPipeline(blockSizeInBytes//strandSizeInBytes,outerECCStrands)
-    hedges = FastHedgePipeline(hedges_rate,pad_bits=hedges_pad_bits,prev_bits=hedges_previous)
+    hedges = FastHedgesPipeline(rate=hedges_rate,pad_bits=hedges_pad_bits,prev_bits=hedges_previous)
     
     #components related to DNA functionality
     p5 = PrependSequencePipeline(primer5,ignore=True)
     t7 = PrependSequencePipeline(t7_seq,ignore=True)
     rt_pcr = PrependSequencePipeline(rt_pcr_seq,handler="align",search_range=70)
-    p3 = AppendSequencePipeline(reverse_complement(primer3),handler="align",search_range=30)
+    p3 = AppendSequencePipeline(reverse_complement(primer3),handler="align",search_range=20)
+
+    consolidator = SimpleMajorityVote()
+
+    if fault_injection is False:
+        return pipeline.PipeLine((rsOuter,hedges,p3,rt_pcr,t7,p5),consolidator,blockSizeInBytes,strandSizeInBytes,upper_strand_length,1,packetizedfile=pf,
+                                 barcode=barcode)
+    else:
+        hedges_probe = CodewordErrorRateProbe(probe_name="{}::hedges".format(pipeline_title))
+        return pipeline.PipeLine(((rsOuter,hedges_probe,hedges,p3,rt_pcr,t7,p5)),consolidator,
+                                 blockSizeInBytes,strandSizeInBytes,upper_strand_length,1,packetizedfile=pf,barcode=barcode)
+
+    
+def SDC_pipeline(pf,**kwargs):
+    #print(kwargs)
+
+    fault_injection= kwargs.get("fi",False)
+    blockSizeInBytes=kwargs.get("blockSizeInBytes",150)
+    strandSizeInBytes=kwargs.get("strandSizeInBytes",15)
+    primer5 = kwargs.get("primer5","")
+    primer3 = kwargs.get("primer3","")
+    t7_seq = kwargs.get("T7","CGACTAATACGACTCACTATAGC")
+    rt_pcr_seq = kwargs.get("RT-PCR","ATAGTACCAAT")
+
+    hedges_rate = kwargs.get("rate",1/2)
+    # pad_bits and prev_bits should match by default:
+    hedges_pad_bits=kwargs.get("pad",8)
+    hedges_previous = kwargs.get("prev_bits",8)
+    
+    outerECCStrands = kwargs.get("outerECCStrands",0)
+    upper_strand_length = kwargs.get("dna_length",200)
+    pipeline_title=kwargs.get("title","")
+    barcode = kwargs.get("barcode",tuple())
+    
+    #Error correction components
+    rsOuter = ReedSolomonOuterPipeline(blockSizeInBytes//strandSizeInBytes,outerECCStrands)
+    hedges = FastHedgesPipeline(rate=hedges_rate,pad_bits=hedges_pad_bits,prev_bits=hedges_previous)
+    
+    #components related to DNA functionality
+    p5 = PrependSequencePipeline(primer5,ignore=True)
+    t7 = PrependSequencePipeline(t7_seq,ignore=True)
+    rt_pcr = PrependSequencePipeline(rt_pcr_seq,handler="align",search_range=70)
+    p3 = AppendSequencePipeline(reverse_complement(primer3),handler="align",search_range=20)
 
     consolidator = SimpleMajorityVote()
 

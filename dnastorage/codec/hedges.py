@@ -888,9 +888,8 @@ class FastHedgesPipeline(BaseCodec,CWtoDNA):
 
         def set_seqnum_bytes(self,seq_bytes):
             self.seq_bytes = seq_bytes
-            if seq_bytes < 4:
-                self.salt_bits = seq_bytes * 8
-            else:
+            self.salt_bits = seq_bytes * 8
+            if self.salt_bits > 32:
                 self.salt_bits = 32
     
     def __init__(self,rate,pad_bits=8,prev_bits=8,guess_limit=100000,CodecObj=None,Policy=None):
@@ -908,20 +907,22 @@ class FastHedgesPipeline(BaseCodec,CWtoDNA):
         return strand
         
     def _decode(self,strand):
-        strand.codewords = fasthedges.decode(strand.dna_strand, self._hedges_state, self._guess_limit)        
+        #print (self._hedges_state.seq_bytes, self._hedges_state.message_bytes)
+        #fasthedges.echo(self._hedges_state)                
+        strand.codewords = fasthedges.decode(strand.dna_strand, self._hedges_state, self._guess_limit)
         return strand
     
     #store some pertinent information like bit lengths of data seen to be able to reinstantiate the decoder in a correct state    
     def _encode_header(self):
         data = []
-        data+=convertInttoBytes(self._hedges_state.seqnum_bytes,4)
-        data+=convertIntoBytes(self._hedges_state.message_bytes,4)
+        data+=convertIntToBytes(self._hedges_state.seq_bytes,4)
+        data+=convertIntToBytes(self._hedges_state.message_bytes,4)
         return data
     def _decode_header(self,buff):
         pos=0
-        seqnum_bytes = convertBytestoInt(buff[pos:pos+4])
+        seqnum_bytes = convertBytesToInt(buff[pos:pos+4])
         pos+=4
-        message_bytes = convertBytestoInt(buff[pos:pos+4])
+        message_bytes = convertBytesToInt(buff[pos:pos+4])
         pos+=4
         self._hedges_state.set_message_bytes(message_bytes)
         self._hedges_state.set_seqnum_bytes(seqnum_bytes)
