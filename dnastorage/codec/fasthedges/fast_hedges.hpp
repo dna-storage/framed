@@ -410,7 +410,7 @@ public:
   std::string encode(std::vector<uint8_t> seqId, std::vector<uint8_t> message);
   
   template <typename Constraint = Constraint, typename Reward = Reward>
-  bool decode(std::string &observed,
+  uint32_t decode(std::string &observed,
 	      std::vector<uint8_t> &seqId,
 	      std::vector<uint8_t> &message,
 	      int max_guesses=100000);

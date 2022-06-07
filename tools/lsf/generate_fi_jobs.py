@@ -64,6 +64,7 @@ if __name__=="__main__":
     parser.add_argument('--time',default=10,type=int,action="store",help="Time allowed for each job")
     parser.add_argument('--queue',default="tuck",type=str,action="store",help="Queue to use for jobs")
     parser.add_argument('--dump_dir',required=True,help="path to store results")
+    parser.add_argument('--no',action='store_true', help="don't run bsub command, just test everything.")
     args = parser.parse_args()
 
     job = LSFJob()
@@ -146,4 +147,4 @@ if __name__=="__main__":
                 job.command = command
                 job.run_path = final_run_path
 
-                job.submit() #finally submit the experiment
+                job.submit(args.no) #finally submit the experiment

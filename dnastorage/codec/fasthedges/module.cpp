@@ -152,7 +152,7 @@ fasthedges_decode2(PyObject *self, PyObject *args)
       std::vector<uint8_t> mess(h.message_bytes), seq(h.seq_bytes);
 
       std::string sstrand(strand);
-      bool t = h.decode(sstrand,seq,mess,guesses);
+      uint32_t t = h.decode(sstrand,seq,mess,guesses);
 
       // std::cout << "[";
       // for(auto i : seq)
@@ -164,15 +164,28 @@ fasthedges_decode2(PyObject *self, PyObject *args)
       int sz = seq.size() + mess.size();
       PyObject *list = PyList_New(sz);
       for(auto i=0; i<sz; i++)
-	{
+	{	  
 	  if (i<seq.size()) {
-	    PyObject *item = Py_BuildValue("i",seq[i]);
-	    Py_INCREF(item);
-	    PyList_SetItem(list,i,item);
+	    if (i >= t) {
+	      PyObject *item = Py_BuildValue("s",NULL);
+	      Py_INCREF(item);
+	      PyList_SetItem(list,i,item);
+
+	    } else {
+	      PyObject *item = Py_BuildValue("i",seq[i]);
+	      Py_INCREF(item);
+	      PyList_SetItem(list,i,item);
+	    }
 	  } else {
-	    PyObject *item = Py_BuildValue("i",mess[i-seq.size()]);
-	    Py_INCREF(item);
-	    PyList_SetItem(list,i,item);
+	    if (i >= t) {
+	      PyObject *item = Py_BuildValue("s",NULL);
+	      Py_INCREF(item);
+	      PyList_SetItem(list,i,item);
+	    } else {
+	      PyObject *item = Py_BuildValue("i",mess[i-seq.size()]);
+	      Py_INCREF(item);
+	      PyList_SetItem(list,i,item);
+	    }
 	  }
 	  
 	}

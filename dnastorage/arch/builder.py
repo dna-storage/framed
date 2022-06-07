@@ -105,20 +105,20 @@ def SDC_pipeline(pf,**kwargs):
     #print(kwargs)
 
     fault_injection= kwargs.get("fi",False)
-    blockSizeInBytes=kwargs.get("blockSizeInBytes",150)
+    blockSizeInBytes=kwargs.get("blockSizeInBytes",180*15)
     strandSizeInBytes=kwargs.get("strandSizeInBytes",15)
     primer5 = kwargs.get("primer5","")
     primer3 = kwargs.get("primer3","")
     t7_seq = kwargs.get("T7","CGACTAATACGACTCACTATAGC")
     rt_pcr_seq = kwargs.get("RT-PCR","ATAGTACCAAT")
 
-    hedges_rate = kwargs.get("rate",1/2)
+    hedges_rate = kwargs.get("rate",1/2.)
     # pad_bits and prev_bits should match by default:
     hedges_pad_bits=kwargs.get("pad",8)
     hedges_previous = kwargs.get("prev_bits",8)
     
-    outerECCStrands = kwargs.get("outerECCStrands",0)
-    upper_strand_length = kwargs.get("dna_length",200)
+    outerECCStrands = kwargs.get("outerECCStrands",255-180)
+    upper_strand_length = kwargs.get("dna_length",300)
     pipeline_title=kwargs.get("title","")
     barcode = kwargs.get("barcode",tuple())
     

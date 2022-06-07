@@ -44,13 +44,14 @@ class LSFJob(object):
                 f.write('\nsource {}'.format(self.python_env))
             f.write("\n {}".format(self.command))
         return generate_name
-    def submit(self):
+    def submit(self, no=False):
         assert self.command!=None
         current_path = os.environ["PWD"]
         generate_name = self.generate()
         shutil.copy(generate_name,self.run_path)
         os.chdir(self.run_path)
-        os.system('bsub <' +generate_name)
+        if no == False:
+            os.system('bsub <' +generate_name)
         os.chdir(current_path)
 
     @property

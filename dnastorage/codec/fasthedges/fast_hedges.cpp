@@ -561,7 +561,7 @@ std::ostream & operator << (std::ostream &o, search_tree<Constraint, Reward> &no
 }
 
 template <typename Constraint, typename Reward>
-bool hedge::decode(std::string &observed,
+uint32_t hedge::decode(std::string &observed,
 		   std::vector<uint8_t> &seqId,
 		   std::vector<uint8_t> &message,
 		   int max_guesses)
@@ -628,6 +628,8 @@ bool hedge::decode(std::string &observed,
   // in either case, collect the result
   node best = heap.top();
   bool result = best.isWinner();
+
+  uint32_t ret;
   
   // collect seqId and message
   //std::list<char> res = best.bases.get()->get_all();
@@ -636,6 +638,15 @@ bool hedge::decode(std::string &observed,
   std::list<uint8_t> res2 = best.bits.get()->get_all();
   bitwrapper seq(seqId);
   bitwrapper mess(message);
+
+  if ( res2.size() == (message_bytes + seq_bytes)*8 + pad_bits )
+    ret = message_bytes + seq_bytes;
+  else if (res2.size() > (message_bytes + seq_bytes)*8)
+    ret = message_bytes + seq_bytes;
+  else
+    // Since we only take whole bytes, this result needs to be truncated to
+    // the nearest byte. The last partial byte would be invalid.
+    ret = res2.size() / 8;
   
   // Extract message and seqId
   int k=0;
@@ -659,7 +670,7 @@ bool hedge::decode(std::string &observed,
     b++;
   }
   
-  return result;
+  return ret;
 }
 
 } // end namespace
