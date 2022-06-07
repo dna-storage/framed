@@ -53,6 +53,7 @@ def recursive_param_aggregation(l,out_list=None,previous=[]):
 
 
 if __name__=="__main__":
+    from pathlib import Path
     import argparse
     parser = argparse.ArgumentParser(description="Script to generate fault injection jobs")
     parser.add_argument('--params',type=str,required=True,action="store",help="Path to json file with parameters to perform fault injection with")

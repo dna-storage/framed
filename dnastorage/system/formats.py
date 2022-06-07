@@ -238,7 +238,7 @@ def PIPE_250_FSMD(pf,**kwargs):
 
 def PIPE_RS_CFC8(pf,**kwargs):
     #pipe = customize_RS_CFC8_pipeline(pf,outerECC=37,innerECC=3,dna_length=208,**kwargs)        
-    pipe = customize_RS_CFC8_pipeline(pf,\                                      
+    pipe = customize_RS_CFC8_pipeline(pf,\
                                       innerECC=3,\
                                       blockSizeInBytes=150*15,\
                                       strandSizeInBytes=15,\
@@ -251,8 +251,7 @@ def PIPE_RS_CFC8(pf,**kwargs):
 
 def USER_PIPE_RS_CFC8(pf,**kwargs):
     #pipe = customize_RS_CFC8_pipeline(pf,outerECC=37,innerECC=3,dna_length=208,**kwargs)        
-    pipe = customize_RS_CFC8_pipeline(pf,\                                      
-                                      **kwargs)
+    pipe = customize_RS_CFC8_pipeline(pf,**kwargs)
     return pipe
 
 def SDC_PIPE(pf,**kwargs):
