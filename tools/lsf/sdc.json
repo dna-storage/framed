@@ -1,0 +1,23 @@
+{
+    "fault_model":"fixed_rate",
+    "file":"/tuck_data/kvolkel/dnastorage/tools/test_fault_injection/Downsized-Phosphorous.png",
+    "strand_distribution":"poisson",
+    "arch":"SDC",
+    "header_version":"0.1",
+    "simulation_runs":10,
+    "encoder_params":{
+	"primer3":"AAAAAAAAAA",                                                                                                                                                              
+	"primer5":"TTTTTTTTTT",                                                                                                                                                             
+	"fi":true
+    },
+    "header_params":{
+	"primer3":"AAAAAAAAAA",
+	"primer5":"TTTTTTTTTT"
+    },
+    "fault_params":{
+	"fault_rate":["value_l 0.01,0.02,0.10]
+    },
+    "distribution_params":{
+	"mean":[1,10,11]
+    }
+}
