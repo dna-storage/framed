@@ -2,7 +2,7 @@
     "fault_model":"fixed_rate",
     "file":"/tuck_data/kvolkel/dnastorage/tools/test_fault_injection/Downsized-Phosphorous.png",
     "strand_distribution":"poisson",
-    "arch":"Pipe-RS+CFC8",
+    "arch":"CustomPipe-RS+CFC8",
     "header_version":"0.1",
     "simulation_runs":10,
     "encoder_params":{

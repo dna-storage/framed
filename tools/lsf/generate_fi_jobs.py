@@ -95,9 +95,11 @@ if __name__=="__main__":
     except:
         raise ValueError("Parameter file does not have right parameters")
 
-
-    fault_injection_path = "/tuck_data/kvolkel/dnastorage/tools/fault_injection.py"
-    
+    #fault_injection_path = "/tuck_data/kvolkel/dnastorage/tools/fault_injection.py"
+    # Fix me: probably should not assume a relative file path relationship, but this is better
+    # than being hard coded.
+    fault_injection_path = Path( __file__ ).parent.absolute()
+    fault_injection_path = str(fault_injection_path.parent.joinpath("fault_injection.py"))
     
     base_file = os.path.basename(file_path).split(".")[0]
     #need to make up parts of directories where things are going to exist

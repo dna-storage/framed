@@ -237,14 +237,21 @@ def PIPE_250_FSMD(pf,**kwargs):
     return pipe
 
 def PIPE_RS_CFC8(pf,**kwargs):
-    #pipe = customize_RS_CFC8_pipeline(pf,outerECC=37,innerECC=3,dna_length=208,**kwargs)
-    pipe = customize_RS_CFC8_pipeline(pf,\
+    #pipe = customize_RS_CFC8_pipeline(pf,outerECC=37,innerECC=3,dna_length=208,**kwargs)        
+    pipe = customize_RS_CFC8_pipeline(pf,\                                      
                                       innerECC=3,\
                                       blockSizeInBytes=150*15,\
                                       strandSizeInBytes=15,\
                                       outerECCStrands=255-150,\
                                       dna_length=208,\
                                       title='Pipe-RS+CFC8',
+                                      **kwargs)
+    return pipe
+
+
+def USER_PIPE_RS_CFC8(pf,**kwargs):
+    #pipe = customize_RS_CFC8_pipeline(pf,outerECC=37,innerECC=3,dna_length=208,**kwargs)        
+    pipe = customize_RS_CFC8_pipeline(pf,\                                      
                                       **kwargs)
     return pipe
 
@@ -293,6 +300,8 @@ FileSystemFormats = {
               "Hedges with ReedSolomon Outer Code, pipeline implementation, fully customizable",
               PIPE_Custom_Hedges_RS,PIPE_Custom_Hedges_RS],    
     0x0500 : [0x0500, 208, 15, "SDC","Support for SDC experiments",SDC_PIPE,SDC_PIPE],
+    0x0700 : [0x0100, 500, 15, "CustomPipe-RS+CFC8","Customizable RS+CFC8 implemented with pipelines",USER_PIPE_RS_CFC8,
+              USER_PIPE_RS_CFC8],
     
     #------ Segmented
     0x2000 : [0x2000, 200, 20, "Segmented", "Segmented file format to support Preview", None, None],

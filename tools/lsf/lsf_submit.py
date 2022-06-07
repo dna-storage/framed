@@ -29,17 +29,17 @@ class LSFJob(object):
         generate_name = "hpc_lsfjob.csh"
         with open(generate_name,"w+") as f:
             f.write("#BSUB -n " + str(self.cores))
-            f.write("\n#BSUB -W " +str(self.time))
+            f.write("\n#BSUB -W {}:00".format(self.time))
             if self.exclusive: f.write("\n#BSUB -x")
-            f.write("\n#BSUB -R span[hosts=1]")
+            #f.write("\n#BSUB -R span[hosts=1]")
             f.write("\n#BSUB -R \"rusage[mem={}GB]\"".format(self.memory))
-            f.write("\n#BSUB -M {}GB!".format(str(self.memory)))
+            #f.write("\n#BSUB -M {}GB!".format(str(self.memory)))
             f.write("\n#BSUB -q "+self.queue)
             f.write("\n#BSUB -J " + self.job)
             f.write("\n#BSUB -o {}.%J".format(self.stdout))
             f.write("\n#BSUB -e {}.%J".format(self.stderr))
             if len(self.load_modules) > 0:
-                f.write('\nload module {}'.format(" ".join(self.load_modules)))
+                f.write('\nmodule load {}'.format(" ".join(self.load_modules)))
             if len(self.python_env) > 0:
                 f.write('\nsource {}'.format(self.python_env))
             f.write("\n {}".format(self.command))
