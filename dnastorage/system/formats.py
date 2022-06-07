@@ -299,7 +299,7 @@ FileSystemFormats = {
               "Hedges with ReedSolomon Outer Code, pipeline implementation, fully customizable",
               PIPE_Custom_Hedges_RS,PIPE_Custom_Hedges_RS],    
     0x0500 : [0x0500, 208, 15, "SDC","Support for SDC experiments",SDC_PIPE,SDC_PIPE],
-    0x0700 : [0x0100, 500, 15, "CustomPipe-RS+CFC8","Customizable RS+CFC8 implemented with pipelines",USER_PIPE_RS_CFC8,
+    0x0700 : [0x0700, 500, 15, "CustomPipe-RS+CFC8","Customizable RS+CFC8 implemented with pipelines",USER_PIPE_RS_CFC8,
               USER_PIPE_RS_CFC8],
     
     #------ Segmented
