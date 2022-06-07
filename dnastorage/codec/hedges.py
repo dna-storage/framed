@@ -892,7 +892,7 @@ class FastHedgesPipeline(BaseCodec,CWtoDNA):
             if self.salt_bits > 32:
                 self.salt_bits = 32
     
-    def __init__(self,rate,pad_bits=8,prev_bits=8,guess_limit=100000,CodecObj=None,Policy=None):
+    def __init__(self,rate,pad_bits=8,prev_bits=8,guess_limit=10000,CodecObj=None,Policy=None):
         self._hedges_state = FastHedgesPipeline.hedges_state(rate=rate,pad_bits=pad_bits,prev_bits=prev_bits)
         self._guess_limit=guess_limit
         CWtoDNA.__init__(self)
@@ -910,6 +910,9 @@ class FastHedgesPipeline(BaseCodec,CWtoDNA):
         #print (self._hedges_state.seq_bytes, self._hedges_state.message_bytes)
         #fasthedges.echo(self._hedges_state)                
         strand.codewords = fasthedges.decode(strand.dna_strand, self._hedges_state, self._guess_limit)
+
+        print (strand.dna_strand)
+        print (strand.codewords)
         return strand
     
     #store some pertinent information like bit lengths of data seen to be able to reinstantiate the decoder in a correct state    

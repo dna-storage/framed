@@ -33,12 +33,13 @@ class Fi_Env(object):
         #Tuple format accelerates simulation of fault models of nucleotide strand faults and missing strand faults
         if not isinstance(self._fault_mode,strand_fault_compressed):
             for ind,s in enumerate(self._og_strands):
-                read_count=self._read_distributor.gen()
-                dist.append((ind,read_count))
-                new_pool+=[copy.copy(s) for i in range(0,read_count)]
+                read_cnt=self._read_distributor.gen()
+                dist.append((ind,read_cnt))
+                new_pool+=[copy.copy(s) for i in range(0,read_cnt)]
             for s in new_pool:
                 rand_choice =random.randint(0,1)
                 if rand_choice==1: s.dna_strand = reverse_complement(s.dna_strand) #reverse complements
+
             return new_pool,dist
         else:
             #make a simple array of tuples in format (strand,count for that strand)

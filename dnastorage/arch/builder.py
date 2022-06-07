@@ -40,8 +40,8 @@ def customize_RS_CFC8_pipeline(pf,**kwargs):
     
     #create the components we are gonna use
     rsOuter = ReedSolomonOuterPipeline(blockSizeInBytes//strandSizeInBytes,outerECCStrands)
-    commafree = CommaFreeCodewordsPipeline(numberBytes=innerECC+strandSizeInBytes)
-    #commafree = CommaFreeCodecPipeline(numberBytes=innerECC+strandSizeInBytes)
+    #commafree = CommaFreeCodewordsPipeline(numberBytes=innerECC+strandSizeInBytes)
+    commafree = CommaFreeCodecPipeline(numberBytes=innerECC+strandSizeInBytes)
     rsInner = ReedSolomonInnerCodecPipeline(innerECC)
     magic = PrependSequencePipeline(magic_strand,handler="align")
     p5 = PrependSequencePipeline(primer5,handler="align")

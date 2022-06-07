@@ -65,12 +65,13 @@ def _monte_kernel(monte_start,monte_end,args): #function that will run per proce
     stats["payload_strand_length"]=len(write_dna.strands[-1].dna_strand)#strands with real payload should be at the end
     stats["dead_header"]=0
     stats["file_size_bytes"]=file_to_inject_size
-
+    
     #Encode file we are fault injecting on
     fault_environment =  Fi_Env(args.strand_distribution, args.fault_model,write_dna.strands,fault_rate=args.fault_rate,
                                 missing=args.faulty_count, faulty=args.faulty_count,error_run=args.run,fails=args.fail_count,
                                 fault_file=args.fault_rate_file,mean=args.mean,var=args.var)
 
+    
     for sim_number in range(monte_start,monte_end):
         logging.info("Monte Carlo Sim: {}".format(sim_number))
         fault_environment.Run()
@@ -99,7 +100,6 @@ def _monte_kernel(monte_start,monte_end,args): #function that will run per proce
                 continue
             else:
                 total_mismatch_data+=1
-        print(len(fault_environment.get_strands()))
         stats.inc("total_mismatch_bytes",total_mismatch_data)
         stats.inc("file_size_difference_bytes",abs(file_to_inject_size-length_fi_data))
         stats.inc("total_file_data_bytes",stats["file_size_bytes"])
@@ -197,7 +197,7 @@ if __name__ == "__main__":
 
     parser.add_argument('--enc_params',type=str,required=True,action="store",help="Path to json file with parameters used to set error correction in encoding")
     parser.add_argument('--header_params',type=str,required=True,action="store",help="Path to json file with parameters used to set error correction in encoding for the header")
-    parser.add_argument('--header_version',type=str,required=True,action="store",default="0.1",help="Header version")
+    parser.add_argument('--header_version',type=str,required=False,action="store",default="0.1",help="Header version")
      
     parser.add_argument('--out_dir',type=str,required=True,action="store",help="Directory where data will be dumped")
 

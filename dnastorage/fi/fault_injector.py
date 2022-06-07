@@ -371,7 +371,9 @@ class strand_fault(BaseFI):
         #list of strand indexes to chose from 
         strand_indexes=range(len(input_library))
         fault_list={} 
-    
+
+        print ("injection sites:",len(input_library))
+        
         strand_locations=random.sample(range(len(input_library)),self.faulty)
         #need to seed the C generator
         generate.seed()
