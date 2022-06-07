@@ -56,6 +56,8 @@ if __name__=="__main__":
     import argparse
     parser = argparse.ArgumentParser(description="Script to generate fault injection jobs")
     parser.add_argument('--params',type=str,required=True,action="store",help="Path to json file with parameters to perform fault injection with")
+    
+    parser.add_argument('--python_env',type=str,default='',action="store",help="Script path to setup python environment.")
     parser.add_argument('--memory',default=8,type=int,action="store",help="Memory for each job")
     parser.add_argument('--cores',default=4,type=int,action="store",help="Cores for each job")
     parser.add_argument('--time',default=10,type=int,action="store",help="Time allowed for each job")
@@ -68,6 +70,9 @@ if __name__=="__main__":
     job.time=args.time
     job.cores=args.cores
     job.memory=args.memory
+    if args.python_env != "":
+        job.python_env=args.python_env
+    job.load_module = ['conda']
     assert os.path.exists(args.params)
 
     with open(args.params,"r") as json_fd:

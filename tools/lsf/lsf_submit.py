@@ -16,6 +16,11 @@ class LSFJob(object):
         self.command=None
         self.stdout="lsfjob.stdout"
         self.stderr="lsfjob.stderr"
+        self.load_modules = ['conda']
+        if 'PYTHON_ENV' in os.environ:
+            self.python_env = os.environ['PYTHON_ENV']
+        else:
+            self.python_env = ''
         self.job="job"
         self.exclusive=False
 
@@ -33,6 +38,10 @@ class LSFJob(object):
             f.write("\n#BSUB -J " + self.job)
             f.write("\n#BSUB -o {}.%J".format(self.stdout))
             f.write("\n#BSUB -e {}.%J".format(self.stderr))
+            if len(self.load_modules) > 0:
+                f.write('\nload module {}'.format(" ".join(self.load_modules)))
+            if len(self.python_env) > 0:
+                f.write('\nsource {}'.format(self.python_env))
             f.write("\n {}".format(self.command))
         return generate_name
     def submit(self):
@@ -114,3 +123,19 @@ class LSFJob(object):
     @exclusive.setter
     def exclusive(self,e):
         self._exclusive=e
+
+    @property
+    def load_modules(self):
+        return self._load_modules
+    @load_modules.setter
+    def load_modules(self,l):
+        self._load_modules=l
+
+    @property
+    def python_env(self):
+        return self._python_env
+    @python_env.setter
+    def python_env(self,p):
+        assert type(p)==str and "python_env should be a string."
+        #assert os.path.exists(p) and "python_env should exist."
+        self._python_env=p
