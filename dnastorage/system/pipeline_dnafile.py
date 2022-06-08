@@ -196,6 +196,7 @@ class WriteDNAFilePipeline(DNAFilePipeline):
 
         self.mem_buffer = BytesIO()
         self.pf= ReadPacketizedFilestream(self.mem_buffer)
+
         self.pipe = enc_func(self.pf,**self._enc_opts,barcode=(DATA_BARCODE,))
         if 'output' in kwargs and kwargs["output"] !=None :
             self.output_filename = kwargs['output']

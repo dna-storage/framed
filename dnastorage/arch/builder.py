@@ -29,7 +29,6 @@ def check_required(required, **kwargs):
         if r not in kwargs:
             missing.append(r)
     title = kwargs.get("title","")
-    print (title)
     verb = "is"
     if len(missing) > 1:
         verb = "are"
@@ -145,7 +144,7 @@ def SDC_pipeline(pf,**kwargs):
     hedges_previous = kwargs.get("hedge_prev_bits",8)
 
     if "outerECCStrands" not in kwargs and "blockSizeInBytes" in kwargs:
-        outerECCStrands = 255 - blockSizeInBytes
+        outerECCStrands = 255 - blockSizeInBytes//strandSizeInBytes
     else:
         outerECCStrands = kwargs.get("outerECCStrands",255-180)
     upper_strand_length = kwargs.get("dna_length",300)
