@@ -892,7 +892,7 @@ class FastHedgesPipeline(BaseCodec,CWtoDNA):
             if self.salt_bits > 32:
                 self.salt_bits = 32
     
-    def __init__(self,rate,pad_bits=8,prev_bits=8,guess_limit=10000,CodecObj=None,Policy=None):
+    def __init__(self,rate,pad_bits=8,prev_bits=8,guess_limit=100000,CodecObj=None,Policy=None):
         self._hedges_state = FastHedgesPipeline.hedges_state(rate=rate,pad_bits=pad_bits,prev_bits=prev_bits)
         self._guess_limit=guess_limit
         CWtoDNA.__init__(self)

@@ -256,8 +256,8 @@ def USER_PIPE_RS_CFC8(pf,**kwargs):
 
 def SDC_PIPE(pf,**kwargs):
     pipe = SDC_pipeline(pf,\
-                        blockSizeInBytes=180*8,\
-                        strandSizeInBytes=8,\
+                        blockSizeInBytes=180*6,\
+                        strandSizeInBytes=6,\
                         outerECCStrands=255-180,\
                         rate=1.0/4,\
                         pad=8,\
