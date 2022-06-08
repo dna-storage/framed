@@ -911,8 +911,8 @@ class FastHedgesPipeline(BaseCodec,CWtoDNA):
         #fasthedges.echo(self._hedges_state)                
         strand.codewords = fasthedges.decode(strand.dna_strand, self._hedges_state, self._guess_limit)
 
-        print (strand.dna_strand)
-        print (strand.codewords)
+        #print (strand.dna_strand)
+        #print (strand.codewords)
         return strand
     
     #store some pertinent information like bit lengths of data seen to be able to reinstantiate the decoder in a correct state    

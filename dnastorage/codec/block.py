@@ -356,6 +356,13 @@ class ReedSolomonOuterPipeline(BaseOuterCodec):
                     wr_e = DNAReedSolomonOuterCodeError(msg=\
                              "RSOuterCodec found error at sub-packet index".format(strands[0].index_ints[:self._level]))
                     corrected_message = message
+                except Exception as e:
+                    if self._Policy.allow(e):
+                        corrected_message = message                        
+                        pass
+                    else:
+                        raise e
+
                 #write the corrected message back into strand classes
                 for s,m in zip(strands,corrected_message):
                     s.codewords[byte_index] = m

@@ -210,19 +210,28 @@ def DEC_Goldman_200(pf, primer5, primer3):
 
 
 #KV: Added pipelines
-def PIPE_Custom_Hedges_RS(pf,**kwargs):
+def PIPE_Hedges_RS(pf,**kwargs):    
     #Pipeline implementation of Hedges and RS outer code, customization values are embedded in kwargs
+    primer5 = kwargs.get("primer5",'A'*20)
+    primer3 = kwargs.get("primer3",'A'*20)    
     pipe = build_hedges_rs(pf,\
                         blockSizeInBytes=180*8,\
                         strandSizeInBytes=8,\
                         outerECCStrands=255-180,\
-                        rate=1.0/4,\
-                        pad=8,\
-                        prev_bits=8,\
+                        hedges_rate=1.0/4,\
+                        hedges_pad=8,\
+                        hedges_prev_bits=8,\
                         dna_length=300,\
-                        **kwargs)
+                        primer5=primer5,\
+                        primer3=primer3,\
+                        title='Hedges+RS')
+    return pipe
 
-    #pipe = customize_RS_CFC8_pipeline(pf,outerECC=37,innerECC=3,dna_length=208,**kwargs)
+#KV: Added pipelines
+def CUSTOM_PIPE_Hedges_RS(pf,**kwargs):
+    title = kwargs.get("title","CustomHedges+RS")
+    #Pipeline implementation of Hedges and RS outer code, customization values are embedded in kwargs
+    pipe = build_hedges_rs(pf,title=title,**kwargs)
     return pipe
 
 
@@ -233,40 +242,54 @@ def PIPE_250_FSMD(pf,**kwargs):
     #pipeline implementation fo FSMD
     pipe = customize_RS_CFC8_pipeline(pf,**kwargs,innerECC=2,strandSizeInBytes=strandSizeInBytes,\
                                       blockSizeInBytes=blockSizeInBytes,outerECCStrands=outerECCStrands,\
-                                      dna_length=250)
+                                      dna_length=250,title="FSMD-Pipe")
     return pipe
 
 def PIPE_RS_CFC8(pf,**kwargs):
-    #pipe = customize_RS_CFC8_pipeline(pf,outerECC=37,innerECC=3,dna_length=208,**kwargs)        
+    #pipe = customize_RS_CFC8_pipeline(pf,outerECC=37,innerECC=3,dna_length=208,**kwargs)
+    primer5 = kwargs.get("primer5",'A'*20)
+    primer3 = kwargs.get("primer3",'A'*20)    
     pipe = customize_RS_CFC8_pipeline(pf,\
                                       innerECC=3,\
                                       blockSizeInBytes=150*15,\
                                       strandSizeInBytes=15,\
                                       outerECCStrands=255-150,\
                                       dna_length=208,\
-                                      title='Pipe-RS+CFC8',
-                                      **kwargs)
+                                      title='Pipe-RS+CFC8',\
+                                      primer5=primer5,\
+                                      primer3=primer3)
     return pipe
 
 
-def USER_PIPE_RS_CFC8(pf,**kwargs):
+def CUSTOM_PIPE_RS_CFC8(pf,**kwargs):
+    title = kwargs.get("title","CustomPipe-RS+CFC8")    
     #pipe = customize_RS_CFC8_pipeline(pf,outerECC=37,innerECC=3,dna_length=208,**kwargs)        
-    pipe = customize_RS_CFC8_pipeline(pf,**kwargs)
+    pipe = customize_RS_CFC8_pipeline(pf,title=title,**kwargs)
     return pipe
 
 def SDC_PIPE(pf,**kwargs):
+    # only let primers through to influence design
+    primer5 = kwargs.get("primer5",'A'*20)
+    primer3 = kwargs.get("primer3",'A'*20)
     pipe = SDC_pipeline(pf,\
                         blockSizeInBytes=180*6,\
                         strandSizeInBytes=6,\
                         outerECCStrands=255-180,\
-                        rate=1.0/4,\
-                        pad=8,\
-                        prev_bits=8,\
+                        #hedges_rate=1.0/4,\
+                        hedges_pad=8,\
+                        hedges_prev_bits=8,\
                         dna_length=300,\
-                        **kwargs)
+                        title="SDC",\
+                        primer5=primer5,\
+                        primer3=primer3\
+                        )
 
     #pipe = customize_RS_CFC8_pipeline(pf,outerECC=37,innerECC=3,dna_length=208,**kwargs)
     return pipe
+
+def CUSTOM_SDC_PIPE(pf,**kwargs):
+    title = kwargs.get("title","CustomSDC")
+    return SDC_pipeline(pf,title=title,**kwargs)
 
 
 # DO NOT ALTER ENTRIES IN THIS TABLE, BUT YOU MAY ADD NEW ONES
@@ -297,10 +320,16 @@ FileSystemFormats = {
     0x0100 : [0x0100, 208, 15, "Pipe-RS+CFC8","RS+CFC8 implemented with pipelines",PIPE_RS_CFC8,PIPE_RS_CFC8],
     0x0400 : [0x0400, 300, 0, "Hedges+RS",
               "Hedges with ReedSolomon Outer Code, pipeline implementation, fully customizable",
-              PIPE_Custom_Hedges_RS,PIPE_Custom_Hedges_RS],    
-    0x0500 : [0x0500, 208, 15, "SDC","Support for SDC experiments",SDC_PIPE,SDC_PIPE],
-    0x0700 : [0x0700, 500, 15, "CustomPipe-RS+CFC8","Customizable RS+CFC8 implemented with pipelines",USER_PIPE_RS_CFC8,
-              USER_PIPE_RS_CFC8],
+              PIPE_Hedges_RS,PIPE_Hedges_RS],    
+    0x0500 : [0x0500, 208, 15, "SDC","Final format for SDC experiments",SDC_PIPE,SDC_PIPE],
+    #------ ^^ Above are hardcoded, below are flexible VV    
+    0x0700 : [0x0700, 500, 15, "CustomPipe-RS+CFC8","Customizable RS+CFC8 implemented with pipelines",
+              CUSTOM_PIPE_RS_CFC8, CUSTOM_PIPE_RS_CFC8],
+    0x0701 : [0x0701, 208, 15, "CustomSDC","Support for SDC experiments",\
+              CUSTOM_SDC_PIPE,CUSTOM_SDC_PIPE],
+    0x0702 : [0x0702, 300, 0, "CustomHedges+RS",
+              "Hedges with ReedSolomon Outer Code, pipeline implementation, fully customizable",
+              CUSTOM_PIPE_Hedges_RS,CUSTOM_PIPE_Hedges_RS],    
     
     #------ Segmented
     0x2000 : [0x2000, 200, 20, "Segmented", "Segmented file format to support Preview", None, None],

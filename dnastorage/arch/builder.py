@@ -23,8 +23,28 @@ from dnastorage.fi.probes import *
 def available_file_architectures():
     return ["UW+MSv1","Illinois",'Goldman','Fountain','Binary','Dense','NRDense','RS+CFC8','RS+ROT','RS+NRD', 'Sys', 'OverhangStrand']
 
+def check_required(required, **kwargs):
+    missing = []
+    for r in required:
+        if r not in kwargs:
+            missing.append(r)
+    title = kwargs.get("title","")
+    print (title)
+    verb = "is"
+    if len(missing) > 1:
+        verb = "are"
+        missing_s = ", ".join(missing)
+    else:
+        missing_s = "".join(missing)
+    if len(missing) >= 1:
+        print ("{} {} missing but required to build a {}.".format(missing_s,verb,title))
+        print ("Warning: Hard coded assumptions may not match expectations.")        
 
-def customize_RS_CFC8_pipeline(pf,**kwargs):
+def customize_RS_CFC8_pipeline(pf,**kwargs):    
+    required = ["blockSizeInBytes","strandSizeInBytes","innerECC","outerECCStrands",\
+                "dna_length"]
+    check_required(required,**kwargs)
+    
     blockSizeInBytes=kwargs.get("blockSizeInBytes",150*15)
     strandSizeInBytes=kwargs.get("strandSizeInBytes",15)
     primer5 = kwargs.get("primer5","")
@@ -60,20 +80,24 @@ def customize_RS_CFC8_pipeline(pf,**kwargs):
 
 
 def build_hedges_rs(pf,**kwargs):
+    required = ["blockSizeInBytes","strandSizeInBytes","hedges_rate","outerECCStrands",\
+                "dna_length"]
+    check_required(required,**kwargs)
+    
     #print(kwargs)
 
     fault_injection= kwargs.get("fi",False)
     blockSizeInBytes=kwargs.get("blockSizeInBytes",150)
     strandSizeInBytes=kwargs.get("strandSizeInBytes",15)
-    primer5 = kwargs.get("primer5","")
-    primer3 = kwargs.get("primer3","")
+    primer5 = kwargs.get("primer5",'A'*20)
+    primer3 = kwargs.get("primer3",'A'*20)
     t7_seq = kwargs.get("T7","CGACTAATACGACTCACTATAGC")
     rt_pcr_seq = kwargs.get("RT-PCR","ATAGTACCAAT")
 
-    hedges_rate = kwargs.get("rate",1/2)
+    hedges_rate = kwargs.get("hedges_rate",1/2)
     # pad_bits and prev_bits should match by default:
-    hedges_pad_bits=kwargs.get("pad",8)
-    hedges_previous = kwargs.get("prev_bits",8)
+    hedges_pad_bits=kwargs.get("hedges_pad",8)
+    hedges_prev_bits = kwargs.get("hedges_prev_bits",8)
     
     outerECCStrands = kwargs.get("outerECCStrands",0)
     upper_strand_length = kwargs.get("dna_length",200)
@@ -82,7 +106,7 @@ def build_hedges_rs(pf,**kwargs):
     
     #Error correction components
     rsOuter = ReedSolomonOuterPipeline(blockSizeInBytes//strandSizeInBytes,outerECCStrands)
-    hedges = FastHedgesPipeline(rate=hedges_rate,pad_bits=hedges_pad_bits,prev_bits=hedges_previous)
+    hedges = FastHedgesPipeline(rate=hedges_rate,pad_bits=hedges_pad_bits,prev_bits=hedges_prev_bits)
     
     #components related to DNA functionality
     p5 = PrependSequencePipeline(primer5,ignore=True)
@@ -102,22 +126,28 @@ def build_hedges_rs(pf,**kwargs):
 
     
 def SDC_pipeline(pf,**kwargs):
+    required = ["blockSizeInBytes","strandSizeInBytes","hedges_rate",\
+                "dna_length"]
+    check_required(required,**kwargs) 
+        
     #print(kwargs)
-
     fault_injection= kwargs.get("fi",False)
     blockSizeInBytes=kwargs.get("blockSizeInBytes",180*15)
     strandSizeInBytes=kwargs.get("strandSizeInBytes",15)
-    primer5 = kwargs.get("primer5","")
-    primer3 = kwargs.get("primer3","")
+    primer5 = kwargs.get("primer5",'A'*20)
+    primer3 = kwargs.get("primer3",'A'*20)
     t7_seq = kwargs.get("T7","CGACTAATACGACTCACTATAGC")
     rt_pcr_seq = kwargs.get("RT-PCR","ATAGTACCAAT")
 
-    hedges_rate = kwargs.get("rate",1/2.)
+    hedges_rate = kwargs.get("hedges_rate",1/2.)
     # pad_bits and prev_bits should match by default:
-    hedges_pad_bits=kwargs.get("pad",8)
-    hedges_previous = kwargs.get("prev_bits",8)
-    
-    outerECCStrands = kwargs.get("outerECCStrands",255-180)
+    hedges_pad_bits=kwargs.get("hedges_pad",8)
+    hedges_previous = kwargs.get("hedge_prev_bits",8)
+
+    if "outerECCStrands" not in kwargs and "blockSizeInBytes" in kwargs:
+        outerECCStrands = 255 - blockSizeInBytes
+    else:
+        outerECCStrands = kwargs.get("outerECCStrands",255-180)
     upper_strand_length = kwargs.get("dna_length",300)
     pipeline_title=kwargs.get("title","")
     barcode = kwargs.get("barcode",tuple())
