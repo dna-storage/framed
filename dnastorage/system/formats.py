@@ -262,11 +262,9 @@ def PIPE_RS_CFC8(pf,**kwargs):
 
 
 def CUSTOM_PIPE_RS_CFC8(pf,**kwargs):
-    title = kwargs.get("title","CustomPipe-RS+CFC8")
-    kwargs2 = kwargs.copy()
-    kwargs2.pop("title","")
+    title = kwargs.pop("title","CustomPipe-RS+CFC8")
     #pipe = customize_RS_CFC8_pipeline(pf,outerECC=37,innerECC=3,dna_length=208,**kwargs)        
-    pipe = customize_RS_CFC8_pipeline(pf,title=title,**kwargs2)
+    pipe = customize_RS_CFC8_pipeline(pf,title=title,**kwargs)
     return pipe
 
 def SDC_PIPE(pf,**kwargs):
@@ -277,7 +275,7 @@ def SDC_PIPE(pf,**kwargs):
                         blockSizeInBytes=180*6,\
                         strandSizeInBytes=6,\
                         outerECCStrands=255-180,\
-                        #hedges_rate=1.0/4,\
+                        hedges_rate=1.0/4,\
                         hedges_pad=8,\
                         hedges_prev_bits=8,\
                         dna_length=300,\
@@ -290,8 +288,9 @@ def SDC_PIPE(pf,**kwargs):
     return pipe
 
 def CUSTOM_SDC_PIPE(pf,**kwargs):
+    title = kwargs.pop("title","CustomSDC")
     #title = kwargs.get("title","CustomSDC")
-    return SDC_pipeline(pf,**kwargs)
+    return SDC_pipeline(pf,title=title,**kwargs)
 
 
 # DO NOT ALTER ENTRIES IN THIS TABLE, BUT YOU MAY ADD NEW ONES
