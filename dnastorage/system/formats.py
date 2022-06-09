@@ -262,9 +262,11 @@ def PIPE_RS_CFC8(pf,**kwargs):
 
 
 def CUSTOM_PIPE_RS_CFC8(pf,**kwargs):
-    title = kwargs.get("title","CustomPipe-RS+CFC8")    
+    title = kwargs.get("title","CustomPipe-RS+CFC8")
+    kwargs2 = kwargs.copy()
+    kwargs2.pop("title","")
     #pipe = customize_RS_CFC8_pipeline(pf,outerECC=37,innerECC=3,dna_length=208,**kwargs)        
-    pipe = customize_RS_CFC8_pipeline(pf,title=title,**kwargs)
+    pipe = customize_RS_CFC8_pipeline(pf,title=title,**kwargs2)
     return pipe
 
 def SDC_PIPE(pf,**kwargs):
