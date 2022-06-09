@@ -59,8 +59,7 @@ class DNAFilePipeline:
                                             write_incomplete_file=write_incomplete_file,\
                                             fsmd_abbrev=fsmd_abbrev)
             else:
-                return ReadDNAFilePipeline(input=filename,
-                                           fsmd_abbrev=fsmd_abbrev,input_strands=input_strands,encoder_params=encoder_params,
+                return ReadDNAFilePipeline(input=filename,input_strands=input_strands,encoder_params=encoder_params,
                                            header_version=header_version,header_params=header_params,fsmd_header_filename=fsmd_header_filename)
             
         elif "w" in op and "s" in op:
@@ -68,7 +67,7 @@ class DNAFilePipeline:
                                                  format_name=format_name,fsmd_abbrev=fsmd_abbrev,fsmd_header_filename=fsmd_header_filename)       
         elif op=="w":
             return WriteDNAFilePipeline(output=filename,
-                                        format_name=format_name,fsmd_abbrev=fsmd_abbrev,encoder_params=encoder_params,
+                                        format_name=format_name,encoder_params=encoder_params,
                                         header_version=header_version,header_params=header_params,fsmd_header_filename=fsmd_header_filename)
         else:
             return None
@@ -117,11 +116,6 @@ class ReadDNAFilePipeline(DNAFilePipeline):
         else:
             assert 0
             
-        if not ('fsmd_abbrev' in kwargs):
-            self.fsmd_abbrev = 'FSMD'
-        else:
-            self.fsmd_abbrev = kwargs['fsmd_abbrev']
-
         header = Header(self._header_version,self._header_params)
 
         if 'fsmd_header_filename' in kwargs and kwargs["fsmd_header_filename"]!=None: #read into the header pipeline data that described its encoding process
@@ -188,11 +182,6 @@ class WriteDNAFilePipeline(DNAFilePipeline):
         elif 'format_name' in kwargs:
             enc_func = file_system_encoder_by_abbrev(kwargs['format_name'])
             self.formatid = file_system_formatid_by_abbrev(kwargs['format_name'])
-
-        if not ('fsmd_abbrev' in kwargs):
-            self.fsmd_abbrev = 'FSMD'
-        else:
-            self.fsmd_abbrev = kwargs['fsmd_abbrev']
 
         self.mem_buffer = BytesIO()
         self.pf= ReadPacketizedFilestream(self.mem_buffer)

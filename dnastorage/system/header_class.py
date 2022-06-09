@@ -8,6 +8,11 @@ from dnastorage.system.formats import *
 import hashlib
 
 
+
+
+
+
+
 def version_0_1():
     #returns a formatting dictionary for the given version
     version_dict={}
@@ -16,13 +21,28 @@ def version_0_1():
     version_dict["size"]=(None,8,int) #None values are determined from user input
     version_dict["filename"]=(None,"v",str) #assume filenames no larger than 50 bytes
     version_dict["formatid"]=(None,2,int)
-    version_dict["barcode"]=(0xEE,1,int)
+    version_dict["barcode"]=(0xEE,1,int) 
     version_dict["decoding_format"]=('FSMD-Pipe',"v",str)
     return version_dict
 
 
+
+def version_0_2():
+    #returns a formatting dictionary for the given version
+    version_dict={}
+    version_dict["major"]=(0,1,int) #(value,number of bytes)
+    version_dict["minor"]=(1,2,int) 
+    version_dict["size"]=(None,8,int) #None values are determined from user input
+    version_dict["filename"]=(None,"v",str) #assume filenames no larger than 50 bytes
+    version_dict["formatid"]=(None,2,int)
+    version_dict["barcode"]=(0xEE,1,int)
+    version_dict["decoding_format"]=('CustomSDC',"v",str)
+    return version_dict
+
+
 global versional_formats
-version_formats={"0.1": version_0_1}
+version_formats={"0.1": version_0_1,
+                 "0.2": version_0_2}
 
 
 class Header(object): 
@@ -90,11 +110,8 @@ class Header(object):
     
     def decode_file_header(self,strands):
         b = BytesIO()
-        fid = file_system_formatid_by_abbrev(self._format_dict["decoding_format"][0])
-        packetsize = file_system_format_packetsize(fid)
-        pf = WritePacketizedFilestream(b,packetsize,packetsize)
+        pf = WritePacketizedFilestream(b,self._header_length,0)
         self._pipeline.set_write_pf(pf)
-
         self._non_header_strands=[]
         for s in strands:
             self._pipeline.decode(s)

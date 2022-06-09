@@ -290,8 +290,8 @@ def SDC_PIPE(pf,**kwargs):
     return pipe
 
 def CUSTOM_SDC_PIPE(pf,**kwargs):
-    title = kwargs.get("title","CustomSDC")
-    return SDC_pipeline(pf,title=title,**kwargs)
+    #title = kwargs.get("title","CustomSDC")
+    return SDC_pipeline(pf,**kwargs)
 
 
 # DO NOT ALTER ENTRIES IN THIS TABLE, BUT YOU MAY ADD NEW ONES
@@ -323,7 +323,7 @@ FileSystemFormats = {
     0x0400 : [0x0400, 300, 0, "Hedges+RS",
               "Hedges with ReedSolomon Outer Code, pipeline implementation, fully customizable",
               PIPE_Hedges_RS,PIPE_Hedges_RS],    
-    0x0500 : [0x0500, 208, 15, "SDC","Final format for SDC experiments",SDC_PIPE,SDC_PIPE],
+    0x0500 : [0x0500, 208, 90, "SDC","Final format for SDC experiments",SDC_PIPE,SDC_PIPE],
     #------ ^^ Above are hardcoded, below are flexible VV    
     0x0700 : [0x0700, 500, 15, "CustomPipe-RS+CFC8","Customizable RS+CFC8 implemented with pipelines",
               CUSTOM_PIPE_RS_CFC8, CUSTOM_PIPE_RS_CFC8],

@@ -55,7 +55,7 @@ def _monte_kernel(monte_start,monte_end,args): #function that will run per proce
     if encoding_params is None:
         encoding_params={}
     
-    write_dna = DNAFilePipeline.open(None,"w",format_name=args.arch,header_params=header_params,fsmd_abbrev='FSMD-Pipe',encoder_params=encoding_params,fsmd_header_filename=header_data_path)
+    write_dna = DNAFilePipeline.open(None,"w",format_name=args.arch,header_params=header_params,header_version=args.header_version,encoder_params=encoding_params,fsmd_header_filename=header_data_path)
 
     write_dna.write(file_to_fault_inject.read())
     write_dna.close()
@@ -75,14 +75,15 @@ def _monte_kernel(monte_start,monte_end,args): #function that will run per proce
     for sim_number in range(monte_start,monte_end):
         logging.info("Monte Carlo Sim: {}".format(sim_number))
         fault_environment.Run()
-
-        read_dna = DNAFilePipeline.open(None,"r",input_strands=fault_environment.get_strands(),header_params=header_params,fsmd_abbrev='FSMD',format_name=args.arch,encoder_params=encoding_params,
-                                        fsmd_header_filename=header_data_path)
+        stats.inc("total_file_data_bytes",stats["file_size_bytes"])
+        stats.inc("total_strands_analyzed",len(fault_environment.get_strands()))
+        
+        read_dna = DNAFilePipeline.open(None,"r",input_strands=fault_environment.get_strands(),header_params=header_params,header_version=args.header_version,format_name=args.arch,encoder_params=encoding_params,fsmd_header_filename=header_data_path)
         if read_dna is None:
             #dead header
             stats.inc("dead_header",1)
             stats.inc("error",1)
-            results.append(copy.deepcopy(stats))
+            stats.inc("total_mismatch_bytes",stats["file_size_bytes"])
             continue
         #calculate missing bytes
         file_to_fault_inject.seek(0,0)
@@ -102,8 +103,6 @@ def _monte_kernel(monte_start,monte_end,args): #function that will run per proce
                 total_mismatch_data+=1
         stats.inc("total_mismatch_bytes",total_mismatch_data)
         stats.inc("file_size_difference_bytes",abs(file_to_inject_size-length_fi_data))
-        stats.inc("total_file_data_bytes",stats["file_size_bytes"])
-        stats.inc("total_strands_analyzed",len(fault_environment.get_strands()))
         if stats["total_mismatch_bytes"]>0:
             stats.inc("error",1)
         else:

@@ -146,7 +146,7 @@ class PrependSequence(BaseCodec):
             if score<(len(self._seq)-5):
                 return strand #finding alignment unsuccessful
             else:
-                return align[0][align[4]:]
+                return strand[align[4]:]
 
 
 
@@ -198,7 +198,7 @@ class AppendSequence(BaseCodec):
             if score<(len(self._seq)-5):
                 return strand
             else:
-                return align[0][0:align[3]+len(strand)-self._search_range]
+                return strand[0:align[3]+len(strand)-self._search_range]
 
 class PrependSequencePipeline(PrependSequence,DNAtoDNA):
     def __init__(self,seq,CodecObj=None,Policy=None,isPrimer=False,ignore=False,handler="ed",search_range=50):
