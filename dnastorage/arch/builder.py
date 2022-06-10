@@ -40,7 +40,7 @@ def check_required(required, **kwargs):
         print ("Warning: Hard coded assumptions may not match expectations.")        
 
 def customize_RS_CFC8_pipeline(pf,**kwargs):    
-    required = ["blockSizeInBytes","strandSizeInBytes","innerECC","outerECCStrands",\
+    required = ["blockSizeInBytes","strandSizeInBytes","innerECC",\
                 "dna_length"]
     check_required(required,**kwargs)
     
@@ -49,7 +49,8 @@ def customize_RS_CFC8_pipeline(pf,**kwargs):
     primer5 = kwargs.get("primer5","")
     primer3 = kwargs.get("primer3","")
     innerECC = kwargs.get("innerECC",0)
-    outerECCStrands = kwargs.get("outerECCStrands",255-150)
+    outerECCStrands = kwargs.get("outerECCStrands",255-blockSizeInBytes//strandSizeInBytes)
+    
     magic_strand = kwargs.get("magic","")
     cut = kwargs.get("cut","")
     fault_injection= kwargs.get("fi",False)
@@ -79,7 +80,7 @@ def customize_RS_CFC8_pipeline(pf,**kwargs):
 
 
 def build_hedges_rs(pf,**kwargs):
-    required = ["blockSizeInBytes","strandSizeInBytes","hedges_rate","outerECCStrands",\
+    required = ["blockSizeInBytes","strandSizeInBytes","hedges_rate",\
                 "dna_length"]
     check_required(required,**kwargs)
     
@@ -97,8 +98,9 @@ def build_hedges_rs(pf,**kwargs):
     # pad_bits and prev_bits should match by default:
     hedges_pad_bits=kwargs.get("hedges_pad",8)
     hedges_prev_bits = kwargs.get("hedges_prev_bits",8)
+
+    outerECCStrands = kwargs.get("outerECCStrands",255-blockSizeInBytes//strandSizeInBytes)
     
-    outerECCStrands = kwargs.get("outerECCStrands",0)
     upper_strand_length = kwargs.get("dna_length",200)
     pipeline_title=kwargs.get("title","")
     barcode = kwargs.get("barcode",tuple())
