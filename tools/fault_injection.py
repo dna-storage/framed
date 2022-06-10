@@ -1,4 +1,5 @@
 from dnastorage.fi.fi_env import *
+import dnastorage.fi.dna_processes as dna_process
 from dnastorage.system.pipeline_dnafile import *
 from dnastorage.system.formats import *
 import logging
@@ -51,6 +52,11 @@ def _monte_kernel(monte_start,monte_end,args): #function that will run per proce
         with open(args.header_params,'rb') as param_file:
                 header_params = json.load(param_file) #load in params for an encoding architecture through a json file
 
+
+    if args.dna_process is not None and os.path.exists(args.dna_process):
+        with open(args.dna_process,'rb') as param_file:
+            strand_proc_dict = json.load(param_file)
+                
                 
     if encoding_params is None:
         encoding_params={}
@@ -60,12 +66,21 @@ def _monte_kernel(monte_start,monte_end,args): #function that will run per proce
     write_dna.write(file_to_fault_inject.read())
     write_dna.close()
 
+    
     stats["total_encoded_strands"]=len(write_dna.strands)
     stats["header_strand_length"]=len(write_dna.strands[0].dna_strand) #header strands should be first
     stats["payload_strand_length"]=len(write_dna.strands[-1].dna_strand)#strands with real payload should be at the end
     stats["dead_header"]=0
     stats["file_size_bytes"]=file_to_inject_size
-    
+
+    #do some basic processes on the DNA strands
+    if strand_proc_dict is not None:
+        #do some strand processing
+        for s in write_dna.strands:
+            for process in strand_proc_dict:
+                func = getattr(dna_process,process)
+                s.dna_strand = func(s.dna_strand,*strand_proc_dict[process])
+        
     #Encode file we are fault injecting on
     fault_environment =  Fi_Env(args.strand_distribution, args.fault_model,write_dna.strands,fault_rate=args.fault_rate,
                                 missing=args.faulty_count, faulty=args.faulty_count,error_run=args.run,fails=args.fail_count,
@@ -197,6 +212,7 @@ if __name__ == "__main__":
     parser.add_argument('--enc_params',type=str,required=True,action="store",help="Path to json file with parameters used to set error correction in encoding")
     parser.add_argument('--header_params',type=str,required=True,action="store",help="Path to json file with parameters used to set error correction in encoding for the header")
     parser.add_argument('--header_version',type=str,required=False,action="store",default="0.1",help="Header version")
+    parser.add_argument('--dna_process',required=False,default=None,help="set of processing steps to do on dna strands before fault injection")
      
     parser.add_argument('--out_dir',type=str,required=True,action="store",help="Directory where data will be dumped")
 

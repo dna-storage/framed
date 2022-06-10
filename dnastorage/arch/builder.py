@@ -134,9 +134,9 @@ def SDC_pipeline(pf,**kwargs):
     blockSizeInBytes=kwargs.get("blockSizeInBytes",180*15)
     strandSizeInBytes=kwargs.get("strandSizeInBytes",15)
     primer5 = kwargs.get("primer5",'A'*20)
-    primer3 = kwargs.get("primer3",'A'*20)
+    primer3 =kwargs.get("primer3",'A'*20)
     t7_seq = kwargs.get("T7","CGACTAATACGACTCACTATAGC")
-    rt_pcr_seq = kwargs.get("RT-PCR","ATAGTACCAAT")
+    rt_pcr_seq =kwargs.get("RT-PCR","CGCTAGCTCTAGAGATCTAG")
 
     hedges_rate = kwargs.get("hedges_rate",1/2.)
     # pad_bits and prev_bits should match by default:
@@ -162,12 +162,13 @@ def SDC_pipeline(pf,**kwargs):
     p3 = AppendSequencePipeline(reverse_complement(primer3),handler="align",search_range=20)
 
     consolidator = SimpleMajorityVote()
-
+   
     if fault_injection is False:
         return pipeline.PipeLine((rsOuter,hedges,p3,rt_pcr,t7,p5),consolidator,blockSizeInBytes,strandSizeInBytes,upper_strand_length,1,packetizedfile=pf,
                                  barcode=barcode)
     else:
         hedges_probe = CodewordErrorRateProbe(probe_name="{}::hedges".format(pipeline_title))
+        #dna_probe = DNAErrorProbe(probe_name="{}::align".format(pipeline_title))
         return pipeline.PipeLine(((rsOuter,hedges_probe,hedges,p3,rt_pcr,t7,p5)),consolidator,
                                  blockSizeInBytes,strandSizeInBytes,upper_strand_length,1,packetizedfile=pf,barcode=barcode)
 
