@@ -4,7 +4,7 @@ from scipy import stats
 import scipy
 import math
 import random
-
+import generate
 
 '''
 Top level class for distribution classes that generate copies of DNA strands based on some distribution
@@ -16,13 +16,12 @@ class ReadDistribution(object):
 
     @classmethod
     def open(self,distribution,**kwargs):
-        assert "mean" in kwargs
-        print(distribution)
         if distribution=="negative_binomial":
-            assert "var" in kwargs
-            return DNANegativeBinomial(kwargs["mean"],kwargs["var"])
+            return DNANegativeBinomial(**kwargs)
         elif distribution=="poisson":
-            return DNAPoisson(kwargs["mean"])
+            return DNAPoisson(**kwargs)
+        elif distribution=="bernoulli":
+            return DNABernoulli(**kwargs)
         
     def get_mean(self):
         return self._mean
@@ -45,8 +44,9 @@ class ReadDistribution(object):
 
 #Instantiate this class in order to generate random variables from the negative binomial distribution with gamma function parameterization (rather than classical parameterization)
 class DNANegativeBinomial(ReadDistribution):
-    def __init__(self,mean,var):
-        ReadDistribution.__init__(self,mean,var)
+    def __init__(self,**kwargs):
+        assert "mean" in kwargs and "var" in kwargs
+        ReadDistribution.__init__(self,kwargs["mean"],kwargs["var"])
         self._cumulative_array=[]
         self._prob_array=[]
         #variance should be greater than the mean for neg binomial, otherwise use Poisson distribution
@@ -108,8 +108,9 @@ class DNANegativeBinomial(ReadDistribution):
 This is a simple class that samples a poisson distribution, relies on scipy and np
 '''
 class DNAPoisson(ReadDistribution):
-    def __init__(self,mean):
-        ReadDistribution.__init__(self,mean,mean)
+    def __init__(self,**kwargs):
+        assert "mean" in kwargs
+        ReadDistribution.__init__(self,kwargs["mean"],kwargs["mean"])
         assert self._mean==self._var
         
     def pmf(self,X):
@@ -119,6 +120,31 @@ class DNAPoisson(ReadDistribution):
         return np.random.poisson(self._mean)
 
 
+'''
+A success/fail type distribution, success will return exactly N reads, a failure will mean an erasure
+'''
+
+class DNABernoulli(ReadDistribution):
+    def __init__(self,**kwargs):
+        assert "mean" in kwargs and "n_success" in kwargs
+        self._n_success=kwargs["n_success"]
+        self._success_prob=kwargs["mean"]
+        ReadDistribution.__init__(self,kwargs["mean"]*kwargs["n_success"],(1-kwargs["mean"])*(kwargs["mean"])*kwargs["n_success"]**2)
+
+    def pmf(self,X):
+        if X != 0 and X!=self._n_success:
+            return 0
+        elif X==0:
+            return 1-self._success_prob
+        else:
+            return self._success_prob
+
+    def gen(self):
+        rand = generate.rand()
+        if rand <=self._success_prob:    
+            return self._n_success
+        else:
+            return 0
 
     
 def bins_array(data,bin_size):

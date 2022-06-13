@@ -66,7 +66,6 @@ class fixed_rate(BaseFI):
 
     #go through each nucleotide in each strand and apply a flat fault rate
     def injection_sites(self):
-        generate.seed()
         injection_sites={}
         #go through the strands and pick faults
         for strand_index,strand in enumerate(self._input_library):
@@ -175,7 +174,6 @@ class strand_fault_compressed(BaseFI):
         strand_locations_before_conversion=sorted(random.sample(strand_indexes,self.faulty))
         strand_locations=[]
         #need to seed the C generator
-        generate.seed()
         #convert the locations down to the original library to see what strand we are actually injecting 
         for samples in strand_locations_before_conversion:
             converted_index,sum_to_last_index=self.convert_index(samples,input_library,converted_index,sum_to_last_index)
@@ -376,7 +374,6 @@ class strand_fault(BaseFI):
         
         strand_locations=random.sample(range(len(input_library)),self.faulty)
         #need to seed the C generator
-        generate.seed()
         for strand_index in strand_locations:
             fault_list[strand_index]={}
             if self.run is True:

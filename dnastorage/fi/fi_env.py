@@ -19,9 +19,9 @@ def distribution_functions():
 
 
 class Fi_Env(object):
-    def __init__(self,distribution,fault_injection_mode,clean_strands,**kwargs):
-        self._read_distributor=ReadDistribution.open(distribution,**kwargs)
-        self._fault_mode=BaseFI.open(fault_injection_mode,**kwargs)
+    def __init__(self,distribution,fault_injection_mode,clean_strands,distribution_args,fault_model_args):
+        self._read_distributor=ReadDistribution.open(distribution,**distribution_args)
+        self._fault_mode=BaseFI.open(fault_injection_mode,**fault_model_args)
         self._clean_strands=clean_strands #clean strand library
         self._og_strands=clean_strands
         self._fault_strands=[]
@@ -81,6 +81,8 @@ if __name__=="__main__":
     import itertools
     import random
     import dnastorage.strand_representation
+    generate.seed()
+
     #make some fake strands and inject faults just to test data flows of infrastructures
 
     dna_list=["A","G","C","T"]
@@ -92,11 +94,31 @@ if __name__=="__main__":
         strands.append(BaseDNA(dna_strand="".join(strand)))
         print("Base Strand {} {}".format(i,strands[-1].dna_strand))
 
+
+    fault_args ={
+        "fault_rate":0.1
+    }
+    distribution_args = {
+        "mean":10
+    }
+        
     #isntantiate fault injection environment
-    fault_environment = Fi_Env("poisson","fixed_rate",strands,fault_rate=0.1,mean=10)
+    fault_environment = Fi_Env("poisson","fixed_rate",strands,distribution_args,fault_args)
     fault_environment.Run()
     for i in fault_environment.get_strands():
         print("Error Strand {}".format(i.dna_strand))
     print(len(fault_environment.get_strands()))
+
+
+    
+    distribution_args = {
+        "mean":0.5,
+        "n_success":10
+    }
+    print(len(strands))
+    fault_environment = Fi_Env("bernoulli","fixed_rate",strands,distribution_args,fault_args)
+    fault_environment.Run()
+    print(len(fault_environment.get_strands()))
+
 
     
