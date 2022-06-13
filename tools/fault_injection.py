@@ -72,7 +72,7 @@ def _monte_kernel(monte_start,monte_end,args): #function that will run per proce
 
             
     write_dna = DNAFilePipeline.open(None,"w",format_name=args.arch,header_params=header_params,header_version=args.header_version,
-                                     encoder_params=encoding_params,fsmd_header_filename=header_data_path)
+                                     encoder_params=encoding_params,fsmd_header_filename=header_data_path,file_barcode=tuple(args.file_barcode))
 
     write_dna.write(file_to_fault_inject.read())
     write_dna.close()
@@ -102,7 +102,8 @@ def _monte_kernel(monte_start,monte_end,args): #function that will run per proce
         stats.inc("total_strands_analyzed",len(fault_environment.get_strands()))
         
         read_dna = DNAFilePipeline.open(None,"r",input_strands=fault_environment.get_strands(),header_params=header_params,
-                                        header_version=args.header_version,format_name=args.arch,encoder_params=encoding_params,fsmd_header_filename=header_data_path)
+                                        header_version=args.header_version,format_name=args.arch,encoder_params=encoding_params,fsmd_header_filename=header_data_path,
+                                        file_barcode=tuple(args.file_barcode))
         if read_dna is None:
             #dead header
             stats.inc("dead_header",1)
