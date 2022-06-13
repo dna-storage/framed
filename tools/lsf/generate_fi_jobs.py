@@ -128,18 +128,22 @@ if __name__=="__main__":
                 md_hash.update(json.dumps(encoder_instance[2],cls=NpEncoder).encode())
                 final_run_path = os.path.join(fault_run_path,"encoder:{}".format(md_hash.hexdigest()))
                 os.makedirs(final_run_path,exist_ok=True)                
-                #round out the param string
-                complete_param_string= distribution_instance[0]+fault_model_instance[0]+"--enc_params "+os.path.join(final_run_path,"encoder_params.json")
-                complete_param_string+=" --out_dir {} ".format(final_run_path) + " --cores {} ".format(args.cores)
+                #Create the paramater string
+                complete_param_string= " --enc_params {} ".format(os.path.join(final_run_path,"encoder_params.json"))
                 complete_param_string+=" --header_params {} ".format(os.path.join(final_run_path,"header_params.json"))
+                complete_param_string+=" --distribution_params {} ".format(os.path.join(final_run_path,"distribution_params.json"))
+                complete_param_string+=" --fault_params {} ".format(os.path.join(final_run_path,"fault_params.json"))
+                complete_param_string+=" --out_dir {} ".format(final_run_path) + " --cores {} ".format(args.cores)
                 if dna_proc_dict is not None: complete_param_string+=" --dna_process {}".format(os.path.join(final_run_path,"dna_process.json"))
                 
                 #round out the param string with stuff from the params dictionary
                 for param in params_dict:
                     if not isinstance(params_dict[param],dict):
-                        complete_param_string+=" --{} {} ".format(param,params_dict[param]) 
+                        complete_param_string+=" --{} {} ".format(param,params_dict[param])
+
+                        
                 #dump params 
-                json.dump(distribution_instance[2],open(os.path.join(final_run_path,"dist_params.json"),"w+"),cls=NpEncoder)
+                json.dump(distribution_instance[2],open(os.path.join(final_run_path,"distribution_params.json"),"w+"),cls=NpEncoder)
                 json.dump(fault_model_instance[2],open(os.path.join(final_run_path,"fault_params.json"),"w+"),cls=NpEncoder)
                 json.dump(encoder_instance[2],open(os.path.join(final_run_path,"encoder_params.json"),"w+"),cls=NpEncoder)
                 json.dump(header_instance[2],open(os.path.join(final_run_path,"header_params.json"),"w+"),cls=NpEncoder)
