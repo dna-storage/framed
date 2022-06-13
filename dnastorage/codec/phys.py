@@ -143,7 +143,7 @@ class PrependSequence(BaseCodec):
             if len(align)==0: return strand
             align=align[0]
             score= align[2]
-            if score<(len(self._seq)-5):
+            if score<(len(self._seq)-8):
                 return strand #finding alignment unsuccessful
             else:
                 return strand[align[4]:]
@@ -195,7 +195,7 @@ class AppendSequence(BaseCodec):
             if len(align)==0:return strand
             align=align[0]
             score= align[2]
-            if score<(len(self._seq)-5):
+            if score<(len(self._seq)-8):
                 return strand
             else:
                 return strand[0:align[3]+len(strand)-self._search_range]

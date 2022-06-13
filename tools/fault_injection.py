@@ -215,7 +215,7 @@ if __name__ == "__main__":
     parser.add_argument('--fault_params',required=True,action="store",help="Parameters used to specify the fault model")
     parser.add_argument('--dna_process',required=False,default=None,help="set of processing steps to do on dna strands before fault injection")
     parser.add_argument('--out_dir',type=str,required=True,action="store",help="Directory where data will be dumped")
-
+    parser.add_argument('--file_barcode',required=False,default=tuple(),help="Barcode for the file")
     
 
     args = parser.parse_args()

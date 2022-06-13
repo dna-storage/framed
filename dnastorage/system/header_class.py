@@ -10,9 +10,6 @@ import hashlib
 
 
 
-
-
-
 def version_0_1():
     #returns a formatting dictionary for the given version
     version_dict={}
@@ -151,12 +148,18 @@ class Header(object):
         size_other_data = convertBytesToInt(data[pos:pos+2])
         pos += 2
         return_header['other_data'] = [ x for x in data[pos:pos+size_other_data] ]
-        
+
+        self._decode_header=return_header
         return return_header
         
     def pick_nonheader_strands(self):
         return self._pipeline.get_filtered()
 
+    def header_dict(self):
+        if self._decode_header !=None:
+            return self._decode_header
+        else:
+            return None
 
 if __name__=="__main__":
     header =Header("0.1",primer5 = "T"*10, primer3 = "A"*10)

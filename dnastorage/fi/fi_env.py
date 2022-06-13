@@ -15,7 +15,7 @@ def fault_injection_modes():
     return ["fixed_rate","missing_strands","strand_fault_compressed","strand_fault","distribution_rate","combo"]
 
 def distribution_functions():
-    return ["negative_binomial","poisson"]
+    return ["negative_binomial","poisson","bernoulli"]
 
 
 class Fi_Env(object):
