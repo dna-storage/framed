@@ -24,6 +24,7 @@ class CodewordErrorRateProbe(BaseCodec,Probe):
         self._strands_seen_key = "{}::total_strands".format(self._name)
         self._correct_key="{}::correct_strands".format(self._name)
         self._incorrect_key="{}::incorrect_strands".format(self._name)
+        self._incorrect_not_none="{}::incorrect_strands_not_none".format(self._name)
         CodewordErrorRateProbe.probe_id+=1
 
     def _encode(self,s):
@@ -42,11 +43,11 @@ class CodewordErrorRateProbe(BaseCodec,Probe):
         for i in range(len(base_codewords)):
             if i>=len(fault_codewords) or base_codewords[i]!=fault_codewords[i]:
                 stats.inc(self._total_error_rate_key,dflt=np.zeros((len(base_codewords),)),coords=i)
+            if i<len(fault_codewords) and base_codewords[i]!=fault_codewords[i] and fault_codewords[i]!=None:
+                stats.inc(self._incorrect_not_none,dflt=np.zeros((len(base_codewords),)),coords=i)
         if(fault_codewords==base_codewords):
             stats.inc(self._correct_key)
         else:
-            print("{}:\n{}\n{}\n{}\n{}".format(self._incorrect_key,s.dna_strand,base_codewords,s.before_decode,fault_codewords))
-            
             stats.inc(self._incorrect_key)
         stats.inc(self._strands_seen_key)
         
