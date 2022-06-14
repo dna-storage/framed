@@ -61,7 +61,7 @@ if __name__=="__main__":
     parser.add_argument('--python_env',type=str,default='',action="store",help="Script path to setup python environment.")
     parser.add_argument('--memory',default=8,type=int,action="store",help="Memory for each job")
     parser.add_argument('--cores',default=4,type=int,action="store",help="Cores for each job")
-    parser.add_argument('--time',default=10,type=int,action="store",help="Time allowed for each job")
+    parser.add_argument('--time',default=10,type=int,action="store",help="Time allowed for each job,in hours")
     parser.add_argument('--queue',default="tuck",type=str,action="store",help="Queue to use for jobs")
     parser.add_argument('--dump_dir',required=True,help="path to store results")
     parser.add_argument('--no',action='store_true', help="don't run bsub command, just test everything.")
@@ -72,6 +72,7 @@ if __name__=="__main__":
     job.time=args.time
     job.cores=args.cores
     job.memory=args.memory
+    job.one_host=True
     if args.python_env != "":
         job.python_env=args.python_env
     job.load_module = ['conda']
@@ -138,8 +139,12 @@ if __name__=="__main__":
                 
                 #round out the param string with stuff from the params dictionary
                 for param in params_dict:
-                    if not isinstance(params_dict[param],dict):
+                    if not isinstance(params_dict[param],dict) and not isinstance(params_dict[param],list):
                         complete_param_string+=" --{} {} ".format(param,params_dict[param])
+                    elif isinstance(params_dict[param],list):
+                        #expand tuples (needed for bacodes)
+                        param_string = "".join([" {} ".format(x) for x in params_dict[param]])
+                        complete_param_string +=" --{} {} ".format(param,param_string)
 
                         
                 #dump params 

@@ -31,6 +31,7 @@ class LSFJob(object):
             f.write("#BSUB -n " + str(self.cores))
             f.write("\n#BSUB -W {}:00".format(self.time))
             if self.exclusive: f.write("\n#BSUB -x")
+            if self.one_host: f.write("\n#BSUB -R \"span[hosts=1]\"")
             #f.write("\n#BSUB -R span[hosts=1]")
             f.write("\n#BSUB -R \"rusage[mem={}GB]\"".format(self.memory))
             #f.write("\n#BSUB -M {}GB!".format(str(self.memory)))
@@ -124,6 +125,17 @@ class LSFJob(object):
     @exclusive.setter
     def exclusive(self,e):
         self._exclusive=e
+
+
+
+    @property
+    def one_host(self):
+        return self._one_host
+    @one_host.setter
+    def one_host(self,e):
+        self._one_host=e
+
+
 
     @property
     def load_modules(self):

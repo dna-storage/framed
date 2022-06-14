@@ -2,6 +2,7 @@ from dnastorage.system.formats import *
 from dnastorage.system.header_class import *
 from dnastorage.strand_representation import *
 import io
+from Bio import SeqIO
 import sys
 import copy
 
@@ -33,12 +34,10 @@ class DNAFilePipeline:
             # 3. format is optional for reading and often ignored. Instead we look
             #    at the header to deduce what to do.
             #
-            
             # Ugly: but we have to find the header to know what to do!
             if filename is not None and os.path.exists(filename):
-                fd = open(filename,"r")
                 logger.debug("open {} for reading.".format(filename))
-                strands = get_strands(fd)
+                strands = get_strands(filename)
             elif input_strands is not None:
                 strands=input_strands
 
@@ -48,7 +47,6 @@ class DNAFilePipeline:
             if fsmd_header_filename!=None:
                 with open(fsmd_header_filename,"rb") as serialized_header_pipeline_data:
                     header.set_pipeline_data(serialized_header_pipeline_data.read())
-                    #TODO: this should be changed to something like getting an encoder but for the header
             h = header.decode_file_header(copy.deepcopy(strands)) 
 
             if h is None: return None #couldnt decode header, don't really have much else to go off of
@@ -60,7 +58,7 @@ class DNAFilePipeline:
                                             write_incomplete_file=write_incomplete_file,\
                                             fsmd_abbrev=fsmd_abbrev)
             else:
-                return ReadDNAFilePipeline(input=filename,input_strands=input_strands,encoder_params=encoder_params,
+                return ReadDNAFilePipeline(input_strands=strands,encoder_params=encoder_params,
                                            header=header,file_barcode=file_barcode)
             
         elif "w" in op and "s" in op:
@@ -84,16 +82,21 @@ class DNAFilePipeline:
     def writable(self):
         assert False
 
-def get_strands(in_fd):
+def get_strands(filename):
     strands = []
-    while True:
-        s = in_fd.readline()        
-        if len(s) == 0:
-            break
-        s = s.strip()
-        if s.startswith('%'):
-            continue
-        strands.append(BaseDNA(dna_strand=s))
+    if ".dna" in filename:
+        with open(filename,'r') as in_fd:
+            while True:
+                s = in_fd.readline()        
+                if len(s) == 0:
+                    break
+                s = s.strip()
+                if s.startswith('%'):
+                    continue
+                strands.append(BaseDNA(dna_strand=s))
+    elif ".fastq" in filename:
+        for record in SeqIO.parse(filename,"fastq"):
+            strands.append(BaseDNA(dna_strand=record.seq))
     return strands
 
 class ReadDNAFilePipeline(DNAFilePipeline):
@@ -103,14 +106,7 @@ class ReadDNAFilePipeline(DNAFilePipeline):
     def __init__(self,**kwargs):
         DNAFilePipeline.__init__(self)
         self._enc_opts=kwargs["encoder_params"]
-        if 'input' in kwargs and kwargs["input"]!=None:
-            self.input_filename = kwargs['input']
-            self.in_fd = open(self.input_filename,"r")
-            strands = get_strands(self.in_fd)
-        elif 'in_fd' in kwargs:
-            self.in_fd = kwargs['in_fd']
-            self.input_filename = ""
-        elif "input_strands" in kwargs:
+        if "input_strands" in kwargs:
             strands=kwargs["input_strands"]
         else:
             assert 0
@@ -474,7 +470,7 @@ if __name__ == "__main__":
 
     temp_header_pipeline_data=tempfile.NamedTemporaryFile(mode="wb+",delete=False)
 
-    wf = DNAFilePipeline.open("out.dna","w",format_name='Pipe-RS+CFC8',fsmd_abbrev='FSMD-Pipe',encoder_params=encoder_params)
+    wf = DNAFilePipeline.open("out.dna","w",format_name='Pipe-RS+CFC8',encoder_params=encoder_params)
     
     wf._header_fd=temp_header_pipeline_data
     
@@ -484,7 +480,7 @@ if __name__ == "__main__":
     wf.close()
 
 
-    rf = DNAFilePipeline.open("out.dna","r",format_name='Pipe-RS+CFC8',fsmd_abbrev='FSMD-Pipe',encoder_params=encoder_params,fsmd_header_filename=temp_header_pipeline_data.name)
+    rf = DNAFilePipeline.open("out.dna","r",format_name='Pipe-RS+CFC8',encoder_params=encoder_params,fsmd_header_filename=temp_header_pipeline_data.name)
 
     print ("Should print out 0 to 1000: ")
     while True:

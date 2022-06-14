@@ -70,7 +70,7 @@ def _monte_kernel(monte_start,monte_end,args): #function that will run per proce
 
     assert fault_args !=None and dist_args !=None
 
-            
+    
     write_dna = DNAFilePipeline.open(None,"w",format_name=args.arch,header_params=header_params,header_version=args.header_version,
                                      encoder_params=encoding_params,fsmd_header_filename=header_data_path,file_barcode=tuple(args.file_barcode))
 
@@ -216,7 +216,7 @@ if __name__ == "__main__":
     parser.add_argument('--fault_params',required=True,action="store",help="Parameters used to specify the fault model")
     parser.add_argument('--dna_process',required=False,default=None,help="set of processing steps to do on dna strands before fault injection")
     parser.add_argument('--out_dir',type=str,required=True,action="store",help="Directory where data will be dumped")
-    parser.add_argument('--file_barcode',required=False,default=tuple(),help="Barcode for the file")
+    parser.add_argument('--file_barcode',required=False,default=tuple(),nargs="+",type=int,help="Barcode for the file")
     
 
     args = parser.parse_args()
