@@ -1,6 +1,7 @@
 from dnastorage.system.formats import *
 from dnastorage.system.header_class import *
 from dnastorage.strand_representation import *
+from dnastorage.util.stats import stats
 import io
 from Bio import SeqIO
 import sys
@@ -97,6 +98,8 @@ def get_strands(filename):
     elif ".fastq" in filename:
         for record in SeqIO.parse(filename,"fastq"):
             strands.append(BaseDNA(dna_strand=record.seq))
+            strands[-1].fastq_record_id=record.id
+        stats["fastq_strands"]=len(strands)
     return strands
 
 class ReadDNAFilePipeline(DNAFilePipeline):

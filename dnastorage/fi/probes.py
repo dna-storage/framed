@@ -5,6 +5,7 @@ from dnastorage.codec.base import *
 from dnastorage.fi.fault_strand_representation import *
 from dnastorage.codec_types import *
 from dnastorage.util.stats import dnastats
+from dnastorage.codec.base_conversion import unpack_bytes_to_indexes
 import copy
 import numpy as np
 
@@ -94,3 +95,73 @@ class DNAErrorProbe(BaseCodec,Probe):
             stats.inc(self._incorrect_key)
         stats.inc(self._strands_seen_key)
         return s
+
+
+
+class FilteredDNACounter(BaseCodec,Probe):
+    #This probe should be placed after DNAtoDNA probes to count filtered strands 
+    probe_id=0
+    def __init__(self,probe_name="",CodecObj=None):
+        BaseCodec.__init__(self,CodecObj)
+        if probe_name=="":
+            self._name = "dna_filtered_probe_{}".format(FilteredDNACounter.probe_id)
+        else:
+            self._name = probe_name
+        self._strands_filtered_key = "{}::filtered_strand".format(self._name)
+        stats[self._strands_filtered_key]=0
+        FilteredDNACounter.probe_id+=1
+    def _encode(self,s):
+        return s
+
+    def _decode(self,s):
+        if s.dna_strand is None and s.is_reversed:
+            stats.inc(self._strands_filtered_key)
+        return s
+
+class IndexDistribution(BaseCodec,Probe):
+    #This probe should be placed after a single strand codec so that analysis can be performed 
+    probe_id=0
+    def __init__(self,probe_name="",CodecObj=None,prefix_to_match=tuple()):
+        BaseCodec.__init__(self,CodecObj)
+        if probe_name=="":
+            self._name = "index_dist_probe_{}".format(IndexDistribution.probe_id)
+        else:
+            self._name = probe_name
+
+        #stats collected during encoding, gives baseline
+        self._index_dist_probe_key_encode = "{}::index_dist_encode".format(self._name)
+        self._total_indexes_encode = "{}::total_indexes_encode".format(self._name)
+
+        #stats collected during decoding, measures reality
+        self._index_dist_probe_key_decode = "{}::index_dist_decode".format(self._name)
+        self._total_indexes_decode = "{}::total_indexes_decode".format(self._name)
+        self._total_indexes_lost = "{}::total_indexes_lost".format(self._name)
+        self._fastq_map = "{}::fastq_map".format(self._name)
+        stats[self._fastq_map]={}
+        self._prefix_to_match = prefix_to_match
+        IndexDistribution.probe_id+=1
+        
+    def _encode(self,s):
+        stats.inc(self._total_indexes_encode)
+        stats.inc(self._index_dist_probe_key_encode,dflt=dict(),coords=s.index_ints)
+        return s
+
+    def _decode(self,s):
+        #pipeline doesn't make index_ints until AFTER the whole inner CW to CW cascade runs, do our own translation for now
+        try:
+            index_ints = tuple(unpack_bytes_to_indexes(s.codewords[0:s.index_bytes],s.index_bit_set))
+        except Exception as e:
+            stats.inc(self._total_indexes_lost)
+            return s
+        print("here")
+        if self._prefix_to_match != index_ints[:len(self._prefix_to_match)]:
+            stats.inc(self._total_indexes_lost)
+        else:
+            stats.inc(self._total_indexes_decode)
+            stats.inc(self._index_dist_probe_key_decode,dflt=dict(),coords=index_ints)
+            #record where the fastq sequence is
+            if hasattr(s,"fastq_record_id"):
+                stats[self._fastq_map][index_ints]=stats[self._fastq_map].get(index_ints,[])+[s.fastq_record_id]
+        return s
+
+    

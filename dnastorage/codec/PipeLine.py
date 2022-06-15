@@ -252,10 +252,12 @@ class PipeLine(EncodePacketizedFile,DecodePacketizedFile):
             self._decode_strands=[]
             self._filtered_strands=[]
         strand.before_decode=strand.dna_strand
+        strand.is_reversed=False
         #perform the stream portion of the encoding pipeline, which processes the physical cascade. This should include stuff like removing physical portions
         self._dna_to_dna_cascade.decode(strand)
         if strand.dna_strand == None:
             strand.dna_strand=strand.before_decode
+            strand.is_reversed=True
             #try reverse_complement
             strand.dna_strand=reverse_complement(strand.dna_strand)
             self._dna_to_dna_cascade.decode(strand)
@@ -264,11 +266,13 @@ class PipeLine(EncodePacketizedFile,DecodePacketizedFile):
                 return
 
         strand.index_bytes = self._index_bytes
+        strand.index_bit_set =  self._index_bit_set
         self._decode_strands.append(strand)
    
 
     def filter_strand(self,strand):
         strand.dna_strand=strand.before_decode #single point to revert filtered strand for future processing by pipelines
+        strand.is_reversed=False
         self._filtered_strands.append(strand)
     def get_filtered(self): #get strands that don't conform
         return self._filtered_strands

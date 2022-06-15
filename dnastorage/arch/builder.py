@@ -77,54 +77,6 @@ def customize_RS_CFC8_pipeline(pf,**kwargs):
         return pipeline.PipeLine((rsOuter,innerECCprobe,rsInner,commafreeprobe,commafree,p3,magic,p5),consolidator,
                                  blockSizeInBytes,strandSizeInBytes,upper_strand_length,1,packetizedfile=pf,barcode=barcode)
 
-
-
-def build_hedges_rs(pf,**kwargs):
-    required = ["blockSizeInBytes","strandSizeInBytes","hedges_rate",\
-                "dna_length"]
-    check_required(required,**kwargs)
-    
-    #print(kwargs)
-
-    fault_injection= kwargs.get("fi",False)
-    blockSizeInBytes=kwargs.get("blockSizeInBytes",150)
-    strandSizeInBytes=kwargs.get("strandSizeInBytes",15)
-    primer5 = kwargs.get("primer5",'A'*20)
-    primer3 = kwargs.get("primer3",'A'*20)
-    t7_seq = kwargs.get("T7","CGACTAATACGACTCACTATAGC")
-    rt_pcr_seq = kwargs.get("RT-PCR","ATAGTACCAAT")
-
-    hedges_rate = kwargs.get("hedges_rate",1/2)
-    # pad_bits and prev_bits should match by default:
-    hedges_pad_bits=kwargs.get("hedges_pad",8)
-    hedges_prev_bits = kwargs.get("hedges_prev_bits",8)
-
-    outerECCStrands = kwargs.get("outerECCStrands",255-blockSizeInBytes//strandSizeInBytes)
-    
-    upper_strand_length = kwargs.get("dna_length",200)
-    pipeline_title=kwargs.get("title","")
-    barcode = kwargs.get("barcode",tuple())
-    
-    #Error correction components
-    rsOuter = ReedSolomonOuterPipeline(blockSizeInBytes//strandSizeInBytes,outerECCStrands)
-    hedges = FastHedgesPipeline(rate=hedges_rate,pad_bits=hedges_pad_bits,prev_bits=hedges_prev_bits)
-    
-    #components related to DNA functionality
-    p5 = PrependSequencePipeline(primer5,ignore=True)
-    t7 = PrependSequencePipeline(t7_seq,ignore=True)
-    rt_pcr = PrependSequencePipeline(rt_pcr_seq,handler="align",search_range=70)
-    p3 = AppendSequencePipeline(reverse_complement(primer3),handler="align",search_range=20)
-
-    consolidator = SimpleMajorityVote()
-
-    if fault_injection is False:
-        return pipeline.PipeLine((rsOuter,hedges,p3,rt_pcr,t7,p5),consolidator,blockSizeInBytes,strandSizeInBytes,upper_strand_length,1,packetizedfile=pf,
-                                 barcode=barcode)
-    else:
-        hedges_probe = CodewordErrorRateProbe(probe_name="{}::hedges".format(pipeline_title))
-        return pipeline.PipeLine(((rsOuter,hedges_probe,hedges,p3,rt_pcr,t7,p5)),consolidator,
-                                 blockSizeInBytes,strandSizeInBytes,upper_strand_length,1,packetizedfile=pf,barcode=barcode)
-
     
 def SDC_pipeline(pf,**kwargs):
     required = ["blockSizeInBytes","strandSizeInBytes","hedges_rate",\
@@ -164,18 +116,20 @@ def SDC_pipeline(pf,**kwargs):
     p3 = AppendSequencePipeline(reverse_complement(primer3),handler="align",search_range=20)
 
     consolidator = SimpleMajorityVote()
-   
-    if fault_injection is False:
-        return pipeline.PipeLine((rsOuter,hedges,p3,rt_pcr,t7,p5),consolidator,blockSizeInBytes,strandSizeInBytes,upper_strand_length,1,packetizedfile=pf,
-                                 barcode=barcode)
-    else:
+
+    out_pipeline = (rsOuter,)
+    inner_pipeline = (hedges,)
+    DNA_pipeline = (p3,rt_pcr,t7,p5)
+
+    if fault_injection: #some counters for data collection
+        index_probe = IndexDistribution(probe_name=pipeline_title,prefix_to_match=barcode)
         hedges_probe = CodewordErrorRateProbe(probe_name="{}::hedges".format(pipeline_title))
-        #dna_probe = DNAErrorProbe(probe_name="{}::align".format(pipeline_title))
-        return pipeline.PipeLine(((rsOuter,hedges_probe,hedges,p3,rt_pcr,t7,p5)),consolidator,
-                                 blockSizeInBytes,strandSizeInBytes,upper_strand_length,1,packetizedfile=pf,barcode=barcode)
+        inner_pipeline = (hedges_probe,index_probe)+inner_pipeline
+        dna_counter_probe = FilteredDNACounter(probe_name=pipeline_title)
+        DNA_pipeline=(dna_counter_probe,)+DNA_pipeline
 
-
-
+    return pipeline.PipeLine(out_pipeline+inner_pipeline+DNA_pipeline,consolidator,blockSizeInBytes,strandSizeInBytes,upper_strand_length,1,packetizedfile=pf,
+                            barcode=barcode)
 
     
 def customize_RS_CFC8(is_enc,pf,primer5,primer3,intraBlockIndex=1,\

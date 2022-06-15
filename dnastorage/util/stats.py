@@ -33,8 +33,12 @@ class dnastats(object):
     def inc(self, name, i=1, dflt=0,coords=None):
         if coords is None:self.all_stats[name] = self.all_stats.get(name,dflt) + i
         else:
-            if name not in self.all_stats: self.all_stats[name]=dflt
-            self.all_stats[name][coords] = self.all_stats[name][coords]+i
+            if name not in self.all_stats:
+                self.all_stats[name]=dflt
+            if type(self.all_stats[name]) is dict:
+                self.all_stats[name][coords] = self.all_stats[name].get(coords,0)+i
+            else:
+                self.all_stats[name][coords] = self.all_stats[name][coords]+i
     #use clear to reset stat counters
     def clear(self):
         self.all_stats={}
