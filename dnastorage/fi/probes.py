@@ -153,7 +153,6 @@ class IndexDistribution(BaseCodec,Probe):
         except Exception as e:
             stats.inc(self._total_indexes_lost)
             return s
-        print("here")
         if self._prefix_to_match != index_ints[:len(self._prefix_to_match)]:
             stats.inc(self._total_indexes_lost)
         else:

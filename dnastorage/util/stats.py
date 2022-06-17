@@ -94,7 +94,7 @@ class dnastats(object):
         for x in other_stats.all_stats:
             if x not in self.all_stats:
                 self.all_stats[x] = other_stats.all_stats[x]
-            elif x not in copy_list:
+            elif x not in copy_list and not type(other_stats.all_stats[x]) is dict:
                 self.all_stats[x]=self.all_stats[x]+other_stats.all_stats[x]    
             
     def __del__(self):

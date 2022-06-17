@@ -108,6 +108,8 @@ def SDC_pipeline(pf,**kwargs):
     #Error correction components
     rsOuter = ReedSolomonOuterPipeline(blockSizeInBytes//strandSizeInBytes,outerECCStrands)
     hedges = FastHedgesPipeline(rate=hedges_rate,pad_bits=hedges_pad_bits,prev_bits=hedges_previous)
+    crc = CRC8()
+
     
     #components related to DNA functionality
     p5 = PrependSequencePipeline(primer5,ignore=True)
@@ -118,13 +120,13 @@ def SDC_pipeline(pf,**kwargs):
     consolidator = SimpleMajorityVote()
 
     out_pipeline = (rsOuter,)
-    inner_pipeline = (hedges,)
+    inner_pipeline = (crc,hedges)
     DNA_pipeline = (p3,rt_pcr,t7,p5)
 
     if fault_injection: #some counters for data collection
         index_probe = IndexDistribution(probe_name=pipeline_title,prefix_to_match=barcode)
         hedges_probe = CodewordErrorRateProbe(probe_name="{}::hedges".format(pipeline_title))
-        inner_pipeline = (hedges_probe,index_probe)+inner_pipeline
+        inner_pipeline = (index_probe,crc,hedges_probe,hedges)
         dna_counter_probe = FilteredDNACounter(probe_name=pipeline_title)
         DNA_pipeline=(dna_counter_probe,)+DNA_pipeline
 

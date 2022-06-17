@@ -120,3 +120,43 @@ class ReedSolomonInnerCodecPipeline(ReedSolomonInnerCodec,CWtoCW):
     def _decode(self,strand):
         strand.codewords=ReedSolomonInnerCodec._decode(self,strand.codewords)
         return strand
+
+class CRC8(BaseCodec,CWtoCW):
+    def __init__(self,CodecObj=None,Policy=None):
+        CWtoCW.__init__(self)
+        BaseCodec.__init__(self,CodecObj=CodecObj,Policy=Policy)
+
+        self._memo_array = [0]*256
+        self._polynomial = 0x131
+        self._checksum = 0 
+        #initialize memor array
+        for i in range(0,256):
+            crc=i
+            for j in range(0,8)[::-1]:
+                if(0x80 & crc): crc = ((crc<<1)&0xff) ^ (self._polynomial&0xff)
+                else:  crc = (crc<<1)&0xff
+            self._memo_array[i]=crc
+
+    def _crc(self,byte_array):
+        crc = 0
+        for b in byte_array:
+            crc=crc^b
+            crc = self._memo_array[crc]
+        return crc
+            
+            
+    def _encode(self,strand):
+        crc = self._crc(strand.codewords)
+        strand.codewords.append(crc)
+        return strand
+    
+    def _decode(self,strand):
+        if None in strand.codewords:
+            strand.codewords=[None]*(len(strand.codewords)-1) #delete strand
+            return strand
+        crc = self._crc(strand.codewords)
+        if crc!=self._checksum:
+            strand.codewords=[None]*(len(strand.codewords)-1) #delete strand
+        else:
+            strand.codewords=strand.codewords[0:len(strand.codewords)-1]
+        return strand
