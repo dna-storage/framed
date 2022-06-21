@@ -6,6 +6,7 @@ from dnastorage.fi.fault_strand_representation import *
 from dnastorage.codec_types import *
 from dnastorage.util.stats import dnastats
 from dnastorage.codec.base_conversion import unpack_bytes_to_indexes
+from dnastorage.primer.primer_util import *
 import copy
 import numpy as np
 
@@ -163,4 +164,24 @@ class IndexDistribution(BaseCodec,Probe):
                 stats[self._fastq_map][index_ints]=stats[self._fastq_map].get(index_ints,[])+[s.fastq_record_id]
         return s
 
-    
+class StrandCheckProbe(BaseCodec,Probe):
+    #This probe should be placed after a single strand codec so that analysis can be performed 
+    probe_id=0
+    def __init__(self,strands,CodecObj=None):
+        BaseCodec.__init__(self,CodecObj)
+        self._strands = strands
+    def _encode(self,s):
+        for check_strand in self._strands:
+            forward_key = "{}:forward_min".format(check_strand)
+            reverse_key = "{}:reverse_min".format(check_strand)
+            stats[forward_key]=0xffffffffffffffff
+            stats[reverse_key]=0xffffffffffffffff
+            for i in range(0,len(s.dna_strand)-len(check_strand)):
+                forward_distance = hamming_distance(check_strand,s.dna_strand[i:i+len(check_strand)])
+                reverse_distance = hamming_distance(reverse_complement(check_strand),s.dna_strand[i:i+len(check_strand)])
+                stats[reverse_key]=min(reverse_distance,stats[reverse_key])
+                stats[forward_key]=min(forward_distance,stats[forward_key])
+        return s
+
+    def _decode(self,s):
+        return s

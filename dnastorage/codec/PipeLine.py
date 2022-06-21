@@ -12,6 +12,18 @@ from io import *
 import random
 import math
 
+
+def get_previous_probes(l,index):
+    out_list = []
+    if index==0: return out_list
+    for x in l[index-1::-1]:
+        if isinstance(x,Probe):
+            out_list.append(x)
+        else:
+            break
+    return out_list[::-1]
+
+
 #builds cascades of components 
 def cascade_build(component_list):
     previous=None
@@ -45,7 +57,6 @@ class PipeLine(EncodePacketizedFile,DecodePacketizedFile):
         self._final_decode_run=False
         self._filtered_strands=[]
         self._barcode=barcode
-        most_recent_list=None
         for index,component in enumerate(components):
             if index>0: prev_component=components[index-1]
             if isinstance(component,BaseOuterCodec):
@@ -56,19 +67,19 @@ class PipeLine(EncodePacketizedFile,DecodePacketizedFile):
             elif isinstance(component,CWtoCW):
                 if not index==0 and (not isinstance(prev_component,BaseOuterCodec) and not isinstance(prev_component,CWtoCW) and not isinstance(prev_component,Probe)):
                     raise PipeLineConstructionError("Error with inner codec constructions")
-                if isinstance(prev_component,Probe): self._inner_codecs.append(prev_component) #add probe 
+                self._inner_codecs+=get_previous_probes(components,index) #add probes
                 self._inner_codecs.append(component)
 
             elif isinstance(component,CWtoDNA):
                 if not index==0 and (not isinstance(prev_component,CWtoCW) and  not isinstance(prev_component,CWtoDNA) and not isinstance(prev_component,Probe) and not isinstance(prev_component,BaseOuterCodec)):
                     raise PipeLineConstructionError("Error with DNA to CW constructions")
-                if isinstance(prev_component,Probe): self._cw_to_DNA.append(prev_component) #add probe 
+                self._cw_to_DNA+=get_previous_probes(components,index) #add probes
                 self._cw_to_DNA.append(component)
 
             elif isinstance(component,DNAtoDNA):
                 if not index==0 and (not isinstance(prev_component,CWtoDNA) and not isinstance(prev_component,DNAtoDNA) and not isinstance(prev_component,Probe)):
                     raise PipeLineConstructionError("Error with DNA to DNA construction")
-                if isinstance(prev_component,Probe): self._DNA_to_DNA.append(prev_component) #add probe 
+                self._DNA_to_DNA+=get_previous_probes(components,index) #add probes 
                 self._DNA_to_DNA.append(component)
 
             elif isinstance(component,Probe):
@@ -76,7 +87,6 @@ class PipeLine(EncodePacketizedFile,DecodePacketizedFile):
                 if component is components[-1]:
                     raise PipeLineConstructionError("Probe placed at end of pipeline")
                 continue
-
                 
             else:
                 raise PipeLineConstructionError("Error with type in pipeline construction")
