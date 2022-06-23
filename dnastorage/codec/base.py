@@ -156,7 +156,10 @@ class BaseOuterCodec(BaseCodec):
 
 
     def remainder(self,packet_size):
-        new_packet_size = packet_size+(self._packet_divisor-packet_size%self._packet_divisor)
+        if packet_size%self._packet_divisor !=0:
+            new_packet_size = packet_size+(self._packet_divisor-packet_size%self._packet_divisor)
+        else:
+            new_packet_size=packet_size
         strands_per_sub_packet = new_packet_size//self._packet_divisor
         if self._Obj!=None:
             return self._Obj.remainder(strands_per_sub_packet)
