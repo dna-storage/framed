@@ -78,37 +78,57 @@ class BaseOuterCodec(BaseCodec):
     def __init__(self,packet_divisor,OuterCodecObj=None,Policy=None,level=None):
         BaseCodec.__init__(self,OuterCodecObj,Policy)
         self._packet_divisor = packet_divisor
-        self._zero_range=() #determines the range of strands for this level that are zero-strands
-        self._level=level
+        self._zero_range=tuple() #determines the range of strands for this level that are zero-strands
+        self._level=None
         self._num_data_sub_packets = 1 #determines the length of data packets before ECC is applied
         self._total_sub_packets  = 1 #determines how many sub-packets there are at this level, helps with determining indexing 
         self._index_bits=None
 
-    def encode_header(self): #serialization for outer codecs
+    def _decode(self,packets):
+        total_packets=[]
+        for key,item in sorted(packets.items(),key=lambda x: x[0]):
+            total_packets.append(item)
+        return_packet=[]
+        for p in total_packets[:self._num_data_sub_packets]:
+            return_packet+=p
+        return return_packet
+
+
+    def _encode_header(self): #serialization for outer codecs
         buf=[]
         buf+=convertIntToBytes(self._index_bits,1)
         buf+=convertIntToBytes(self._level,1)
         buf+=convertIntToBytes(len(self._zero_range),1)
-        if len(self._zero_range)>0:
-            for i in self._zero_range:
-                buf+=convertIntToBytes(i,4)
+        for i in self._zero_range:
+            buf+=convertIntToBytes(len(i),1)
+            for j in i:
+                buf+=convertIntToBytes(j,4)
         buf+=convertIntToBytes(self._num_data_sub_packets,2)
         buf+=convertIntToBytes(self._total_sub_packets,2)
         return buf
         
-    def decode_header(self,buff): #serialization for outer codecs
+    def _decode_header(self,buff): #serialization for outer codecs
         pos=0
         self._index_bits=convertBytesToInt(buff[pos:pos+1])
         pos+=1
         self._level = convertBytesToInt(buff[pos:pos+1])
         pos+=1
-        num_zero_values=convertBytesToInt(buff[pos:pos+1])
+        range_length = convertBytesToInt(buff[pos:pos+1])
         pos+=1
-        _=[]
-        for i in range(num_zero_values):
-            _.append(convertBytesToInt(buff[pos:pos+4]))
-            pos+=4
-        self._zero_range=tuple(_)
+        self._zero_range=tuple()
+        lower_index=tuple()
+        upper_index=tuple()
+        for i in range(0,range_length):
+            num_zero_values=convertBytesToInt(buff[pos:pos+1])
+            pos+=1
+            _=[]
+            for j in range(num_zero_values):
+                _.append(convertBytesToInt(buff[pos:pos+4]))
+                pos+=4
+            if i==0:lower_index=tuple(_)
+            elif i==1: upper_index=tuple(_)
+        if lower_index != tuple() and upper_index!=tuple():
+            self._zero_range=(lower_index,upper_index)
         self._num_data_sub_packets=convertBytesToInt(buff[pos:pos+2])
         pos+=2
         self._total_sub_packets=convertBytesToInt(buff[pos:pos+2])
@@ -133,36 +153,39 @@ class BaseOuterCodec(BaseCodec):
                 final_packet.append(s)
         return final_packet
 
-    
+
+
+    def remainder(self,packet_size):
+        new_packet_size = packet_size+(self._packet_divisor-packet_size%self._packet_divisor)
+        strands_per_sub_packet = new_packet_size//self._packet_divisor
+        if self._Obj!=None:
+            return self._Obj.remainder(strands_per_sub_packet)
+        return strands_per_sub_packet
     def encode(self,packet):
         #Take strand packet, divide it by divisor, and then call the next level for each divided packet
         divided_packets=[]
         index_prefix=None
         if (len(packet)//self._packet_divisor)==0:
             raise DNAStorageError("Packet length {} too small for packet divisor {}".format(len(packet),self._packet_divisor))
-        for i in range(0,len(packet),len(packet)//self._packet_divisor):
-            divided_packets.append(packet[i:i+len(packet)//self._packet_divisor])
-            for s in divided_packets[-1]:
+
+        if len(packet)%self._packet_divisor != 0:
+            packet_after_mod = packet + [BaseDNA(codewords=[0]*len(packet[0].codewords),index_ints = packet[0].index_ints) for _ in range(0,self._packet_divisor - len(packet)%self._packet_divisor)]
+        else:
+            packet_after_mod=packet
+        assert(len(packet_after_mod)%self._packet_divisor == 0)
+        for i in range(0,len(packet_after_mod),len(packet_after_mod)//self._packet_divisor):
+            divided_packets.append(packet_after_mod[i:i+len(packet_after_mod)//self._packet_divisor])
+            for s_index,s in enumerate(divided_packets[-1]):
                 index_prefix=s.index_ints
                 s.index_ints=s.index_ints+(len(divided_packets)-1,)
                 if self._level==None:
                     self._level=len(s.index_ints)
-                
+                if (i+s_index)>=len(packet):
+                    s.is_zero=True
+        
         length_before_ecc = len(divided_packets)
-        pad = None
-        pad_length=0
-        pad_start_index=None
-        pad_end_boundary=None
-        first_pad_strand=None
-        #Note down some padding that needs to be done to fill out the outer encoding, code be useful to note down in metadata
-        if not len(packet)%self._packet_divisor==0:
-            pad_start_index=len(divided_packets[-1])
-            while len(divided_packets[-1])<len(divided_packets[-2]):
-                divided_packets[-1].append(BaseDNA(codewords=[0]*len(packet[0].codewords),index_ints=divided_packets[-1][0].index_ints))
-                pad_length+=1
-                divided_packets[-1][-1].is_zero=True #flag to help filter out zeros
-            pad_end_boundary=pad_length+pad_start_index
-            pad=divided_packets[-1][0].index_ints
+        pad_length=len(packet_after_mod)-len(packet)
+        pad_start_index=len(packet)
 
         self._num_data_sub_packets=len(divided_packets)
         #put ecc on these sub packets
@@ -177,7 +200,6 @@ class BaseOuterCodec(BaseCodec):
         if self._index_bits is None:
             self._index_bits = math.ceil(math.log(len(divided_packets),2))
             self._total_sub_packets=len(divided_packets)
-
         else:
             if not self._index_bits== math.ceil(math.log(len(divided_packets),2)): raise DNAStorageError("Indexes not consistent")
             if not self._total_sub_packets==len(divided_packets): raise DNAStorageError("Total Subpackets Inconsistent")
@@ -195,17 +217,15 @@ class BaseOuterCodec(BaseCodec):
         out_packet=[]
         for i, dp in enumerate(protected_sub_packets):
             p=[]
-            zeros=[]
             for sub_packet_index, s in enumerate(dp):
-                if hasattr(s,'is_zero') and s.is_zero and i==(length_before_ecc-1) and pad!=None and sub_packet_index>=pad_start_index and sub_packet_index<pad_end_boundary:
-                    zeros.append(s)
+                if hasattr(s,'is_zero') and s.is_zero:
                     continue
                 else:
                     p.append(s) #only want to synthesize non zero strands
                 #now write down the zero range
-            if self._zero_range==() and len(zeros)>0:
-                self._zero_range=(zeros[0].index_ints[self._level-1:],zeros[-1].index_ints[self._level-1:])
             out_packet=out_packet+p
+        if pad_length>0:
+            self._zero_range=(packet_after_mod[pad_start_index].index_ints[self._level-1:],packet_after_mod[-1].index_ints[self._level-1:])
         return out_packet
         
     def get_index_bits(self):
@@ -277,7 +297,7 @@ class BaseOuterCodec(BaseCodec):
             after_index[self._level-1]=self._total_sub_packets
             after_index[self._level-2]-=1
         #check if this level index is actually in a zero range, allows for easy detection of zero strands 
-        if not is_zero and self._zero_range is not () and (tuple(after_index)[self._level-1:]>=self._zero_range[0] and tuple(after_index)[self._level-1:]<=self._zero_range[1]):
+        if not is_zero and self._zero_range is not tuple() and (tuple(after_index)[self._level-1:]>=self._zero_range[0] and tuple(after_index)[self._level-1:]<=self._zero_range[1]):
             is_zero=True
         return after_index,is_zero
 
@@ -293,12 +313,12 @@ class BaseOuterCodec(BaseCodec):
         else:
             return index[self._level-1]<self._total_sub_packets and self._Obj.valid(index)
     def is_zero(self,index):
-        if self._zero_range is ():
+        if self._zero_range is tuple():
             return False
         if self._Obj==None:
-            return (tuple(after_index)[self._level-1:]>=self._zero_range[0] and tuple(after_index)[self._level-1:]<=self._zero_range[1])
+            return (tuple(index)[self._level-1:]>=self._zero_range[0] and tuple(index)[self._level-1:]<=self._zero_range[1])
         else:
-            return (tuple(after_index)[self._level-1:]>=self._zero_range[0] and tuple(after_index)[self._level-1:]<=self._zero_range[1]) or self._Obj.is_zero(index)
+            return (tuple(index)[self._level-1:]>=self._zero_range[0] and tuple(index)[self._level-1:]<=self._zero_range[1]) or self._Obj.is_zero(index)
     
 class TableCodec(BaseCodec):
     def __init__(self,CodecObj=None,keyEncWidth=20,keyDecWidth=4,cwEncWidth=5,cwDecWidth=1,Policy=None):

@@ -93,9 +93,8 @@ class PipeLine(EncodePacketizedFile,DecodePacketizedFile):
  
         self._outer_cascade = cascade_build(self._outer_codecs)
         #check the outer codecs, make sure that there is a proper conclusion for indexing
-        if (self._packetsize_bytes//(self._basestrand_bytes))//self._outer_cascade.get_total_divisor() > 1:
-            
-            final_divisor = (self._packetsize_bytes//self._basestrand_bytes)//self._outer_cascade.get_total_divisor()
+        if self._outer_cascade.remainder(self._packetsize_bytes//self._basestrand_bytes) > 1:
+            final_divisor = self._outer_cascade.remainder(self._packetsize_bytes//self._basestrand_bytes)
             strand_indexer=BaseOuterCodec(final_divisor)
             self._outer_codecs[-1].set_object(strand_indexer) #this should make sure every strand is given an individual index if
 
@@ -365,8 +364,8 @@ if __name__=="__main__":
     decode_iterations=1
     #packet_in_strands = 185
     #packet_size_bytes = strand_length_bytes*packet_in_strands
-    packet_size_bytes=1000*4
-    rs1_outer = 40
+    packet_size_bytes=100000*4
+    rs1_outer = 33
     rs2_outer= 10
 
     rs1Outer = ReedSolomonOuterPipeline(rs1_outer,10)
@@ -384,7 +383,7 @@ if __name__=="__main__":
 
     #do some dummy writes
 
-    for i in range(1000):
+    for i in range(100000):
         buff = bytearray(convertIntToBytes(i,4))
         tell = mem_buffer.tell()
         mem_buffer.seek(0,2)
