@@ -34,9 +34,12 @@ uint64_t digest(uint64_t prev, uint64_t prev_bits,
 		uint64_t salt, uint64_t salt_bits,
 		uint64_t mod)
 {
-  uint64_t prev_mask = (1 << prev_bits) - 1;
-  uint64_t index_mask = (1 << index_bits) - 1;
-  uint64_t salt_mask = (1 << salt_bits) - 1;
+  uint64_t prev_mask = (1ULL << prev_bits) - 1;
+  uint64_t index_mask = (1ULL << index_bits) - 1;
+  uint64_t salt_mask = (1ULL << salt_bits) - 1;
+
+  //std::cout << "digest: " << std::hex << prev_mask << " " << index_mask << " " << salt_mask << " " << salt_bits << " " << (1ULL << salt_bits) << std::endl;
+  
   uint64_t t =  ((((index&index_mask) << prev_bits) | (prev & prev_mask)) << salt_bits) | (salt&salt_mask);
   t = ranhash(t) % mod;
   return t;
@@ -506,6 +509,8 @@ std::string hedge::encode(std::vector<uint8_t> seqId, std::vector<uint8_t> messa
     bit += nbits;
   }
 
+  //std::cout << "after seq: " << std::dec << index << ": " << std::hex << state << std::endl;  
+    
   // Copy prev over to be the salt
   state.salt = state.prev;
   // ? Should we set prev to 0 or not? Since we have the salt now, we don't need the prev.
@@ -542,7 +547,7 @@ std::ostream & operator << (std::ostream &o, search_tree<Constraint, Reward> &no
 
   o  << " " << node.kind << ":" << node.guess ;
 
-  o << node.c << " ";
+  o << " context: " << node.c << " ";
   
   o << " bits: ";
   

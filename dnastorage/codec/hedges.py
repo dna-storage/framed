@@ -983,23 +983,29 @@ def test(rate,fi_rate=0.01,length=10):
     #h = HEDGE(rate, 8, 16, 8, seqnum_bits= 8, message_bits=length*8)
     h = FastHedgesPipeline(rate)
     rb = buffer=randbytes(length)
-    print([_ for _ in rb])
+    #print([_ for _ in rb])
     s = BaseDNA(codewords=[_ for _ in rb])
-    s.index_bytes = 2
+    s.index_bytes = 4
     h.encode(s)
     s.dna_strand = inject(s.dna_strand,fi_rate)
+    header = h.encode_header()
+    h = FastHedgesPipeline(rate)
+    h.decode_header(header)
     h.decode(s)
-    print(s.codewords)
+    #
     if s.codewords==[_ for _ in rb]:
         return True
-    else:          
+    else:
+        print ([_ for _ in rb])
+        print([_ for _ in s.codewords])        
+        print (s.dna_strand)
         return False
 
     
 if __name__ == "__main__":
     import sys
-    import dnastorage.strand_representation
-
+    import dnastorage.strand_representation    
+    
     if len(sys.argv) >= 4:
         rate = sys.argv[1]
         try:
@@ -1028,7 +1034,7 @@ if __name__ == "__main__":
         length = 10
 
     matched = 0
-    trials = 1
+    trials = 1000
     total = 0
     while trials > 0:
         if test(rate,fi_rate=fi,length=length):

@@ -285,7 +285,7 @@ fasthedges_echo(PyObject *self, PyObject *args)
       {
 	hedge h = make_hedge_from_pyobject(hObj);
 
-	h.print();
+	h.print(true);
       }
     return Py_BuildValue("s",NULL);
 }
