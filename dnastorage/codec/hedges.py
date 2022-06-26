@@ -899,20 +899,17 @@ class FastHedgesPipeline(BaseCodec,CWtoDNA):
         BaseCodec.__init__(self,CodecObj=CodecObj,Policy=Policy)
 
     def _encode(self,strand):
-        index_bytes = strand.codewords[:strand.index_bytes]
         self._hedges_state.set_message_bytes(len(strand.codewords)-strand.index_bytes)
         self._hedges_state.set_seqnum_bytes(strand.index_bytes)
+        #self._hedges_state.set_message_bytes(len(strand.codewords))
+        #self._hedges_state.set_seqnum_bytes(0)
         #fasthedges.echo(self._hedges_state)        
         strand.dna_strand = fasthedges.encode(bytes(strand.codewords),self._hedges_state)
         return strand
         
     def _decode(self,strand):
         #print (self._hedges_state.seq_bytes, self._hedges_state.message_bytes)
-        #fasthedges.echo(self._hedges_state)                
         strand.codewords = fasthedges.decode(strand.dna_strand, self._hedges_state, self._guess_limit)
-
-        #print (strand.dna_strand)
-        #print (strand.codewords)
         return strand
     
     #store some pertinent information like bit lengths of data seen to be able to reinstantiate the decoder in a correct state    
@@ -921,6 +918,7 @@ class FastHedgesPipeline(BaseCodec,CWtoDNA):
         data+=convertIntToBytes(self._hedges_state.seq_bytes,4)
         data+=convertIntToBytes(self._hedges_state.message_bytes,4)
         return data
+    
     def _decode_header(self,buff):
         pos=0
         seqnum_bytes = convertBytesToInt(buff[pos:pos+4])

@@ -200,6 +200,7 @@ def pack_bits_to_bytes(index_set,index_bit_sizes):
     #put the last byte into the array if last byte is not completely filled, push all bits to the top of the byte
     if bits_in_remaining_byte >0 and bits_in_remaining_byte!=8:
         current_byte=current_byte<<bits_in_remaining_byte
+        #current_byte = current_byte|((0xAA)&((1<<bits_in_remaining_byte)-1))
         byte_array.append(current_byte)
     
     return byte_array

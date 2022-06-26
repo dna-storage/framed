@@ -53,7 +53,7 @@ class DNAFilePipeline:
             if h is None: return None #couldnt decode header, don't really have much else to go off of
 
             logger.debug("decoded header: {}".format(h))
-            if h['formatid'] == file_system_formatid_by_abbrev("Segmented"):
+            if h['main_pipeline_formatid'] == file_system_formatid_by_abbrev("Segmented"):
                 logger.debug("SegmentedReadDNAFile({},{},{})".format(filename,primer5,primer3))
                 return SegmentedReadDNAFilePipeline(input=filename,\
                                             write_incomplete_file=write_incomplete_file,\
@@ -118,7 +118,7 @@ class ReadDNAFilePipeline(DNAFilePipeline):
         header_class = kwargs["header"] #header was already decoded just grab it
         self.header = header_class.header_dict() # store the header dictionary
         self.strands = header_class.pick_nonheader_strands()
-        self.formatid = self.header['formatid']
+        self.formatid = self.header['main_pipeline_formatid']
  
         self.size = self.header['size']
         # set up mem_buffer 
@@ -228,7 +228,7 @@ class WriteDNAFilePipeline(DNAFilePipeline):
 
         header_dict={}
         header_dict["filename"]=self.output_filename
-        header_dict["formatid"]=self.formatid
+        header_dict["main_pipeline_formatid"]=self.formatid
         header_dict["size"]=self.size
         hdr_strands= header.encode_file_header(header_dict,self.pipe.encode_header_data())
 
@@ -473,7 +473,7 @@ if __name__ == "__main__":
 
     temp_header_pipeline_data=tempfile.NamedTemporaryFile(mode="wb+",delete=False)
 
-    wf = DNAFilePipeline.open("out.dna","w",format_name='Pipe-RS+CFC8',encoder_params=encoder_params)
+    wf = DNAFilePipeline.open("out.dna","w",format_name='Pipe-RS+CFC8',encoder_params=encoder_params,file_barcode=(1,2,3))
     
     wf._header_fd=temp_header_pipeline_data
     
@@ -483,7 +483,7 @@ if __name__ == "__main__":
     wf.close()
 
 
-    rf = DNAFilePipeline.open("out.dna","r",format_name='Pipe-RS+CFC8',encoder_params=encoder_params,fsmd_header_filename=temp_header_pipeline_data.name)
+    rf = DNAFilePipeline.open("out.dna","r",format_name='Pipe-RS+CFC8',encoder_params=encoder_params,fsmd_header_filename=temp_header_pipeline_data.name,file_barcode=(1,2,3))
 
     print ("Should print out 0 to 1000: ")
     while True:

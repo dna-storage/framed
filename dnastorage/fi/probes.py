@@ -27,6 +27,7 @@ class CodewordErrorRateProbe(BaseCodec,Probe):
         self._correct_key="{}::correct_strands".format(self._name)
         self._incorrect_key="{}::incorrect_strands".format(self._name)
         self._incorrect_not_none="{}::incorrect_strands_not_none".format(self._name)
+        self._first_byte_error="{}::first_error".format(self._name)
         CodewordErrorRateProbe.probe_id+=1
 
     def _encode(self,s):
@@ -42,9 +43,14 @@ class CodewordErrorRateProbe(BaseCodec,Probe):
         base_codewords = getattr(s,self._initial_codeword_attr)
         fault_codewords = s.codewords
         #now analyze error rates b/w the base and fault
+        first=True
         for i in range(len(base_codewords)):
             if i>=len(fault_codewords) or base_codewords[i]!=fault_codewords[i]:
                 stats.inc(self._total_error_rate_key,dflt=np.zeros((len(base_codewords),)),coords=i)
+                if first:
+                    first=False
+                    print("byte index {} index_bytes {}".format(i,base_codewords[:s.index_bytes])) 
+                    stats.inc(self._first_byte_error,dflt=np.zeros((len(base_codewords),)),coords=i)
             if i<len(fault_codewords) and base_codewords[i]!=fault_codewords[i] and fault_codewords[i]!=None:
                 stats.inc(self._incorrect_not_none,dflt=np.zeros((len(base_codewords),)),coords=i)
         if(fault_codewords==base_codewords):

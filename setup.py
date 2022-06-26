@@ -31,7 +31,7 @@ setup(name='starcode_bindings', version='1.0', description='starcode bindings ex
 
 setup(
     name='dnastorage',
-    version='0.1.0',
+    version='1.1.0',
     description='DNA-based data storage modeling and simulation package',
     long_description=readme,
     author='James Tuck',

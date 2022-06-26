@@ -102,12 +102,17 @@ def SDC_pipeline(pf,**kwargs):
         outerECCStrands = 255 - blockSizeInBytes//strandSizeInBytes
     else:
         outerECCStrands = kwargs.get("outerECCStrands",255-180)
+        
     upper_strand_length = kwargs.get("dna_length",300)
     pipeline_title=kwargs.get("title","")
     barcode = kwargs.get("barcode",tuple())
     
     #Error correction components
-    rsOuter = ReedSolomonOuterPipeline(blockSizeInBytes//strandSizeInBytes,outerECCStrands)
+    if "outerECCdivisor" not in kwargs:
+        rsOuter = ReedSolomonOuterPipeline(blockSizeInBytes//strandSizeInBytes,outerECCStrands)
+    elif "outerECCdivisor" in kwargs:
+        rsOuter = ReedSolomonOuterPipeline(kwargs["outerECCdivisor"],outerECCStrands)
+  
     hedges = FastHedgesPipeline(rate=hedges_rate,pad_bits=hedges_pad_bits,prev_bits=hedges_previous)
     crc = CRC8()
 

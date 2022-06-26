@@ -117,7 +117,7 @@ search_tree<DNAConstraint,Reward>::search_tree(hedge *_h,
   if (!insertion) {    
     char tmp = c.nextSymbolWithUpdate(nbits, bit);
     assert (tmp == base);
-    if (c.index == h->get_index_range(h->adj_seq_bits))
+    if (c.index == h->get_index_range(h->adj_seq_bits)) //KV: could this index boundary be messing something up?
       {
 	c.salt = c.prev;
 	c.prev = 0;
@@ -142,7 +142,7 @@ search_tree<DNAConstraint,Reward>::search_tree(hedge *_h,
 template<typename DNAConstraint, typename Reward>
 search_tree<DNAConstraint,Reward>::search_tree(hedge *_h,
 				  const context<DNAConstraint> &_c,
-				  float _score,
+				  float _score, 
 				  uint32_t _offset,
 				  std::string *_observed)
   :h(_h),c(_c),score(_score),offset(_offset), observed(_observed), bits(nullptr), bases(nullptr)

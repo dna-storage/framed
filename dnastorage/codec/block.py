@@ -327,7 +327,7 @@ class ReedSolomonOuterPipeline(BaseOuterCodec):
     def _decode(self,packets):
         #decode a set of packets 
         #Need to get packets into the right order to unroll the encoding, basically will get messages the same way as encoding
-        total_packets=[]
+        total_packets=[] 
         for key,item in sorted(packets.items(),key=lambda x: x[0]):
             total_packets.append(item)
         total_packets=total_packets[:self._total_sub_packets]

@@ -70,10 +70,14 @@ def _monte_kernel(monte_start,monte_end,args): #function that will run per proce
 
     assert fault_args !=None and dist_args !=None
 
-    
-    write_dna = DNAFilePipeline.open(None,"w",format_name=args.arch,header_params=header_params,header_version=args.header_version,
-                                     encoder_params=encoding_params,fsmd_header_filename=header_data_path,file_barcode=tuple(args.file_barcode))
-
+    if monte_end!=args.num_sims: #save last header data incase we want to keep it
+        write_dna = DNAFilePipeline.open(None,"w",format_name=args.arch,header_params=header_params,header_version=args.header_version,
+                                         encoder_params=encoding_params,fsmd_header_filename=header_data_path,file_barcode=tuple(args.file_barcode))
+    else:
+        base_file_path  = os.path.basename(args.file)
+        write_dna = DNAFilePipeline.open("{}.dna".format(base_file_path),"w",format_name=args.arch,header_params=header_params,header_version=args.header_version,
+                                         encoder_params=encoding_params,fsmd_header_filename=header_data_path,file_barcode=tuple(args.file_barcode))
+        
     write_dna.write(file_to_fault_inject.read())
     write_dna.close()
 

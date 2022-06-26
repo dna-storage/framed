@@ -185,6 +185,7 @@ public:
   uint32_t index_bits;
   uint32_t index;
 
+  //uint32_t bits_accounted_for;
   DNAConstraint constraint;
 
   context(int _prev_bits, int _salt_bits)
@@ -222,6 +223,7 @@ public:
     
     index++;
     constraint.next(c);
+    //bits_accounted_for+=num_bits;
     return c;
   }
   
