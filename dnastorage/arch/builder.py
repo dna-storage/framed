@@ -92,6 +92,7 @@ def SDC_pipeline(pf,**kwargs):
     t7_seq = kwargs.get("T7","CGACTAATACGACTCACTATAGC")
     rt_pcr_seq =kwargs.get("RT-PCR","CGCTAGCTCTAGAGATCTAG")
     check_primers = kwargs.get("check_primers",False)
+    other_strands=kwargs.get("other_strands",[])
     
     hedges_rate = kwargs.get("hedges_rate",1/2.)
     # pad_bits and prev_bits should match by default:
@@ -137,8 +138,8 @@ def SDC_pipeline(pf,**kwargs):
         DNA_pipeline=(dna_counter_probe,)+DNA_pipeline
 
     if check_primers: #checks data strands for matches in 
-        primer_check_probe = StrandCheckProbe(strands=[primer5,t7_seq,rt_pcr_seq,primer3]) 
-        DNA_pipeline=(primer_check_probe,)+DNA_pipeline
+        primer_check_probe = StrandCheckProbe(strands=[primer5,t7_seq,rt_pcr_seq,primer3]+other_strands) 
+        DNA_pipeline=DNA_pipeline+(primer_check_probe,)
 
     return pipeline.PipeLine(out_pipeline+inner_pipeline+DNA_pipeline,consolidator,blockSizeInBytes,strandSizeInBytes,upper_strand_length,1,packetizedfile=pf,
                             barcode=barcode)

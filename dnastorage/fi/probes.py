@@ -49,7 +49,6 @@ class CodewordErrorRateProbe(BaseCodec,Probe):
                 stats.inc(self._total_error_rate_key,dflt=np.zeros((len(base_codewords),)),coords=i)
                 if first:
                     first=False
-                    print("byte index {} index_bytes {}".format(i,base_codewords[:s.index_bytes])) 
                     stats.inc(self._first_byte_error,dflt=np.zeros((len(base_codewords),)),coords=i)
             if i<len(fault_codewords) and base_codewords[i]!=fault_codewords[i] and fault_codewords[i]!=None:
                 stats.inc(self._incorrect_not_none,dflt=np.zeros((len(base_codewords),)),coords=i)
@@ -183,8 +182,11 @@ class StrandCheckProbe(BaseCodec,Probe):
             stats[forward_key]=0xffffffffffffffff
             stats[reverse_key]=0xffffffffffffffff
             for i in range(0,len(s.dna_strand)-len(check_strand)):
+                #print(s.dna_strand)
                 forward_distance = hamming_distance(check_strand,s.dna_strand[i:i+len(check_strand)])
                 reverse_distance = hamming_distance(reverse_complement(check_strand),s.dna_strand[i:i+len(check_strand)])
+                if forward_distance == 0 or reverse_distance ==0: #im assuming any match is due to a region that should be there...
+                    continue
                 stats[reverse_key]=min(reverse_distance,stats[reverse_key])
                 stats[forward_key]=min(forward_distance,stats[forward_key])
         return s

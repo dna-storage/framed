@@ -85,7 +85,8 @@ class PipeLine(EncodePacketizedFile,DecodePacketizedFile):
             elif isinstance(component,Probe):
                 #probe should go into next cascade to avoid placement in locations like the outer codec
                 if component is components[-1]:
-                    raise PipeLineConstructionError("Probe placed at end of pipeline")
+                    #PipeLineConstructionError("Probe placed at end of pipeline")
+                    self._DNA_to_DNA.append(component) #allow probe to go on end of pipeline
                 continue
                 
             else:

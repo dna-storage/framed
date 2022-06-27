@@ -27,7 +27,7 @@ class WritePacketizedFilestream:
     
     def __setitem__(self,key,value):
         if (key >= self.minKey) and (key < self.maxKey):
-            self.__data[key] = value
+            self.__data[key] = value[0:self.packetSize]
         else:
             pass
             #print ("not in range:",key,self.minKey,self.maxKey)
