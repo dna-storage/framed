@@ -86,7 +86,6 @@ enum class hedge_rate
 class bitwrapper {
 public:
   std::vector<uint8_t> &bits;
-
   uint8_t operator[] (uint32_t index)
   {
     if (index >= bits.size()*8)
@@ -97,9 +96,10 @@ public:
     return (b >> m) & 1;
   }
   
-  uint32_t get_bits(uint32_t lower, uint32_t upper ) {
+  uint32_t get_bits(uint32_t lower, uint32_t upper ) { //bits are returned in increasing order e.g. bit 0, 1 , ... First bits are the least sigbits of bytes
     uint32_t offset = 0;
     uint32_t val = 0;
+    assert((upper-lower)<=32); //can only fit 32 bits into a single value right now
     for (uint32_t k = lower; k < upper; k++)
       {
 	val |= (operator[](k) << offset);
@@ -121,6 +121,7 @@ public:
   }
   
   bitwrapper(std::vector<uint8_t> &abits):bits(abits){}
+
 };
 
 uint64_t ranhash(uint64_t u);
@@ -240,6 +241,7 @@ public:
   
 class hedge;
 
+  //TODO: template search tree contexts
 template<typename DNAConstraint = Constraint, typename Reward = Reward>
 class search_tree {
 public:
@@ -273,6 +275,7 @@ public:
   std::vector< search_tree > make2bitGuesses();
   std::vector< search_tree > make1bitGuesses();
   std::vector< search_tree > make0bitGuesses();
+  
 
   void guessHelper(std::vector< search_tree > &,
 					 char c, int nbits, int val);
@@ -410,7 +413,9 @@ public:
 	int salt_bits);
 
   std::string encode(std::vector<uint8_t> seqId, std::vector<uint8_t> message);
-  
+
+
+  //TODO: add context template here, will be hook to include special contexts
   template <typename Constraint = Constraint, typename Reward = Reward>
   uint32_t decode(std::string &observed,
 	      std::vector<uint8_t> &seqId,
@@ -421,6 +426,8 @@ public:
   void print(bool extra=false);
 };
 
+
+  //TODO: this may need to be changed
 template<typename DNAConstraint, typename Reward>
 bool search_tree<DNAConstraint, Reward>::isIncomplete()
 {

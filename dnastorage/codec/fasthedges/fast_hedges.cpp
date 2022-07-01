@@ -117,7 +117,7 @@ search_tree<DNAConstraint,Reward>::search_tree(hedge *_h,
   if (!insertion) {    
     char tmp = c.nextSymbolWithUpdate(nbits, bit);
     assert (tmp == base);
-    if (c.index == h->get_index_range(h->adj_seq_bits)) //KV: could this index boundary be messing something up?
+    if (c.index == h->get_index_range(h->adj_seq_bits))
       {
 	c.salt = c.prev;
 	c.prev = 0;
@@ -139,6 +139,10 @@ search_tree<DNAConstraint,Reward>::search_tree(hedge *_h,
   }  
 }
 
+  //KV: TODO add new constructor here for codeword based searches
+
+
+  
 template<typename DNAConstraint, typename Reward>
 search_tree<DNAConstraint,Reward>::search_tree(hedge *_h,
 				  const context<DNAConstraint> &_c,
@@ -411,7 +415,7 @@ std::vector<search_tree<DNAConstraint,Reward>> search_tree<DNAConstraint,Reward>
     return make1bitGuesses();
   } else if ( nbits == 2 ) {
     return make2bitGuesses();
-  } else {
+  } else {//KV: TODO: Make a ContextGuesses method that will allow for the context to dictate what nbits should be 
     assert (false && "invalid case");
   }
   return {};
@@ -436,8 +440,7 @@ hedge::hedge(double rate,
   this->message_bytes = message_bytes;
   this->pad_bits = pad_bits;
   this->prev_bits = prev_bits;
-  this->salt_bits = salt_bits;
-  
+  this->salt_bits = salt_bits;  
   this->adj_seq_bits = seq_bytes*8 + check_if_padding_needed(seq_bytes*8);
   this->adj_pad_bits = pad_bits + check_if_padding_needed(message_bytes*8 + pad_bits);   
   this->adj_message_bits = message_bytes*8 + this->adj_pad_bits;
@@ -565,6 +568,7 @@ std::ostream & operator << (std::ostream &o, search_tree<Constraint, Reward> &no
   return o;
 }
 
+//TODO: Template this to context as well
 template <typename Constraint, typename Reward>
 uint32_t hedge::decode(std::string &observed,
 		   std::vector<uint8_t> &seqId,
