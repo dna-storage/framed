@@ -427,7 +427,7 @@ public:
 };
 
 
-  //TODO: this may need to be changed
+  //TODO: KV: Make this a context dependendent calculation
 template<typename DNAConstraint, typename Reward>
 bool search_tree<DNAConstraint, Reward>::isIncomplete()
 {
