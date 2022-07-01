@@ -179,16 +179,18 @@ class StrandCheckProbe(BaseCodec,Probe):
         for check_strand in self._strands:
             forward_key = "{}:forward_min".format(check_strand)
             reverse_key = "{}:reverse_min".format(check_strand)
-            stats[forward_key]=0xffffffffffffffff
-            stats[reverse_key]=0xffffffffffffffff
+            stats[forward_key]=(0xffffffffffffffff,None,None,None)
+            stats[reverse_key]=(0xffffffffffffffff,None,None,None)
             for i in range(0,len(s.dna_strand)-len(check_strand)):
                 #print(s.dna_strand)
                 forward_distance = hamming_distance(check_strand,s.dna_strand[i:i+len(check_strand)])
                 reverse_distance = hamming_distance(reverse_complement(check_strand),s.dna_strand[i:i+len(check_strand)])
                 if forward_distance == 0 or reverse_distance ==0: #im assuming any match is due to a region that should be there...
                     continue
-                stats[reverse_key]=min(reverse_distance,stats[reverse_key])
-                stats[forward_key]=min(forward_distance,stats[forward_key])
+                new_tuple_reverse = (reverse_distance,s.index_ints,i,s.dna_strand[i:i+len(check_strand)]) #get more information about the closest match
+                stats[reverse_key]=min(new_tuple_reverse,stats[reverse_key],key=lambda x: x[0])
+                new_tuple_forward = (forward_distance,s.index_ints,i,s.dna_strand[i:i+len(check_strand)])
+                stats[forward_key]=min(new_tuple_forward,stats[forward_key], key=lambda x: x[0])
         return s
 
     def _decode(self,s):

@@ -142,6 +142,7 @@ class CRC8(BaseCodec,CWtoCW):
         for b in byte_array:
             crc=crc^b
             crc = self._memo_array[crc]
+        #print(crc)
         return crc
             
             
@@ -160,3 +161,13 @@ class CRC8(BaseCodec,CWtoCW):
         else:
             strand.codewords=strand.codewords[0:len(strand.codewords)-1]
         return strand
+
+if __name__=="__main__":
+    s = BaseDNA(codewords=[5,6,7,8,9,214])
+    crc = CRC8()
+    crc.encode(s)
+    print(s.codewords)
+    #s.codewords[3]=241
+    crc.decode(s)
+    print(s.codewords)
+    

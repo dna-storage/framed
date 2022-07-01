@@ -39,7 +39,7 @@ class Fi_Env(object):
             for s in new_pool:
                 rand_choice =random.randint(0,1)
                 if rand_choice==1: s.dna_strand = reverse_complement(s.dna_strand) #reverse complements
-
+            random.shuffle(new_pool) #shuffle strands
             return new_pool,dist
         else:
             #make a simple array of tuples in format (strand,count for that strand)

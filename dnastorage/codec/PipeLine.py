@@ -96,7 +96,7 @@ class PipeLine(EncodePacketizedFile,DecodePacketizedFile):
         #check the outer codecs, make sure that there is a proper conclusion for indexing
         if self._outer_cascade.remainder(int(math.ceil(self._packetsize_bytes/self._basestrand_bytes))) > 1:
             final_divisor = self._outer_cascade.remainder(int(math.ceil(self._packetsize_bytes/self._basestrand_bytes)))
-            print("final divisor {}".format(final_divisor))
+            #print("final divisor {}".format(final_divisor))
             strand_indexer=BaseOuterCodec(final_divisor)
             self._outer_codecs[-1].set_object(strand_indexer) #this should make sure every strand is given an individual index if
 

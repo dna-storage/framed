@@ -104,10 +104,17 @@ def _monte_kernel(monte_start,monte_end,args): #function that will run per proce
         fault_environment.Run()
         stats.inc("total_file_data_bytes",stats["file_size_bytes"])
         stats.inc("total_strands_analyzed",len(fault_environment.get_strands()))
-        
+
         read_dna = DNAFilePipeline.open(None,"r",input_strands=fault_environment.get_strands(),header_params=header_params,
                                         header_version=args.header_version,format_name=args.arch,encoder_params=encoding_params,fsmd_header_filename=header_data_path,
                                         file_barcode=tuple(args.file_barcode))
+        '''
+        else:
+            print("reading from file")
+            read_dna = DNAFilePipeline.open("{}.dna".format(base_file_path),"r",header_params=header_params,
+                                            header_version=args.header_version,format_name=args.arch,encoder_params=encoding_params,fsmd_header_filename=header_data_path,
+                                            file_barcode=tuple(args.file_barcode))
+        ''' 
         if read_dna is None:
             #dead header
             stats.inc("dead_header",1)
