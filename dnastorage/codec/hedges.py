@@ -870,30 +870,31 @@ class PyHedgesPipeline(BaseCodec,CWtoDNA):
         return buff[pos:]
 
 
-class FastHedgesPipeline(BaseCodec,CWtoDNA):
 
-    class hedges_state:
-        def __init__(self, rate=1.0/4, seq_bytes=2, message_bytes=14, pad_bits=8, prev_bits = 8):
-            self.rate = rate
-            self.seq_bytes = seq_bytes
-            self.message_bytes = message_bytes
-            self.pad_bits = pad_bits
-            self.prev_bits = prev_bits
-            self.salt_bits = seq_bytes * 8
-            if self.salt_bits > 32:
-                self.salt_bits = 32
 
-        def set_message_bytes(self,message_bytes):
-            self.message_bytes = message_bytes
+class hedges_state:
+    def __init__(self, rate=1.0/4, seq_bytes=2, message_bytes=14, pad_bits=8, prev_bits = 8):
+        self.rate = rate
+        self.seq_bytes = seq_bytes
+        self.message_bytes = message_bytes
+        self.pad_bits = pad_bits #this is user-defined pad bits, not those determined under the hood to make patterns work out
+        self.prev_bits = prev_bits
+        self.salt_bits = seq_bytes * 8
+        if self.salt_bits > 32:
+            self.salt_bits = 32
 
-        def set_seqnum_bytes(self,seq_bytes):
-            self.seq_bytes = seq_bytes
-            self.salt_bits = seq_bytes * 8
-            if self.salt_bits > 32:
-                self.salt_bits = 32
+    def set_message_bytes(self,message_bytes):
+        self.message_bytes = message_bytes
+
+    def set_seqnum_bytes(self,seq_bytes):
+        self.seq_bytes = seq_bytes
+        self.salt_bits = seq_bytes * 8
+        if self.salt_bits > 32:
+            self.salt_bits = 32
     
+class FastHedgesPipeline(BaseCodec,CWtoDNA):
     def __init__(self,rate,pad_bits=8,prev_bits=8,guess_limit=100000,CodecObj=None,Policy=None):
-        self._hedges_state = FastHedgesPipeline.hedges_state(rate=rate,pad_bits=pad_bits,prev_bits=prev_bits)
+        self._hedges_state = hedges_state(rate=rate,pad_bits=pad_bits,prev_bits=prev_bits)
         self._guess_limit=guess_limit
         CWtoDNA.__init__(self)
         BaseCodec.__init__(self,CodecObj=CodecObj,Policy=Policy)

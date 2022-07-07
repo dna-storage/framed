@@ -231,6 +231,15 @@ def unpack_bytes_to_indexes(index_bytes,index_bit_sizes):
 
     return index_array
 
+def flip_endian(byte):
+    out_byte = 0x00
+    out_byte = (byte&0xF0)>>4 | (byte&0x0F)<<4
+    out_byte = (out_byte & 0xCC)>>2 | (out_byte&0x33)<<2
+    out_byte = (out_byte & 0xAA)>>1 | (out_byte&0x55)<<1
+    return out_byte
+
+
+
 
 if __name__ == "__main__":
     import math

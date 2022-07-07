@@ -1,8 +1,11 @@
-"""
+/*
 Filename: codeword_hedges.hpp
 Description: Support for hedges to allow for codeword based implementations. Support for codeword+assembly will also be included at some point.
 Author: Kevin Volkel
-"""
+*/
+
+#ifndef CW_HEDGES_HPP
+#define CW_HEDGES_HPP
 
 #include <iostream>
 #include <vector>
@@ -11,65 +14,70 @@ Author: Kevin Volkel
 #include <cmath>
 #include <cassert>
 #include <string>
+#include <map>
 #include "fast_hedges.hpp"
 
 
 namespace codeword_hedges{
+  class DNAtrie;
   
-uint8_t convert_base_to_bits(const char& base){ //binary representation for bases
-  switch(base){
-  case "A":
-    return 0x00;
-  case "G":
-    return 0x01;
-  case "C":
-    return 0x02;
-  case "T":
-    return 0x03;
-  }
-  assert(0); //shouldn't reach here
-}
+  std::map<std::string,codeword_hedges::DNAtrie*> CodebookMap; //global codebook map, easiest thing I can think of right now
 
-char convert_bits_to_base(const uint8_t& base){ //binary representation for bases
-  switch(base){
-  case 0x00:
-    return "A";
-  case 0x01:
-    return "G";
-  case 0x02:
-    return "C";
-  case 0x03:
-    return "T";
-  }
-  assert(0); //shouldn't reach here
-}
-
-//convert DNA string to byte array that will be compatible with bitwrapper object
-std::vector<uin8_t> convert_DNA_to_bytes(const std::string& DNA){
-  uint32_t pad_bits = 8 - (DNA.size()*2)%8;
-  if (pad_bits==8){
-    pad_bits=0; //pad_bits can only be 8 if % is 0
-  }
-  std::vector<uint8_t> DNA_bytes((DNA.size()*2+pad_bits)/8); //make a vector of bytes large enough to hold binary representation of DNA
-  uint8_t shift=0;
-  uint32_t byte_index=0;
-  for(int i=0; i<DNA.size(); i++){
-    assert(shift<8); //make sure shift doesn't fly off the rails
-    uint8_t base_bits=convert_base_to_bits(DNA[i]);
-    base_bits = (base_bits&0x01)<<1 | (base_bits>>1); //flipping the endianess here so when we use bitwrapper it comes out the right way
-    DNA_bytes[byte_index]|=(base_bits<<shift);
-    shift+=2;
-    if(shift%8==0){
-      shift=0;
-      byte_index++;
+  uint8_t convert_base_to_bits(const char& base){ //binary representation for bases
+    switch(base){
+    case 'A':
+      return 0x00;
+    case 'G':
+      return 0x01;
+    case 'C':
+      return 0x02;
+    case 'T': 
+      return 0x03;
     }
+    assert(0); //shouldn't reach here
   }
-  return DNA_bytes;
-}
-
-#define MAX_BASES 4
-#define NULL_VALUE 0xffffffff
   
+  char convert_bits_to_base(const uint8_t& base){ //binary representation for bases
+    switch(base){
+    case 0x00:
+      return 'A';
+    case 0x01:
+      return 'G';
+    case 0x02:
+      return 'C';
+    case 0x03:
+      return 'T';
+    }
+    assert(0); //shouldn't reach here
+  }
+  
+  //convert DNA string to byte array that will be compatible with bitwrapper object
+  std::vector<uint8_t> convert_DNA_to_bytes(const std::string& DNA){
+    uint32_t pad_bits = 8 - (DNA.size()*2)%8;
+    if (pad_bits==8){
+      pad_bits=0; //pad_bits can only be 8 if % is 0
+    }
+    std::vector<uint8_t> DNA_bytes((DNA.size()*2+pad_bits)/8); //make a vector of bytes large enough to hold binary representation of DNA
+    uint8_t shift=0;
+    uint32_t byte_index=0;
+    for(int i=0; i<DNA.size(); i++){
+      assert(shift<8); //make sure shift doesn't fly off the rails
+      uint8_t base_bits=convert_base_to_bits(DNA[i]);
+      base_bits = (base_bits&0x01)<<1 | (base_bits>>1); //flipping the endianess here so when we use bitwrapper it comes out the right way
+      DNA_bytes[byte_index]|=(base_bits<<shift);
+      shift+=2;
+      if(shift%8==0){
+	shift=0;
+	byte_index++;
+      }
+    }
+    return DNA_bytes;
+  }
+  
+#define MAX_BASES 4
+#ifndef NULL_VALUE
+#define NULL_VALUE 0xffffffff
+#endif
   //DNAtrie holds a tree of DNA strings as a compressed bit representation, necessary for tracking guesses along the tree for decoding 
   class DNAtrie{
   public:
@@ -101,8 +109,8 @@ std::vector<uin8_t> convert_DNA_to_bytes(const std::string& DNA){
 	    uint32_t bases_remaining_DNA = input_length-total_indexes_covered;
 	    uint32_t bases_remaining_node = current_node->_prefix_length-i;
 
-	    uint32_t node_pad_bits = (8 - (bases_remaining_node*2)%8)==8 ? 0 : (8 - (bases_remaining_node*2)%8);
-	    uint32_t DNA_pad_bits  = (8 - (bases_remaining_DNA*2)%8)==8 ? 0 :  (8 - (bases_remaining_DNA*2)%8);
+	    uint32_t node_pad_bits = (bases_remaining_node*2)%8==0 ? 0 : (8 - (bases_remaining_node*2)%8);
+	    uint32_t DNA_pad_bits  = (bases_remaining_DNA*2)%8==0 ? 0 :  (8 - (bases_remaining_DNA*2)%8);
 
 	    std::vector<uint8_t> new_node_strand((bases_remaining_node*2+node_pad_bits)/8);
 	    std::vector<uint8_t> new_DNA_strand((bases_remaining_DNA*2+DNA_pad_bits)/8);
@@ -138,7 +146,7 @@ std::vector<uin8_t> convert_DNA_to_bytes(const std::string& DNA){
 	    }
 	    found=false; //the addition of a node means that the string was indeed not found
 	    current_node = current_node->children[DNA_base].get(); //go to the next node which was made for the input strand so algorithm can finish out
-	    current_node->_prefix_length= current_node->prefix_length-bases_remaining_node;
+	    current_node->_prefix_length= current_node->_prefix_length-bases_remaining_node;
 	    break;
 	  }
 	  total_indexes_covered++; //tracking where at in the input strand we have traversed
@@ -173,7 +181,11 @@ std::vector<uin8_t> convert_DNA_to_bytes(const std::string& DNA){
       return return_bases;
     }
 
-    uint32_t get_value(){ return _value;} //return the value of 
+    uint8_t get_length(){return _prefix_length;} //length of the node's internal string
+
+    uint32_t get_value(){ return _value;} //return the value of the complete codeword
+
+    DNAtrie* get_child(char c){ return children[convert_base_to_bits(c)].get();} //get the pointer the child node
     
   protected:
     std::vector<uint8_t> _dna; //local dna string for this node
@@ -183,21 +195,86 @@ std::vector<uin8_t> convert_DNA_to_bytes(const std::string& DNA){
   };
 
 
-  class basic_codeword_hedges_context : public hedges::context{
+  template<typename DNAConstraint = hedges::Constraint>
+  class context : public hedges::context<DNAConstraint> {
   public:
     //this class is going to provide the main mechanism for traversing the tree while we make guesses in a strand
-    codeword_hedges_context(int _prev_bits, int _salt_bits)
-      :hedges::context(_prev_bits,_salt_bits)
+    context(int _prev_bits, int _salt_bits)
+      :hedges::context<DNAConstraint>(_prev_bits,_salt_bits)
     {
-      //TODO: Need to grab pointers from the hedges module to the necessary DNATrie object
+      if(CodebookMap.find("codewords")==CodebookMap.end()){
+	assert(0 && "Context fail initial root node, no codewords key found");
+      }
+      _root_node = CodebookMap["codewords"];
+      assert(_root_node->is_root() && "Root node of trie not actually a root node");
+      
+    }
+
+    char getNextSymbol(int x, int y){ assert(0);} //unused function just to make constant calls happy
+    
+    char getNextSymbol(uint32_t& num_bits, uint32_t& val){ //num_bits, val are references to be able to load with codeword values
+      char ret_char=0x00;
+      if(_current_trie_prefix>=_current_trie_position->get_length() && _current_transition_guesses.size()==0){
+	//we reached the end of this node, so we'll be guessing all transitions out
+	if(_current_trie_position->is_leaf()){
+	  //need to roll over to root node, so get guesses from the root
+	  val = _current_trie_position->get_value();
+	  assert(val!=NULL_VALUE && "Leaf node has null value");
+	  _current_transition_guesses=_root_node->get_transition_bases();
+	}
+	else{
+	  _current_transition_guesses=_current_trie_position->get_transition_bases();
+	}
+	ret_char=_current_transition_guesses.back();
+	_current_transition_guesses.pop_back();
+      }
+      else if(_current_trie_prefix>=_current_trie_position->get_length() && _current_transition_guesses.size()>0){
+	ret_char=_current_transition_guesses.back();
+	_current_transition_guesses.pop_back();
+      }
+      else if(_current_trie_prefix>=_current_trie_position->get_length() && _current_transition_guesses.size()==0){
+	return 0x00;
+      }
+      else{
+	//we just guess the next character
+	ret_char=_current_trie_position->get_index(_current_trie_prefix);
+      }
+      //determine if this guess will be the end of a codeword, if so load bits and val
+      
+      
+      return ret_char;
     }
     
+    char getNextSymbolWithUpdate(int num_bits, int value, char c){
+      char ret_symbol = 0x00;
+      //we need to update the position we are in the trie based on what base was chosen as a guess
+      if(_current_trie_prefix>=_current_trie_position->get_length()){
+	_current_trie_prefix=0;
+	if(_current_trie_position->is_leaf()) {
+	  _current_trie_position=_root_node->get_child(c); //this is a complete roll over,-->root-->child at c
+	  this->index++;
+	}
+	else{
+	  _current_trie_position=_current_trie_position->get_child(c);
+	}
+	ret_symbol= _current_trie_position->get_index(_current_trie_prefix);
+      }
+      else{
+	_current_trie_prefix++; //stay in the same node
+	ret_symbol=_current_trie_position->get_index(_current_trie_prefix);
+      }
+      return ret_symbol;
+    }
+  
   private:
-    DNAtrie* _codeword_trie; //pointer to the codeword tree we will use to make guesses
-
+    //unit32_t _value=NULL_VALUE; //value of the codeword
+    DNAtrie* _root_node=nullptr; //the root node of the codeword trie
+    DNAtrie* _current_trie_position=nullptr; //current position in the trie for this context
+    uint8_t _current_trie_prefix=0; //tracks position within  a node
+    std::vector<char> _current_transition_guesses; //tracks the current transitions
     
   };
-
-    
   
 } //end namespace codeword_hedges
+
+#endif

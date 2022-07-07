@@ -25,6 +25,15 @@ fasthedges = Extension('dnastorage.codec.fasthedges',
                     extra_compile_args=["-std=c++11", "-Wall", "-Wextra"],
                     language='c++',)
 
+codewordhedges = Extension('dnastorage.codec.codewordhedges',
+                       sources = ['dnastorage/codec/fasthedges/codewordhedges_module.cpp',
+                                  'dnastorage/codec/fasthedges/fast_hedges.cpp'],
+                       extra_compile_args=["-std=c++11", "-Wall", "-Wextra"],
+                    language='c++',)
+
+
+
+
 setup(name='generate', version = '1.0', ext_modules=[Extension('generate',['dnastorage/util/random_int.c'])])
 setup(name='starcode_bindings', version='1.0', description='starcode bindings extensions',
       ext_modules=[starcode_module])
@@ -39,5 +48,5 @@ setup(
     url='https://github.ncsu.edu/jtuck/',
     license=license,
     packages=find_packages(exclude=( 'tests','docs', 'tools', 'other_software')),
-    ext_modules = [fasthedges]
+    ext_modules = [fasthedges,codewordhedges]
 )
