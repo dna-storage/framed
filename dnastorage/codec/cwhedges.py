@@ -2,7 +2,7 @@ from dnastorage.codec.base_conversion import *
 from dnastorage.codec.base import *
 from dnastorage.codec_types import *
 from math import log2,floor
-from bitarray import bitarray
+import bitarray
 
 from dnastorage.codec.hedges import hedges_state
 
@@ -40,7 +40,7 @@ class CodewordHedgesPipeline(BaseCodec,CWtoDNA):
             start_bit = i
             end_bit = i+self._bits_per_cw
             bits = b_array[start_bit:end_bit]
-            key = int.from_bytes(bits.to_bytes(),"little") #need to use little endian to be consistent with the rest of the C++ library
+            key = int.from_bytes(bits.tobytes(),"little") #need to use little endian to be consistent with the rest of the C++ library
             codeword_list.append(self._codebook[key])
         strand.dna_strand = "".join(codeword_list)
         return strand
@@ -71,15 +71,21 @@ if __name__ == "__main__":
     import random
     from dnastorage.strand_representation import *
     #test case for codeword hedges
-    test_bytes = random.randbytes(100)
+    test_bytes = [random.randint(0,255) for _ in range(0,1)]
     test_codebook = {
         0: "AGAGAACT",
-        1: "TCAGCTTT"
+        1: "TCAGCTTT",
+        2: "TCATTTTT",
+        3: "ATATTAAA",
+        4: "TGAAAAAA",
+        5: "GAAAAAAA",
+        6: "CTATATAA",
+        7: "CTATAGAA"
     }
     
     cwhedge  = CodewordHedgesPipeline(test_codebook)
 
-    test_DNA = BaseDNA(codewords=[int(_) for _ in test_bytes])
+    test_DNA = BaseDNA(codewords=test_bytes)
 
     print("DNA Bytes {}".format(test_DNA.codewords))
     
@@ -88,6 +94,9 @@ if __name__ == "__main__":
     print("DNA after encoding {}".format(test_DNA.dna_strand))
 
     exit()
+    
     cwhedge.decode(test_DNA)
 
     print("Bytes after decoding {}".format(test_DNA.codewords))
+
+    assert(test_bytes == list(test_DNA.codewords) and "Error Bytes don't match")

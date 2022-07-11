@@ -50,6 +50,18 @@ namespace codeword_hedges{
     }
     assert(0); //shouldn't reach here
   }
+
+   void print_bitwrapper_as_string(uint32_t length, const hedges::bitwrapper& DNA){ //debug function for printing bit arrays as their string
+    std::string DNA_string;
+    std::cout<<"Printing a DNA bitwrapper as a string, length "<<length<<std::endl; 
+    for(int i =0; i<length;i++){
+      uint32_t base_bits = DNA.get_bits(i*2,i*2+2);
+      const char base = convert_bits_to_base(base_bits);
+      std::string temp(1,base);
+      DNA_string = DNA_string + temp;
+    }
+    std::cout<<"Final DNA String: "<<DNA_string<<std::endl;
+  }
   
   //convert DNA string to byte array that will be compatible with bitwrapper object
   std::vector<uint8_t> convert_DNA_to_bytes(const std::string& DNA){
@@ -63,7 +75,7 @@ namespace codeword_hedges{
     for(int i=0; i<DNA.size(); i++){
       assert(shift<8); //make sure shift doesn't fly off the rails
       uint8_t base_bits=convert_base_to_bits(DNA[i]);
-      base_bits = (base_bits&0x01)<<1 | (base_bits>>1); //flipping the endianess here so when we use bitwrapper it comes out the right way
+      //base_bits = (base_bits&0x01)<<1 | (base_bits>>1); //flipping the endianess here so when we use bitwrapper it comes out the right way
       DNA_bytes[byte_index]|=(base_bits<<shift);
       shift+=2;
       if(shift%8==0){
@@ -71,8 +83,18 @@ namespace codeword_hedges{
 	byte_index++;
       }
     }
+
+
+#ifdef DEBUG
+    std::cout<<"Original DNA string before bits :"<<DNA<<std::endl;
+    hedges::bitwrapper Test(DNA_bytes);
+    print_bitwrapper_as_string(DNA.size(),Test);
+#endif
+    
     return DNA_bytes;
-  }
+  }	       
+
+
   
 #define MAX_BASES 4
 #ifndef NULL_VALUE
@@ -87,6 +109,103 @@ namespace codeword_hedges{
     DNAtrie():_prefix_length(0){ //initialize empty node
       for(int i=0; i<MAX_BASES; i++) children[i] = nullptr;
     }
+
+    void print(){ //print out the tree
+      assert(this->is_root()); //should start prints only from the root
+      std::cout<<"PRINTING TREE"<<std::endl;
+      std::vector<DNAtrie*> nodes;
+      nodes.push_back(this);
+      while(nodes.size()>0){
+	DNAtrie* current_node = nodes.back();
+	std::cout<<"NODE "<< std::hex << current_node<<std::endl;
+	hedges::bitwrapper current_bitwrapper(current_node->_dna);
+	print_bitwrapper_as_string(current_node->_prefix_length,current_bitwrapper);
+	nodes.pop_back();
+	for(int i=0; i<MAX_BASES; i++){
+	  if(current_node->children[i].get()!=NULL){
+	    std::cout<<"CHILD "<< std::hex << current_node->children[i].get()<<" base for direction " <<std::hex<< i << std::endl;
+	    nodes.push_back(current_node->children[i].get());
+	  }
+	}
+	if(current_node->is_leaf()) std::cout<<"IS LEAF, VALUE: "<<current_node->_value<<std::endl;
+      }
+    }
+
+    //function to add simple nodes to the end of a leaf, really should only be used initially upon the root
+    void _add_leaf_node(DNAtrie* parent,uint32_t total_indexes_covered, const std::string& DNA, const hedges::bitwrapper& DNA_bits, uint32_t value){
+      //set up split node from DNA
+      uint32_t DNA_base = DNA_bits.get_bits((total_indexes_covered)*2,(total_indexes_covered)*2+2);
+      uint32_t bases_remaining_DNA = DNA.size()-total_indexes_covered;
+      uint32_t DNA_pad_bits  = (bases_remaining_DNA*2)%8==0 ? 0 :  (8 - (bases_remaining_DNA*2)%8);
+      std::vector<uint8_t> new_DNA_strand((bases_remaining_DNA*2+DNA_pad_bits)/8);
+      hedges::bitwrapper new_DNA_bits(new_DNA_strand);
+      //now make the new string for the input string
+      for(int j=total_indexes_covered; j<DNA.size(); j++){
+	uint32_t new_DNA_base = DNA_bits.get_bits(j*2,j*2+2);
+	new_DNA_bits.set_bit((j-total_indexes_covered)*2,(new_DNA_base&0x01));
+	new_DNA_bits.set_bit((j-total_indexes_covered)*2+1,(new_DNA_base)>>1 &0x01);
+      }
+      std::shared_ptr<DNAtrie> DNA_node = std::make_shared<DNAtrie>(new_DNA_strand,bases_remaining_DNA);
+      DNA_node->_value = value;
+
+      assert(parent->get_child((char)DNA_base)==NULL); //this should be Null, else there was an error where we didn't go down the tree
+      parent->children[DNA_base] = DNA_node; //add the new node to the parent
+    }
+
+    //function to handle node splits 
+    void _split_node(uint32_t total_indexes_covered, const std::string& DNA, uint32_t split_index, DNAtrie* current_node,
+		      const hedges::bitwrapper& DNA_bits, const hedges::bitwrapper& node_bits,uint32_t value){
+      uint32_t node_base = node_bits.get_bits(split_index*2,split_index*2+2);
+      uint32_t DNA_base = DNA_bits.get_bits((total_indexes_covered)*2,(total_indexes_covered)*2+2);
+      //set up split node from current ndoe
+      uint32_t bases_remaining_node = current_node->_prefix_length-split_index;
+      uint32_t node_pad_bits = (bases_remaining_node*2)%8==0 ? 0 : (8 - (bases_remaining_node*2)%8);
+      std::vector<uint8_t> new_node_strand((bases_remaining_node*2+node_pad_bits)/8);
+      hedges::bitwrapper new_node_bits(new_node_strand);
+      //we need to split this node at position i
+      for(int j=split_index; j<current_node->_prefix_length; j++){ //first make new DNA string for the new node
+	uint32_t new_node_base = node_bits.get_bits(j*2,j*2+2);
+	new_node_bits.set_bit((j-split_index)*2,(new_node_base&0x01)); //most sig bit should be first bitin new node
+	new_node_bits.set_bit((j-split_index)*2+1,new_node_base>>1&0x01);
+      }
+      std::shared_ptr<DNAtrie> new_node = std::make_shared<DNAtrie>(new_node_strand,bases_remaining_node);
+
+      //now connect to the new-internal node to everything that was on this current node
+      for(int j=0; j<MAX_BASES; j++){
+	new_node->set_child(current_node->children[j],j);
+	current_node->children[j]=nullptr; //null out old connections
+      }
+
+      //set up split node from DNA
+      uint32_t bases_remaining_DNA = DNA.size()-total_indexes_covered;
+      uint32_t DNA_pad_bits  = (bases_remaining_DNA*2)%8==0 ? 0 :  (8 - (bases_remaining_DNA*2)%8);
+      std::vector<uint8_t> new_DNA_strand((bases_remaining_DNA*2+DNA_pad_bits)/8);
+      hedges::bitwrapper new_DNA_bits(new_DNA_strand);
+      //now make the new string for the input string
+      for(int j=total_indexes_covered; j<DNA.size(); j++){
+	uint32_t new_DNA_base = DNA_bits.get_bits(j*2,j*2+2);
+	new_DNA_bits.set_bit((j-total_indexes_covered)*2,(new_DNA_base&0x01));
+	new_DNA_bits.set_bit((j-total_indexes_covered)*2+1,new_DNA_base>>1&0x01);
+      }
+      std::shared_ptr<DNAtrie> DNA_node = std::make_shared<DNAtrie>(new_DNA_strand,bases_remaining_DNA);
+      DNA_node->_value = value;
+
+      //do the split
+      current_node->children[node_base] = new_node; //finally insert the new node as the split
+      current_node->children[DNA_base] = DNA_node; //insert the node that arrisses from the input string
+      if(current_node->_value != NULL_VALUE){
+	new_node->_value = current_node->_value; //transfer value ownership down the tree
+	current_node -> _value = NULL_VALUE; //this currentnode shouldn't have ownership of a value anymore 
+      }
+      current_node->_prefix_length= current_node->_prefix_length-bases_remaining_node; //this makes sure that the current node has a shorted string
+      //should also remove unnesscary bytes from the current node's byte array 
+      uint32_t final_pad = current_node->_prefix_length*2%8==0 ? 0 : 8-(current_node->_prefix_length*2)%8;
+      uint32_t current_node_final_bytes = (final_pad+current_node->_prefix_length*2)/8;
+      uint32_t current_node_og_bytes = current_node->_dna.size();
+      for(int pop_counter =0; pop_counter<(current_node_og_bytes-current_node_final_bytes); pop_counter++) current_node->_dna.pop_back();
+    }
+
+
     
     bool insert(const std::string& DNA,uint32_t value){
       assert(this->is_root()); //searches should start from the root
@@ -96,57 +215,27 @@ namespace codeword_hedges{
       uint32_t input_length = DNA.size();
       uint32_t total_indexes_covered=0;
       DNAtrie* current_node=this;
+      DNAtrie* parent=NULL;
       while(total_indexes_covered<input_length){
+	parent=current_node;
 	current_node = current_node->children[DNA_bits.get_bits(total_indexes_covered*2,total_indexes_covered*2+2)].get();
-	//check if node needs to be split
-	hedges::bitwrapper node_bits(_dna);
-	for(int i=0; i<_prefix_length; i++){
+
+	//special case, node null, add string to this node
+	if(current_node==NULL){
+	  assert(parent==this->is_root()); //adding a leaf should only occur on root, everything else should be a split
+	  _add_leaf_node(parent,total_indexes_covered,DNA,DNA_bits,value);
+	  found=false;
+	  break; //this should be the endpoint given that we extended off of a leaf node
+	}
+	//if node is not null iterate thorugh string to see if node needs to be split
+	hedges::bitwrapper node_bits(current_node->_dna);
+	for(int i=0; i<current_node->_prefix_length; i++){
 	  uint32_t node_base = node_bits.get_bits(i*2,i*2+2);
 	  if(total_indexes_covered>=input_length) break;
-	  uint32_t DNA_base = DNA_bits.get_bits(i*2,i*2+2);
+	  uint32_t DNA_base = DNA_bits.get_bits((total_indexes_covered)*2,(total_indexes_covered)*2+2);
 	  if((DNA_base^node_base)!=0){
-
-	    uint32_t bases_remaining_DNA = input_length-total_indexes_covered;
-	    uint32_t bases_remaining_node = current_node->_prefix_length-i;
-
-	    uint32_t node_pad_bits = (bases_remaining_node*2)%8==0 ? 0 : (8 - (bases_remaining_node*2)%8);
-	    uint32_t DNA_pad_bits  = (bases_remaining_DNA*2)%8==0 ? 0 :  (8 - (bases_remaining_DNA*2)%8);
-
-	    std::vector<uint8_t> new_node_strand((bases_remaining_node*2+node_pad_bits)/8);
-	    std::vector<uint8_t> new_DNA_strand((bases_remaining_DNA*2+DNA_pad_bits)/8);
-
-	    hedges::bitwrapper new_node_bits(new_node_strand);
-	    hedges::bitwrapper new_DNA_bits(new_DNA_strand);
-	    //we need to split this node at position i
-	    for(int j=i; j<current_node->_prefix_length; j++){ //first make new DNA string for the new node
-	      uint32_t new_node_base = node_bits.get_bits(j*2,j*2+2);
-	      new_node_bits.set_bit((j-i)*2,(new_node_base>>1&0x01)); //most sig bit should be first bitin new node
-	      new_node_bits.set_bit((j-i)*2+1,new_node_base&0x01);
-	    }
-	    //now make the new string for the input string
-	    for(int j=total_indexes_covered; j<DNA.size(); j++){
-	      uint32_t new_node_base = DNA_bits.get_bits(j*2,j*2+2);
-	      new_node_bits.set_bit((j-total_indexes_covered)*2,(new_node_base>>1&0x01));
-	      new_node_bits.set_bit((j-total_indexes_covered)*2+1,new_node_base&0x01);
-	    }
-	    std::shared_ptr<DNAtrie> DNA_node = std::make_shared<DNAtrie>(new_DNA_strand,bases_remaining_DNA);
-	    std::shared_ptr<DNAtrie> new_node = std::make_shared<DNAtrie>(new_node_strand,bases_remaining_node);
-	    DNA_node->_value = value;
-
-	    //now connect to the new-internal node everything that was on this current node
-	    for(int j=0; j<MAX_BASES; j++){
-	      new_node->set_child(current_node->children[j],j);
-	      current_node->children[j]=nullptr; //null out old connections
-	    }
-	    current_node->children[node_base] = new_node; //finally insert the new node as the split
-	    current_node->children[DNA_base] = DNA_node; //insert the node that arrisses from the input string
-	    if(current_node->_value != NULL_VALUE){
-	      new_node->_value = current_node->_value; //transfer value ownership down the tree
-	      current_node -> _value = NULL_VALUE; //this current node shouldn't have ownership of a value anymore 
-	    }
+	    _split_node(total_indexes_covered,DNA,i,current_node,DNA_bits, node_bits, value); //mismatch at base within node, split
 	    found=false; //the addition of a node means that the string was indeed not found
-	    current_node = current_node->children[DNA_base].get(); //go to the next node which was made for the input strand so algorithm can finish out
-	    current_node->_prefix_length= current_node->_prefix_length-bases_remaining_node;
 	    break;
 	  }
 	  total_indexes_covered++; //tracking where at in the input strand we have traversed
@@ -154,8 +243,8 @@ namespace codeword_hedges{
       }
       return found;
     }
-   
 
+    
     bool is_leaf(){
       return _value!=NULL_VALUE; //leaf nodes should only exist where non-NULL values exist
     }
@@ -171,7 +260,6 @@ namespace codeword_hedges{
       hedges::bitwrapper dna_bits(_dna);
       return convert_bits_to_base(dna_bits.get_bits(index*2,index*2+2)); //return the base
     }
-
 
     std::vector<char> get_transition_bases(){//get the transition bases for this node
       std::vector<char> return_bases;
@@ -210,7 +298,7 @@ namespace codeword_hedges{
       
     }
 
-    char getNextSymbol(int x, int y){ assert(0);} //unused function just to make constant calls happy
+    char getNextSymbol(int x, int y){ assert(0 && "not implemented for codeword context");} //unused function just to make constant calls happy
     
     char getNextSymbol(uint32_t& num_bits, uint32_t& val){ //num_bits, val are references to be able to load with codeword values
       char ret_char=0x00;

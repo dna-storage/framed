@@ -141,6 +141,11 @@ create_codebook(PyObject*codebook, const char* name, PyObject* exception)
 
   std::string codebook_name(name);
   codeword_hedges::CodebookMap[codebook_name] = trie_root;
+
+#ifdef DEBUG
+  trie_root->print();
+#endif
+  
   return Py_BuildValue("s",NULL);
 }
 

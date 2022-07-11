@@ -86,7 +86,7 @@ enum class hedge_rate
 class bitwrapper {
 public:
   std::vector<uint8_t> &bits;
-  uint8_t operator[] (uint32_t index)
+  uint8_t operator[] (uint32_t index) const
   {
     if (index >= bits.size()*8)
       return 0; // this will handle the padding without error
@@ -96,7 +96,7 @@ public:
     return (b >> m) & 1;
   }
   
-  uint32_t get_bits(uint32_t lower, uint32_t upper ) { //bits are returned in increasing order e.g. bit 0, 1 , ... First bits are the least sigbits of bytes
+  uint32_t get_bits(uint32_t lower, uint32_t upper ) const { //bits are returned in increasing order e.g. bit 0, 1 , ... First bits are the least sigbits of bytes
     uint32_t offset = 0;
     uint32_t val = 0;
     assert((upper-lower)<=32); //can only fit 32 bits into a single value right now
