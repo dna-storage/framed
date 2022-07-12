@@ -16,7 +16,7 @@ jobs:
       with:
          python-version: '3.9'
     - name: Install nose
-      run: sudo apt-get install -y python3-nose
+      run: apt-get install -y python3-nose
       
     - name: Install dependencies
       run: make init
