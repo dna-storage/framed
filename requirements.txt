@@ -11,3 +11,4 @@ python-Levenshtein
 joblib
 editdistance
 bitarray
+pytest
