@@ -1,0 +1,27 @@
+name: Makefile CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+
+    runs-on: [ self-hosted ]
+
+    steps:
+    - uses: actions/checkout@v3
+    - uses: actions/setup-python@v4
+    with:
+       python-version: '3.11.0-alpha.1'
+      
+    - name: Install dependencies
+      run: make
+      
+    - name: Run build
+      run: make build
+      
+    - name: Run test
+      run: make test
