@@ -18,10 +18,10 @@ jobs:
        python-version: '3.11.0-alpha.1'
       
     - name: Install dependencies
-      run: make
+      run: make init
       
-    - name: Run build
-      run: make build
+    - name: Run setup
+      run: make develop
       
     - name: Run test
       run: make test
