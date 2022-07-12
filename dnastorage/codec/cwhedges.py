@@ -19,7 +19,6 @@ class CodewordHedgesPipeline(BaseCodec,CWtoDNA):
             if key >= 2**(self._bits_per_cw): break
             self._codebook[key]=DNA
         self._hedges_state = hedges_state(rate=self._bits_per_cw,seq_bytes=0,pad_bits=0,prev_bits=0)
-        print(self._bits_per_cw)
         CWtoDNA.__init__(self)
         BaseCodec.__init__(self,CodecObj=CodecObj,Policy=Policy)
         #initialize codebooks
@@ -74,17 +73,26 @@ if __name__ == "__main__":
     from dnastorage.strand_representation import *
     #test case for codeword hedges
     test_bytes = [random.randint(0,255) for _ in range(0,100)]
+    '''
     test_codebook = {
         0: "AGAGAACT",
         1: "TCAGCTTT",
         2: "TCATTTTT",
-        3: "ATATTAAA"
-        #4: "TGAAAAAA",
-       # 5: "GAAAAAAA",
-       # 6: "CTATATAA",
-       # 7: "CTATAGAA"
-    }
-    
+        3: "ATATTAAA",
+        4: "TGAAAAAA",
+        5: "GAAAAAAA",
+        6: "CTATATAA",
+        7: "CTATAGAA"
+    }'''
+
+    from commafreecodec import cfc_all
+
+    test_codebook={}
+    for i in range(0,len(cfc_all)): #using cfc codebook to test
+        test_codebook[i]=cfc_all[i]
+
+    print(len(test_codebook))
+    print(test_codebook)
     cwhedge  = CodewordHedgesPipeline(test_codebook)
 
     test_DNA = BaseDNA(codewords=test_bytes)

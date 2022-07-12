@@ -222,7 +222,6 @@ namespace codeword_hedges{
 
 	//special case, node null, add string to this node
 	if(current_node==NULL){
-	  assert(parent->is_root()); //adding a leaf should only occur on root, everything else should be a split
 	  _add_leaf_node(parent,total_indexes_covered,DNA,DNA_bits,value);
 	  found=false;
 	  break; //this should be the endpoint given that we extended off of a leaf node

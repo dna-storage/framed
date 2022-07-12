@@ -470,7 +470,7 @@ uint32_t hedge::decode(std::string &observed,
   // Extract message and seqId
   int k=0;
   std::list<uint8_t>::iterator b = res2.begin();
-  while(b != res2.end() && adj_seq_bits>0) {
+  while(b != res2.end() && adj_seq_bits>0){
     if (k<seq_bytes*8)
       seq.set_bit(k,*b);
     k++;
