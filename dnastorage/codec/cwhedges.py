@@ -11,7 +11,7 @@ import dnastorage.codec.codewordhedges as codewordhedges
 
 class CodewordHedgesPipeline(BaseCodec,CWtoDNA):
     def __init__(self,codebook,guess_limit=100000,CodecObj=None,Policy=None):
-        self._bits_per_cw = int(math.floor(log2(len(codebook))))
+        self._bits_per_cw = math.floor(log2(len(codebook)))
         assert self._bits_per_cw <=32 and "Codewords are limited to representing 32 bits at most, see C++ implementation if it needs to be changed"
         self._codebook = {}
         #take the first 2**(self._bits_per_cw) codewords from the codebook
@@ -19,11 +19,13 @@ class CodewordHedgesPipeline(BaseCodec,CWtoDNA):
             if key >= 2**(self._bits_per_cw): break
             self._codebook[key]=DNA
         self._hedges_state = hedges_state(rate=self._bits_per_cw,seq_bytes=0,pad_bits=0,prev_bits=0)
+        print(self._bits_per_cw)
         CWtoDNA.__init__(self)
         BaseCodec.__init__(self,CodecObj=CodecObj,Policy=Policy)
         #initialize codebooks
         codewordhedges.codebook_init(self._codebook,"codewords")
-
+        self._guess_limit=guess_limit
+        
     def _encode(self,strand):
         self._hedges_state.set_message_bytes(len(strand.codewords))
         adjustment_bits = (self._bits_per_cw - 8*len(strand.codewords)%self._bits_per_cw)#need adjustment bits for padding to have the right size for codewords
@@ -71,16 +73,16 @@ if __name__ == "__main__":
     import random
     from dnastorage.strand_representation import *
     #test case for codeword hedges
-    test_bytes = [random.randint(0,255) for _ in range(0,1)]
+    test_bytes = [random.randint(0,255) for _ in range(0,100)]
     test_codebook = {
         0: "AGAGAACT",
         1: "TCAGCTTT",
         2: "TCATTTTT",
-        3: "ATATTAAA",
-        4: "TGAAAAAA",
-        5: "GAAAAAAA",
-        6: "CTATATAA",
-        7: "CTATAGAA"
+        3: "ATATTAAA"
+        #4: "TGAAAAAA",
+       # 5: "GAAAAAAA",
+       # 6: "CTATATAA",
+       # 7: "CTATAGAA"
     }
     
     cwhedge  = CodewordHedgesPipeline(test_codebook)
@@ -92,8 +94,6 @@ if __name__ == "__main__":
     cwhedge.encode(test_DNA)
     
     print("DNA after encoding {}".format(test_DNA.dna_strand))
-
-    exit()
     
     cwhedge.decode(test_DNA)
 

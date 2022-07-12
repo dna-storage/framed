@@ -148,7 +148,7 @@ namespace codeword_hedges{
       std::shared_ptr<DNAtrie> DNA_node = std::make_shared<DNAtrie>(new_DNA_strand,bases_remaining_DNA);
       DNA_node->_value = value;
 
-      assert(parent->get_child((char)DNA_base)==NULL); //this should be Null, else there was an error where we didn't go down the tree
+      assert(parent->get_child(DNA_base)==NULL); //this should be Null, else there was an error where we didn't go down the tree
       parent->children[DNA_base] = DNA_node; //add the new node to the parent
     }
 
@@ -222,7 +222,7 @@ namespace codeword_hedges{
 
 	//special case, node null, add string to this node
 	if(current_node==NULL){
-	  assert(parent==this->is_root()); //adding a leaf should only occur on root, everything else should be a split
+	  assert(parent->is_root()); //adding a leaf should only occur on root, everything else should be a split
 	  _add_leaf_node(parent,total_indexes_covered,DNA,DNA_bits,value);
 	  found=false;
 	  break; //this should be the endpoint given that we extended off of a leaf node
@@ -274,6 +274,7 @@ namespace codeword_hedges{
     uint32_t get_value(){ return _value;} //return the value of the complete codeword
 
     DNAtrie* get_child(char c){ return children[convert_base_to_bits(c)].get();} //get the pointer the child node
+    DNAtrie* get_child(uint32_t c){return children[c].get();}//overload to allow for non-char child
     
   protected:
     std::vector<uint8_t> _dna; //local dna string for this node
@@ -294,6 +295,7 @@ namespace codeword_hedges{
 	assert(0 && "Context fail initial root node, no codewords key found");
       }
       _root_node = CodebookMap["codewords"];
+      _current_trie_position=_root_node;
       assert(_root_node->is_root() && "Root node of trie not actually a root node");
       
     }
@@ -302,7 +304,9 @@ namespace codeword_hedges{
     
     char getNextSymbol(uint32_t& num_bits, uint32_t& val){ //num_bits, val are references to be able to load with codeword values
       char ret_char=0x00;
-      if(_current_trie_prefix>=_current_trie_position->get_length() && _current_transition_guesses.size()==0){
+      val = NULL_VALUE;
+      if(_done_guessing) return 0x00; //done guessing, give null character
+      if(_current_trie_prefix>=_current_trie_position->get_length() && _current_transition_guesses.size()==0 && !_done_guessing){
 	//we reached the end of this node, so we'll be guessing all transitions out
 	if(_current_trie_position->is_leaf()){
 	  //need to roll over to root node, so get guesses from the root
@@ -317,40 +321,46 @@ namespace codeword_hedges{
 	_current_transition_guesses.pop_back();
       }
       else if(_current_trie_prefix>=_current_trie_position->get_length() && _current_transition_guesses.size()>0){
+	if(_current_trie_position->is_leaf()){
+	  val = _current_trie_position->get_value();
+	  assert(val!=NULL_VALUE && "Leaf node has null value");
+	}
 	ret_char=_current_transition_guesses.back();
 	_current_transition_guesses.pop_back();
-      }
-      else if(_current_trie_prefix>=_current_trie_position->get_length() && _current_transition_guesses.size()==0){
-	return 0x00;
+	
       }
       else{
 	//we just guess the next character
 	ret_char=_current_trie_position->get_index(_current_trie_prefix);
       }
-      //determine if this guess will be the end of a codeword, if so load bits and val
-      
+
+      if(_current_transition_guesses.size()==0) _done_guessing=true; //done with generating guesses from the current state
       
       return ret_char;
     }
     
-    char getNextSymbolWithUpdate(int num_bits, int value, char c){
+    char nextSymbolWithUpdate(int num_bits, uint32_t value, char c){
       char ret_symbol = 0x00;
+      _done_guessing=false; //make sure this flag rolls over
+      _current_transition_guesses.clear();//clearing the guesses vector so when the next node ends it doesn't use a stale vector
       //we need to update the position we are in the trie based on what base was chosen as a guess
       if(_current_trie_prefix>=_current_trie_position->get_length()){
-	_current_trie_prefix=0;
+	_current_trie_prefix=1; //don't set to 0, we already guessed the base to get to this node, so we don't want to double count the base
 	if(_current_trie_position->is_leaf()) {
 	  _current_trie_position=_root_node->get_child(c); //this is a complete roll over,-->root-->child at c
 	  this->index++;
+	  assert(num_bits>0); //if you reach the end of the leaf, should not 
 	}
 	else{
 	  _current_trie_position=_current_trie_position->get_child(c);
 	}
-	ret_symbol= _current_trie_position->get_index(_current_trie_prefix);
+	ret_symbol= _current_trie_position->get_index(_current_trie_prefix-1);
       }
       else{
-	_current_trie_prefix++; //stay in the same node
 	ret_symbol=_current_trie_position->get_index(_current_trie_prefix);
+	_current_trie_prefix++; //stay in the same node
       }
+      
       return ret_symbol;
     }
   
@@ -359,6 +369,7 @@ namespace codeword_hedges{
     DNAtrie* _root_node=nullptr; //the root node of the codeword trie
     DNAtrie* _current_trie_position=nullptr; //current position in the trie for this context
     uint8_t _current_trie_prefix=0; //tracks position within  a node
+    bool _done_guessing=false; //flag to know when to stop guessing
     std::vector<char> _current_transition_guesses; //tracks the current transitions
     
   };

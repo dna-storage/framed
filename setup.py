@@ -22,14 +22,15 @@ starcode_module=Extension('starcode_bindings',
 fasthedges = Extension('dnastorage.codec.fasthedges',
                     sources = ['dnastorage/codec/fasthedges/module.cpp', \
                                'dnastorage/codec/fasthedges/fast_hedges.cpp'],
-                    extra_compile_args=["-std=c++11", "-Wall", "-Wextra"],
+                       extra_compile_args=["-std=c++11", "-Wall", "-Wextra","-O0",'-g3','-D DEBUG'],
                     language='c++',)
 
 codewordhedges = Extension('dnastorage.codec.codewordhedges',
                        sources = ['dnastorage/codec/fasthedges/codewordhedges_module.cpp',
                                   'dnastorage/codec/fasthedges/fast_hedges.cpp'],
-                       extra_compile_args=["-std=c++11", "-Wall", "-Wextra"],
-                    language='c++',)
+                           extra_compile_args=["-std=c++11", "-Wall", "-Wextra","-O0",'-g3','-D DEBUG'],
+                           undef_macros=['NDEBUG'],
+                           language='c++',)
 
 
 

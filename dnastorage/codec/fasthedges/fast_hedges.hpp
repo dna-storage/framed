@@ -211,7 +211,7 @@ public:
     return choose[res];
   }
 
-  char nextSymbolWithUpdate(int num_bits, int val, char base)
+  char nextSymbolWithUpdate(int num_bits, uint32_t val, char base)
   {
     uint32_t mask = (num_bits==2)?3:((num_bits==0)?0:1);
     char c = getNextSymbol(num_bits, val);
@@ -250,7 +250,7 @@ public:
 	      float _score,
 	      uint32_t _offset,
 	      std::string *_observed,
-	      int nbits, int bit, char base, bool insertion=false, char _kind='m');
+	      int nbits, uint32_t bit, char base, bool insertion=false, char _kind='m');
 
   search_tree(hedge *_h,
 	      const Context<DNAConstraint> &_c,
@@ -266,14 +266,14 @@ public:
   
 
   void guessHelper(std::vector< search_tree > &,
-					 char c, int nbits, int val);
+					 char c, int nbits, uint32_t val);
 
   
 
-  search_tree addMatch(char c, uint8_t bits, uint8_t val);
-  search_tree addSubst(char c, uint8_t bits, uint8_t val);
-  search_tree addDel(char c, uint8_t bits, uint8_t val);
-  search_tree addIns2(char c, uint8_t bits, uint8_t val, double penalty);
+  search_tree addMatch(char c, uint8_t bits, uint32_t val);
+  search_tree addSubst(char c, uint8_t bits, uint32_t val);
+  search_tree addDel(char c, uint8_t bits, uint32_t val);
+  search_tree addIns2(char c, uint8_t bits, uint32_t val, double penalty);
   search_tree addIns();
   
   bool checkPad(); 

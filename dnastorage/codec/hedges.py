@@ -874,7 +874,7 @@ class PyHedgesPipeline(BaseCodec,CWtoDNA):
 
 class hedges_state:
     def __init__(self, rate=1.0/4, seq_bytes=2, message_bytes=14, pad_bits=8, prev_bits = 8):
-        self.rate = rate
+        self.rate = float(rate)
         self.seq_bytes = seq_bytes
         self.message_bytes = message_bytes
         self.pad_bits = pad_bits #this is user-defined pad bits, not those determined under the hood to make patterns work out

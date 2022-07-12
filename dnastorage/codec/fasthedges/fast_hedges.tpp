@@ -14,7 +14,7 @@ template<typename DNAConstraint, typename Reward, template <typename> class Cont
 				  uint32_t _offset,
 				  std::string *_observed,
 				  int nbits,
-				  int bit,
+				  uint32_t bit,
 				  char base,
 				  bool insertion,
 				  char _kind )
@@ -63,7 +63,7 @@ template<typename DNAConstraint, typename Reward, template <typename> class Cont
 
   template<typename DNAConstraint, typename Reward,  template <typename> class Context>
 search_tree<DNAConstraint,Reward,Context>
-search_tree<DNAConstraint,Reward,Context>::addMatch(char base, uint8_t nbits, uint8_t val)
+search_tree<DNAConstraint,Reward,Context>::addMatch(char base, uint8_t nbits, uint32_t val)
 {
   Reward r(h->rate);
   //std::cout << "Got match?" << std::endl;
@@ -85,7 +85,7 @@ search_tree<DNAConstraint,Reward,Context>::addMatch(char base, uint8_t nbits, ui
 
 template<typename DNAConstraint, typename Reward, template <typename> class Context>
 search_tree<DNAConstraint,Reward,Context>
-search_tree<DNAConstraint,Reward,Context>::addSubst(char base, uint8_t nbits, uint8_t val)
+search_tree<DNAConstraint,Reward,Context>::addSubst(char base, uint8_t nbits, uint32_t val)
 {
   Reward r(h->rate);
 
@@ -108,7 +108,7 @@ search_tree<DNAConstraint,Reward,Context>::addSubst(char base, uint8_t nbits, ui
 
 template<typename DNAConstraint, typename Reward,  template <typename> class Context>
 search_tree<DNAConstraint,Reward,Context>
-search_tree<DNAConstraint,Reward,Context>::addDel(char base, uint8_t nbits, uint8_t val)
+search_tree<DNAConstraint,Reward,Context>::addDel(char base, uint8_t nbits, uint32_t val)
 {
   
   Reward r(h->rate);
@@ -154,7 +154,7 @@ search_tree<DNAConstraint,Reward,Context>::addIns()
 
 template<typename DNAConstraint, typename Reward, template <typename> class Context>
 search_tree<DNAConstraint,Reward,Context>
-search_tree<DNAConstraint,Reward,Context>::addIns2(char base, uint8_t nbits, uint8_t val, double penalty)
+search_tree<DNAConstraint,Reward,Context>::addIns2(char base, uint8_t nbits, uint32_t val, double penalty)
 {
   Reward r(h->rate);
   //std::cout << "Got ins2?" << std::endl;
@@ -221,7 +221,7 @@ template<typename DNAConstraint, typename Reward,  template <typename> class Con
 void search_tree<DNAConstraint,Reward,Context>::guessHelper(std::vector<search_tree<DNAConstraint,Reward,Context>> &ret,
 					       char c,
 					       int nbits,
-					       int val)
+					       uint32_t val)
 {
   Reward r;
   
@@ -470,7 +470,7 @@ uint32_t hedge::decode(std::string &observed,
   // Extract message and seqId
   int k=0;
   std::list<uint8_t>::iterator b = res2.begin();
-  while(b != res2.end()) {
+  while(b != res2.end() && adj_seq_bits>0) {
     if (k<seq_bytes*8)
       seq.set_bit(k,*b);
     k++;
