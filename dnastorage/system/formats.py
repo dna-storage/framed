@@ -301,8 +301,9 @@ FileSystemFormats = {
               CUSTOM_PIPE_RS_CFC8, CUSTOM_PIPE_RS_CFC8],
     0x0701 : [0x0701, 208, 15, "CustomSDC","Support for SDC experiments",\
               CUSTOM_SDC_PIPE,CUSTOM_SDC_PIPE],
+
     #------ Segmented
-    0x2000 : [0x2000, 200, 20, "Segmented", "Segmented file format to support Preview", None, None],
+    0x1000 : [0x1000, 200, 20, "Segmented", "Segmented file format to support Preview", None, None],
     0x2021 : [0x2021, 160, 9, "RS+CFC8+RE1", "Reed-Solomon coded with Comma-free codewords",
               ENC_RS_CFC8_RE1_160, DEC_RS_CFC8_RE1_160 ],
     0x2022 : [0x2022, 160, 9, "RS+CFC8+RE2", "Reed-Solomon coded with Comma-free codewords",

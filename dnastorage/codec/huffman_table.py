@@ -1,45 +1,8 @@
 #!/usr/bin/python
 
-from dnastorage.codec.base import *
+from dnastorage.codec.base import BaseCodec
 from dnastorage.codec import base_conversion
 
-import unittest
-class HuffmanTableTests(unittest.TestCase):
-    def test_dense_16(self):
-        syms = [ x for x in range (16) ]
-        print (syms)
-        ht = HuffmanTable(2, ['0','1'], syms)
-        print (ht._weights)
-        enc,dec = ht.get_tables()
-        print (enc)
-        for e in dec.keys():
-            assert len(e) == 4
-
-    def test_dense_9(self): 
-        syms = [ x for x in range (9) ]    
-        ht = HuffmanTable(3, ['0','1', '2'], syms)
-        enc,dec = ht.get_tables()
-        for e in dec.keys():
-            assert len(e) == 2
-            
-    def test_from_raw_table(self):
-        syms = [ x for x in range (16) ]    
-        ht = HuffmanTable(2, ['0','1'], syms)
-        rt = ht.get_raw_table(True)
-        ht2 = HuffmanTable.from_raw_table(rt,2,['0','1'])
-        print (rt)
-        print (ht2.get_raw_table(True))
-        assert rt == ht2.get_raw_table(True)
-
-    def test_single_entry_raw_table(self):
-        syms = [ 1 ]
-        wei = [ 1 ]
-        ht = HuffmanTable(2, ['0','1'], syms, wei)
-        rt = ht.get_raw_table(True)
-        ht2 = HuffmanTable.from_raw_table(rt,2,['0','1'])
-        assert rt == ht2.get_raw_table(True)
-
-        
 class HuffmanTableBase:
     
     class Node:
@@ -53,10 +16,20 @@ class HuffmanTableBase:
                 self.weight = -1.0
             elif weight==None:
                 self.weight = sum([ x.weight for x in childlist]) 
-                
-        def __cmp__(self, other):
-            return cmp(self.weight, other.weight)
-
+               
+        def __lt__(self, other):
+            return self.weight < other.weight
+        def __le__(self, other):
+            return self.weight <= other.weight
+        def __gt__(self, other):
+            return self.weight > other.weight
+        def __ge__(self, other):
+            return self.weight >= other.weight
+        def __eq__(self,other):
+            return self.weight == other.weight
+        def __ne__(self,other):
+            return self.weight != other.weight
+                        
         def dec(self,val,symLut):
             #print val[0],symLut,self.enc,self.symbol,symLut,self._childlist
             if self.symbol != None:
@@ -155,9 +128,9 @@ class HuffmanTableBase:
             #print self._weights
             assert len(self._symbols) == len(self._weights)
             for s,w in zip(self._symbols,self._weights):
-                n = HuffmanTableBase.Node(nbase,s,w)
+                n = HuffmanTableBase.Node(nbase,s,weight=w)
                 self._nodes.append( n )
-            self._nodes.sort()
+            self._nodes.sort(key=lambda n: n.weight)
         else:
             self.root = HuffmanTableBase.Node(self._nbase,None,None,[])
 
@@ -174,7 +147,7 @@ class HuffmanTableBase:
 
     @classmethod
     def from_raw_table(cls, table, nbase, base_syms, prevent_ones=False):
-        ht = cls(nbase,base_syms,None,None)
+        ht = cls(nbase,base_syms,None,prevent_ones=prevent_ones)
         i = 0
         prev_l = table[0][0]
         for l,val in table:
@@ -200,7 +173,7 @@ class HuffmanTableBase:
                 else:
                     table.append( [n.enc, n.symbol] )
                                         
-        table.sort(cmp=lambda x,y: cmp(x[0],y[0]))
+        table.sort(key=lambda x: x[0])
         return table
 
     def get_tables(self):
@@ -209,7 +182,7 @@ class HuffmanTableBase:
             if n.symbol != None:
                 table.append( [n.enc, n.symbol] )
 
-        table.sort(cmp=lambda x,y: cmp(x[1],y[1]) )
+        table.sort(key=lambda x: x[1] )
 
         enc = { x[1] : x[0] for x in table }
         dec = { x[0] : x[1] for x in table } 
@@ -238,7 +211,7 @@ class HuffmanTableBase:
         _queue = []
         for n in self._nodes:
             _queue.append( n )
-        _queue.sort()
+        _queue.sort(key=lambda n: n.weight)
 
         if len(_queue)==1:
             nodes = []
@@ -257,7 +230,7 @@ class HuffmanTableBase:
                 _queue.append(new)
                 # Note, this is ineffecient.  We should replace this dumb sort
                 # with something more efficient like a min-heap
-                _queue.sort()
+                _queue.sort(key=lambda n: n.weight)
 
         assert len(_queue) == 1
         r = _queue[0]
@@ -276,7 +249,7 @@ class HuffmanTableBase:
                 if n.symbol != None:
                     table.append( [n.enc, n.symbol] )
 
-            table.sort(cmp=lambda x,y: cmp(x[1],y[1]) )
+            table.sort(key=lambda x: x[1])
             self._enc_table = { x[1] : x[0] for x in table }
         return self._enc_table[val]
 
@@ -315,22 +288,22 @@ class LengthLimitedHuffmanTable(HuffmanTableBase):
     def __init__(self, L, nbase, base_syms, symbols, weights=None,prevent_ones=False):
         assert nbase==2
         assert nbase**L >= len(symbols)
-        HuffmanTableBase.__init__(self,nbase,base_syms,symbols,weights,prevent_ones)
+        HuffmanTableBase.__init__(self,nbase,base_syms,symbols,weights=weights,prevent_ones=prevent_ones)
         self._original_nodes = self._nodes[:]
         merge = []
         new_nodes = []
         for _ in range(L,0,-1):            
             merge = new_nodes + self._nodes[:]
             #print "L = {}".format(_)
-            merge.sort()
-            even = len(merge)/2*2
+            merge.sort(key = lambda n: n.weight)
+            even = len(merge)//2*2
             # drop last packet if length of merge is odd
             package = [ [merge[i],merge[i+1]] for i in range(0,even,2) ] 
             new_nodes = []
             for p in package:
-                new = HuffmanTable.Node(self._nbase,None,None,p)
+                new = HuffmanTable.Node(self._nbase,None,weight=None,childlist=p)
                 new_nodes.append(new)        
-        merge.sort()
+        merge.sort(key = lambda n: n.weight)
         code_length = []
         # adjust the weights based on code lengths
         for n in self._nodes:
@@ -346,36 +319,10 @@ if __name__ == "__main__":
     l = [ HuffmanTable.Node(2,R.randint(0,256),R.random()) for _ in range(256) ] 
     l.sort()
     
-    #for ll in l:
-        #print str(ll)
-
-    #syms = [ x for x in range (256) ]
-    #weights = [ R.random() for _ in range(256) ]
-
-    #ht = HuffmanTable(3, ['0','1', '2'], syms, weights)
-
-    #syms = [ 23, 14, 16, 99, 5 ]
-    #weights = None #[ .55, .20, .15, .10 ]
-
-    #ht2 = HuffmanTable(2, ['0', '1'], syms, weights)
-    
-    #t = ht2.get_tables()
-    #print t
-    #print ht2.average_length()
-
-    # The following code produces encoder table and decoder dict equivalent to 
-    # the ones defined manually in huffman.py
-
     syms = [ x for x in range(256) ]
     w = [ 1.0/256 for x in range(256) ]
     for i in range(ord('A'),ord('z'),1):
         w[i] = w[i]*2.0
-    #w[0] = 1.0/256*20
-
-    #ht3 = HuffmanTable(3, ['0','1', '2'], syms, w)
-    #print ht3.get_tables()
-    #print ht3.average_length()
-    #print ht3.histogram()
 
     ht5 = LengthLimitedHuffmanTable(9, 2, ['0','1'], syms, w, True)
     print (ht5.average_length())
@@ -394,22 +341,5 @@ if __name__ == "__main__":
     
     if ht5.get_raw_table(True) == ht6.get_raw_table(True):
         print ("They match ")
-
-    #print ht5.encode(192)
-    #print ht5.decode(ht5.encode(192)+"111110001")
-        
-    #print zip(rt,raw2)
-
-    #syms = ['a','b','c','d','e','f']
-    #weights = [0.05,.1,.15,.2,.2,.3]
-
-    #ht4 = LengthLimitedHuffmanTable(3, 2, ['0','1'], syms)
-    #print ht4.average_length()
-    #print ht4.histogram()
-    #e,d = ht4.get_tables()
-    #print e
-
-
-
 
     

@@ -118,6 +118,8 @@ if __name__=="__main__":
 
     if "dna_processing" in params_dict:
         dna_proc_dict = params_dict["dna_processing"]
+    else:
+        dna_proc_dict = None
     
     for distribution_instance in distribution_param_list:
         dist_run_path=os.path.join(run_path,distribution_instance[1])

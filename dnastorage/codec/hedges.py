@@ -977,7 +977,7 @@ def diff(A,B,leading=""):
     print ("{}{}".format(leading,B))
 
 
-def test(rate,fi_rate=0.01,length=10):
+def run_hedges(rate,fi_rate=0.01,length=10):
     #h = HEDGE(rate, 8, 16, 8, seqnum_bits= 8, message_bits=length*8)
     h = FastHedgesPipeline(rate)
     rb = buffer=randbytes(length)
@@ -1035,7 +1035,7 @@ if __name__ == "__main__":
     trials = 1000
     total = 0
     while trials > 0:
-        if test(rate,fi_rate=fi,length=length):
+        if run_hedges(rate,fi_rate=fi,length=length):
             matched += 1
         trials -= 1
         total += 1

@@ -35,7 +35,7 @@ def check_strand_errors(injection_sites,clean_strands,final_strands):
                 assert error_selected_strand[adjusted_nucleotide_index] == fault_nuc
                 #check deletion, check the removed nucleotide with the clean strand's nucleotide
             elif fault_type == '1':
-                print"clean {} fault{}".format(clean_selected_strand[nuc_index],fault_nuc)
+                print ("clean {} fault{}".format(clean_selected_strand[nuc_index],fault_nuc))
                 assert clean_selected_strand[nuc_index] == fault_nuc 
 
 
@@ -88,7 +88,7 @@ class FiTestSuite(unittest.TestCase):
         
         for site in removal_locations:
             if clean_strands[site] in final_strands:
-                print "strand {} still in final strands".format(site)
+                print ("strand {} still in final strands".format(site))
                 assert False
 
     #Test errors randomly put throughout random strands
@@ -106,7 +106,7 @@ class FiTestSuite(unittest.TestCase):
         injection_sites=model.injection_sites(clean_strands)
         final_strands=model.inject_errors(injection_sites,clean_strands)
 
-        print injection_sites
+        print (injection_sites)
 
         
         #make sure selections for strands and nucleotides within strands are unique, and the number of faults generated is correct
@@ -137,7 +137,7 @@ class FiTestSuite(unittest.TestCase):
         clean_strands=model._input_library
         injection_sites=model.injection_sites(clean_strands)
         final_strands=model.inject_errors(injection_sites,clean_strands)
-        print injection_sites
+        print (injection_sites)
         
         #check some properties of the injection sites  
         strand_indexes=[]
@@ -192,7 +192,7 @@ class FiTestSuite(unittest.TestCase):
         #make sure the spread is only over the inner data 
         assert len(real_fault_rate) ==  (len(clean_strands[0])-arguments.p1-arguments.p2)
 
-        print "Error rate results"
+        print ("Error rate results")
         percent_difference_array=[]
         del_difference_array=[]
         ins_difference_array=[]
@@ -215,14 +215,14 @@ class FiTestSuite(unittest.TestCase):
             ins_difference_array.append(calc_percent_difference(ins_spread[nuc],len(final_strands),real_ins_rate[index],1000,overall_rate))
             sub_difference_array.append(calc_percent_difference(sub_spread[nuc],len(final_strands),real_sub_rate[index],1000,overall_rate))
             
-            print "index: {} Overall: {}  Del: {} Ins: {} Sub: {}".format(nuc,percent_difference_array[index],del_difference_array[index], ins_difference_array[index], sub_difference_array[index])
+            print ("index: {} Overall: {}  Del: {} Ins: {} Sub: {}".format(nuc,percent_difference_array[index],del_difference_array[index], ins_difference_array[index], sub_difference_array[index]))
 
-        print ""
-        print ""
-        print "Average percent difference Overall: {}".format(statistics.mean(percent_difference_array))
-        print "Average percent difference Del: {}".format(statistics.mean(del_difference_array))
-        print "Average percent difference Ins: {}".format(statistics.mean(ins_difference_array))
-        print "Average percent difference Sub: {}".format(statistics.mean(sub_difference_array))
+        print ("")
+        print ("")
+        print ("Average percent difference Overall: {}".format(statistics.mean(percent_difference_array)))
+        print ("Average percent difference Del: {}".format(statistics.mean(del_difference_array)))
+        print ("Average percent difference Ins: {}".format(statistics.mean(ins_difference_array)))
+        print ("Average percent difference Sub: {}".format(statistics.mean(sub_difference_array)))
 
         #make sure that the percent difference is less that 20 percent for each component 
         #if assertion is thrown, increase the number of strands tested to see if the percent difference decreases

@@ -301,7 +301,7 @@ def dense_encode_byte(byte):
     return dense_enc_table[byte]
 
 def dense_decode_byte(byte):
-    assert dense_dec_table.has_key(byte)==True
+    assert byte in dense_dec_table 
     return dense_dec_table[byte]
 
 def dense_encode(packet):
@@ -317,194 +317,207 @@ def dense_decode(strand):
     while i < len(strand):
         s = strand[i:i+4]
         byte = dense_decode_byte(s)
-        array.append(chr(byte))
+        array.append(byte)
         i+=4
     packet = bytearray(array)
     return packet
 
-
-class RandomizeDenseCodec(BaseCodec):
-    def __init__(self,CodecObj=None):
+class DenseCodewords(BaseCodec):
+    def __init__(self,numberSymbols,CodecObj=None):
         BaseCodec.__init__(self,CodecObj)
-        self._table = [ "AT" , "ACGT", "AGCATACG" ]
-        self._normalized = False
+        self._numberBytes=numberSymbols
 
-    def _countRepetitions(self, ss):
-        reps = 0
-        last = 'A'
-        for i,s in enumerate(ss):
-            if i>0 and last == s:
-                reps = reps + 1
-            last = s
-        return reps
-
-    def _createMask(self, s, r):
-        ss = [_ for _ in s]
-        rr = [_ for _ in r]
-        mask = [self._xor(a,b) for a,b in zip(ss,rr)]
-        return mask
-
-    def _check(self, s):
-        matrix = []
-        mins = []
-        for i,r in enumerate(self._table):
-            mi = self._createMask(s,r)
-            reps = self._countRepetitions(mi)
-            mrow = []
-            for j,rr in enumerate(self._table):
-                mj = self._createMask(mi,rr)
-                nreps = reps - self._countRepetitions(mj)
-                mrow.append(nreps)
-            matrix.append(mrow)
-            mins.append( [mrow.index(min(mrow)),min(mrow)])
-        #print self._countRepetitions(s),matrix
-        #print mins
-        first = True
-        smallest = -1
-        for i,val in enumerate(mins):
-            if i == val[0]:
-                if first:
-                    smallest = i
-                    first = False
-                else:
-                    if val[1] < mins[smallest][1]:
-                        smallest = i
-        #print smallest
-        #print ""
-
-
-    def _randomize(self, s):
-        lreps = []
-        self._normalize(len(s))
-        ss = [_ for _ in s]
-        best = ss
-        best_i = -1
-        reps = self._countRepetitions(ss)
-        min_reps = 0
-        lreps.append( min_reps )
-        for i,r in enumerate(self._table):
-            rr = [_ for _ in r]
-            n = [self._xor(a,b) for a,b in zip(ss,rr)]
-            nreps = self._countRepetitions(n) - reps
-            lreps.append(nreps)
-            if nreps < min_reps:
-                best = n
-                best_i = i
-                min_reps = nreps
-        #print "Reps: ",lreps
-        self._check(s)
-        return "".join(best)
-
-    def _normalize(self, le):
-        if self._normalized == True:
-            return
-        for i,s in enumerate(self._table):
-            l = len(s)
-            if le % l == 0:
-                s = s * (le / l)
-                #print s
-                self._table[i] = s
-            else:
-                r = le % l
-                s = s * (le / l)
-                s += s[0:r]
-                #print s
-                self._table[i] = s
-            assert len(self._table[i]) == le
-
-        self._table.append(''.join(random.choice("ACGT") for _ in range(le)))
-        self._table.append(''.join(random.choice("ACGT") for _ in range(le)))
-
-        self._normalized = True
-
-    def _xor(self, a, b):
-        if a == 'A':
-            return b
-        elif a == 'C':
-            xor = { 'A' : 'C',
-                    'C' : 'A',
-                    'G' : 'T',
-                    'T' : 'G'}
-            return xor[b]
-        elif a == 'G':
-            xor = { 'A' : 'G',
-                    'C' : 'T',
-                    'G' : 'A',
-                    'T' : 'C'}
-            return xor[b]
-        elif a == 'T':
-            xor = { 'A' : 'T',
-                    'C' : 'G',
-                    'G' : 'C',
-                    'T' : 'A'}
-            return xor[b]
-        else:
-            return '?'
-
-    def _encode(self,s):
-        assert isinstance(s,str) or "Didn't get expected type."
-        return self._randomize(s)
+    def _encode(self,strand):
+        enc_strand = dense_encode(strand)
+        return enc_strand
 
     def _decode(self,s):
-        assert isinstance(s,str) or "Didn't get expected type."
-        return self._unrandomize(s)
-
-class DenseTableCodec(TableCodec):
-    def __init__(self,CodecObj=None,keyWidth=16):
-        TableCodec.__init__(self,CodecObj,keyWidth,keyWidth/4,4,1)
-
-    def _enctab(self, val):
-        #print "_enctab: ",val,dense_encode_byte(val)
-        return dense_encode_byte(val)
-
-    def _dectab(self, s):
-        #print "_dectab: ",s,dense_decode_byte(s)
-        return dense_decode_byte(s)
-
-class DenseCodec(BaseCodec):
-    def __init__(self,CodecObj=None,keyWidth=20):
-        BaseCodec.__init__(self,CodecObj)
-        self._keyWidth=keyWidth
-
-    def _encode(self,packet):
-        key = base_conversion.convertBase(4,packet[0],self._keyWidth)
-        value = dense_encode(packet[1])
-        return key+value
-
-    def _decode(self,s):
-        key = base_conversion.convertFromBase(4,s[0:self._keyWidth])
-        value = dense_decode(s[self._keyWidth:])
-        return key,value
+        value = dense_decode(s)
+        return value
 
 
-if __name__ == "__main__":
-    from base_conversion import *
-    enc = []
-    dec = {}
-    for i in range(256):
-        s = convertBase(4,i,4)
-        s = [x for x in s]
-        s.reverse()
-        s = "".join(s)
-        enc.append("'"+s+"'")
-        dec[s] = i
+# class RandomizeDenseCodec(BaseCodec):
+#     def __init__(self,CodecObj=None):
+#         BaseCodec.__init__(self,CodecObj)
+#         self._table = [ "AT" , "ACGT", "AGCATACG" ]
+#         self._normalized = False
 
-    print ("dense_enc_table = [")
-    for i in range(len(enc)/8):
-        if i==len(enc)/8-1:
-            print (",".join(enc[i*8:i*8+8]))
-        else:
-            print (",".join(enc[i*8:i*8+8])+",")
-    print ("]")
+#     def _countRepetitions(self, ss):
+#         reps = 0
+#         last = 'A'
+#         for i,s in enumerate(ss):
+#             if i>0 and last == s:
+#                 reps = reps + 1
+#             last = s
+#         return reps
 
-    print ("dense_dec_table = {")
-    for i in range(len(enc)):
-        s =  "{} : {}".format(enc[i],i)
-        if i!=len(enc)-1:
-            s += ","
-        print (s)
-    print ("}")
+#     def _createMask(self, s, r):
+#         ss = [_ for _ in s]
+#         rr = [_ for _ in r]
+#         mask = [self._xor(a,b) for a,b in zip(ss,rr)]
+#         return mask
 
-    s = "12345678"
-    print (dense_encode(s))
-    assert s == dense_decode(dense_encode(s))
+#     def _check(self, s):
+#         matrix = []
+#         mins = []
+#         for i,r in enumerate(self._table):
+#             mi = self._createMask(s,r)
+#             reps = self._countRepetitions(mi)
+#             mrow = []
+#             for j,rr in enumerate(self._table):
+#                 mj = self._createMask(mi,rr)
+#                 nreps = reps - self._countRepetitions(mj)
+#                 mrow.append(nreps)
+#             matrix.append(mrow)
+#             mins.append( [mrow.index(min(mrow)),min(mrow)])
+#         #print self._countRepetitions(s),matrix
+#         #print mins
+#         first = True
+#         smallest = -1
+#         for i,val in enumerate(mins):
+#             if i == val[0]:
+#                 if first:
+#                     smallest = i
+#                     first = False
+#                 else:
+#                     if val[1] < mins[smallest][1]:
+#                         smallest = i
+#         #print smallest
+#         #print ""
+
+
+#     def _randomize(self, s):
+#         lreps = []
+#         self._normalize(len(s))
+#         ss = [_ for _ in s]
+#         best = ss
+#         best_i = -1
+#         reps = self._countRepetitions(ss)
+#         min_reps = 0
+#         lreps.append( min_reps )
+#         for i,r in enumerate(self._table):
+#             rr = [_ for _ in r]
+#             n = [self._xor(a,b) for a,b in zip(ss,rr)]
+#             nreps = self._countRepetitions(n) - reps
+#             lreps.append(nreps)
+#             if nreps < min_reps:
+#                 best = n
+#                 best_i = i
+#                 min_reps = nreps
+#         #print "Reps: ",lreps
+#         self._check(s)
+#         return "".join(best)
+
+#     def _normalize(self, le):
+#         if self._normalized == True:
+#             return
+#         for i,s in enumerate(self._table):
+#             l = len(s)
+#             if le % l == 0:
+#                 s = s * (le / l)
+#                 #print s
+#                 self._table[i] = s
+#             else:
+#                 r = le % l
+#                 s = s * (le / l)
+#                 s += s[0:r]
+#                 #print s
+#                 self._table[i] = s
+#             assert len(self._table[i]) == le
+
+#         self._table.append(''.join(random.choice("ACGT") for _ in range(le)))
+#         self._table.append(''.join(random.choice("ACGT") for _ in range(le)))
+
+#         self._normalized = True
+
+#     def _xor(self, a, b):
+#         if a == 'A':
+#             return b
+#         elif a == 'C':
+#             xor = { 'A' : 'C',
+#                     'C' : 'A',
+#                     'G' : 'T',
+#                     'T' : 'G'}
+#             return xor[b]
+#         elif a == 'G':
+#             xor = { 'A' : 'G',
+#                     'C' : 'T',
+#                     'G' : 'A',
+#                     'T' : 'C'}
+#             return xor[b]
+#         elif a == 'T':
+#             xor = { 'A' : 'T',
+#                     'C' : 'G',
+#                     'G' : 'C',
+#                     'T' : 'A'}
+#             return xor[b]
+#         else:
+#             return '?'
+
+#     def _encode(self,s):
+#         assert isinstance(s,str) or "Didn't get expected type."
+#         return self._randomize(s)
+
+#     def _decode(self,s):
+#         assert isinstance(s,str) or "Didn't get expected type."
+#         return self._unrandomize(s)
+
+# class DenseTableCodec(TableCodec):
+#     def __init__(self,CodecObj=None,keyWidth=16):
+#         TableCodec.__init__(self,CodecObj,keyWidth,keyWidth/4,4,1)
+
+#     def _enctab(self, val):
+#         #print "_enctab: ",val,dense_encode_byte(val)
+#         return dense_encode_byte(val)
+
+#     def _dectab(self, s):
+#         #print "_dectab: ",s,dense_decode_byte(s)
+#         return dense_decode_byte(s)
+
+# class DenseCodec(BaseCodec):
+#     def __init__(self,CodecObj=None,keyWidth=20):
+#         BaseCodec.__init__(self,CodecObj)
+#         self._keyWidth=keyWidth
+
+#     def _encode(self,packet):
+#         key = base_conversion.convertBase(4,packet[0],self._keyWidth)
+#         value = dense_encode(packet[1])
+#         return key+value
+
+#     def _decode(self,s):
+#         key = base_conversion.convertFromBase(4,s[0:self._keyWidth])
+#         value = dense_decode(s[self._keyWidth:])
+#         return key,value
+
+
+# if __name__ == "__main__":
+#     from base_conversion import *
+#     enc = []
+#     dec = {}
+#     for i in range(256):
+#         s = convertBase(4,i,4)
+#         s = [x for x in s]
+#         s.reverse()
+#         s = "".join(s)
+#         enc.append("'"+s+"'")
+#         dec[s] = i
+
+#     print ("dense_enc_table = [")
+#     for i in range(len(enc)/8):
+#         if i==len(enc)/8-1:
+#             print (",".join(enc[i*8:i*8+8]))
+#         else:
+#             print (",".join(enc[i*8:i*8+8])+",")
+#     print ("]")
+
+#     print ("dense_dec_table = {")
+#     for i in range(len(enc)):
+#         s =  "{} : {}".format(enc[i],i)
+#         if i!=len(enc)-1:
+#             s += ","
+#         print (s)
+#     print ("}")
+
+#     s = "12345678"
+#     print (dense_encode(s))
+#     assert s == dense_decode(dense_encode(s))
