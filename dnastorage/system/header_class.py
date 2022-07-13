@@ -41,9 +41,58 @@ def version_0_2():
     return version_dict
 
 
+def version_0_3():
+    #returns a formatting dictionary for the given version
+    version_dict={}
+    version_dict["major"]=(0,1,int) #(value,number of bytes)
+    version_dict["minor"]=(3,2,int) 
+    version_dict["size"]=(None,8,int) #None values are determined from user input
+    version_dict["filename"]=(None,"v",str) #assume filenames no larger than 50 bytes
+    version_dict["main_pipeline_formatid"]=(None,2,int)
+    version_dict["header_barcode"]=(0xEE,1,int)
+    version_dict["pipeline_barcode_ID"]=(None,"v",bytes)
+    version_dict["decoding_format"]=('CustomPipe-RS+Codeword+Hedges',"v",str)
+    version_dict["dnastorage_module_version"]=(version("dnastorage"),"v",str)
+    return version_dict
+
+
+def version_0_4():
+    #returns a formatting dictionary for the given version
+    version_dict={}
+    version_dict["major"]=(0,1,int) #(value,number of bytes)
+    version_dict["minor"]=(4,2,int) 
+    version_dict["size"]=(None,8,int) #None values are determined from user input
+    version_dict["filename"]=(None,"v",str) #assume filenames no larger than 50 bytes
+    version_dict["main_pipeline_formatid"]=(None,2,int)
+    version_dict["header_barcode"]=(0xEE,1,int)
+    version_dict["pipeline_barcode_ID"]=(None,"v",bytes)
+    version_dict["decoding_format"]=('CustomPipe-RS+CFC8',"v",str)
+    version_dict["dnastorage_module_version"]=(version("dnastorage"),"v",str)
+    return version_dict
+
+def version_0_5():
+    #returns a formatting dictionary for the given version
+    version_dict={}
+    version_dict["major"]=(0,1,int) #(value,number of bytes)
+    version_dict["minor"]=(5,2,int) 
+    version_dict["size"]=(None,8,int) #None values are determined from user input
+    version_dict["filename"]=(None,"v",str) #assume filenames no larger than 50 bytes
+    version_dict["main_pipeline_formatid"]=(None,2,int)
+    version_dict["header_barcode"]=(0xEE,1,int)
+    version_dict["pipeline_barcode_ID"]=(None,"v",bytes)
+    version_dict["decoding_format"]=('BasicHedges',"v",str)
+    version_dict["dnastorage_module_version"]=(version("dnastorage"),"v",str)
+    return version_dict
+
+
+
 global versional_formats
 version_formats={"0.1": version_0_1,
-                 "0.2": version_0_2}
+                 "0.2": version_0_2,
+                 "0.3": version_0_3,
+                 "0.4": version_0_4,
+                 "0.5": version_0_5
+}
 
 
 class Header(object): 

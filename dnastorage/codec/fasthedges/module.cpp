@@ -1,103 +1,13 @@
 #define PY_SSIZE_T_CLEAN
 #include <Python.h>
 #include <limits>
+#include "shared_hedges.hpp"
 #include "fast_hedges.hpp"
 
 using namespace hedges;
 
 static PyObject *FasthedgesError;
 
-// static PyObject *
-// fasthedges_system(PyObject *self, PyObject *args)
-// {
-//     const char *command;
-//     int sts;
-
-//     if (!PyArg_ParseTuple(args, "s", &command))
-//         return NULL;
-//     sts = system(command);
-//     if (sts < 0) {
-//         PyErr_SetString(FasthedgesError, "System command failed");
-//         return NULL;
-//     }
-//     return PyLong_FromLong(sts);
-// }
-
-// static PyObject *
-// fasthedges_parser(PyObject *self, PyObject *args)
-// {
-//     const char *command;
-//     PyObject * num;
-//     int sts=0;
-
-//     if (PyArg_ParseTuple(args, "O", &num)) {
-      
-//       printf("Got string = %s.\n",Py_TYPE(num)->tp_name);
-//       //return PyLong_FromLong(0);
-//     }
-
-//     //if (PyArg_ParseTuple(args, "s", &command)) {
-      
-//     //printf("Got string = %s.\n",command);
-//       //return PyLong_FromLong(0);
-//     //}
-
-
-
-//     return Py_BuildValue("s",NULL);
-// }
-
-long getLong(PyObject *Object, const char *attr)
-{
-  if (PyObject_HasAttrString(Object, attr))
-    {
-      PyObject *a = PyObject_GetAttrString(Object,attr);
-      if (PyLong_Check(a))
-	{
-	  return PyLong_AsLong(a);
-	}
-    }
-  return -1;
-}
-
-double getDouble(PyObject *Object, const char *attr)
-{
-  if (PyObject_HasAttrString(Object, attr))
-    {
-      PyObject *a = PyObject_GetAttrString(Object,attr);
-      if (PyFloat_Check(a))
-	{
-	  return PyFloat_AsDouble(a);
-	}
-    }
-  return -1.0;
-}
-
-static hedge make_hedge_from_pyobject(PyObject *object)
-{
-  double rate = getDouble(object,"rate");
-  int seq_bytes = getLong(object, "seq_bytes");
-  int message_bytes = getLong(object, "message_bytes");
-  int pad_bits = getLong(object, "pad_bits");
-  int prev_bits = getLong(object, "prev_bits");
-  int salt_bits = getLong(object, "salt_bits");
-
-  if (pad_bits == -1) {
-    if (rate > 0.33)
-      pad_bits = 8;
-    else if (rate > 0.125)
-      pad_bits = 4;
-    else
-      pad_bits = 1;
-  }
-  if (prev_bits == -1)
-    prev_bits = 8;
-  if (salt_bits == -1)
-    salt_bits = 8;
-  
-  hedge h(rate, seq_bytes, message_bytes, pad_bits, prev_bits, salt_bits);
-  return h;
-}
 
 static PyObject *
 fasthedges_encode2(PyObject *self, PyObject *args)
@@ -138,61 +48,11 @@ fasthedges_encode2(PyObject *self, PyObject *args)
     return Py_BuildValue("s",NULL);
 }
 
+
 static PyObject *
 fasthedges_decode2(PyObject *self, PyObject *args)
 {
-    const char *strand;
-    PyObject *hObj;
-    int guesses = 100000;
-    
-    if (PyArg_ParseTuple(args, "sO|i", &strand, &hObj, &guesses)) {
-
-      hedge h = make_hedge_from_pyobject(hObj);
-      
-      std::vector<uint8_t> mess(h.message_bytes), seq(h.seq_bytes);
-
-      std::string sstrand(strand);
-      uint32_t t = h.decode(sstrand,seq,mess,guesses);
-
-      // std::cout << "[";
-      // for(auto i : seq)
-      // 	std::cout << int(i) << ", ";
-      // for(auto i : mess)
-      // 	std::cout << int(i) << ", ";
-      // std::cout << "]" << std::endl; 
-
-      int sz = seq.size() + mess.size();
-      PyObject *list = PyList_New(sz);
-      for(auto i=0; i<sz; i++)
-	{	  
-	  if (i<seq.size()) {
-	    if (i >= t) {
-	      PyObject *item = Py_BuildValue("s",NULL);
-	      Py_INCREF(item);
-	      PyList_SetItem(list,i,item);
-
-	    } else {
-	      PyObject *item = Py_BuildValue("i",seq[i]);
-	      Py_INCREF(item);
-	      PyList_SetItem(list,i,item);
-	    }
-	  } else {
-	    if (i >= t) {
-	      PyObject *item = Py_BuildValue("s",NULL);
-	      Py_INCREF(item);
-	      PyList_SetItem(list,i,item);
-	    } else {
-	      PyObject *item = Py_BuildValue("i",mess[i-seq.size()]);
-	      Py_INCREF(item);
-	      PyList_SetItem(list,i,item);
-	    }
-	  }
-	  
-	}
-      return list;
-    }
-
-    return Py_BuildValue("s",NULL);
+  return shared_decode(self,args);
 }
 
 static PyObject * decode_item(const char *strand, hedge &h, int guesses=1000000)
@@ -263,17 +123,8 @@ fasthedges_bulk_decode(PyObject *self, PyObject *args)
       return bulk_list;
     }
 
-    //if (PyArg_ParseTuple(args, "s", &command)) {
-      
-    //printf("Got string = %s.\n",command);
-      //return PyLong_FromLong(0);
-    //}
-
     return Py_BuildValue("s",NULL);
 }
-
-
-
 
 
 static PyObject *
@@ -298,6 +149,7 @@ static PyMethodDef FasthedgesMethods[] = {
     
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
+
 
 static struct PyModuleDef fasthedgesmodule = {
     PyModuleDef_HEAD_INIT,
@@ -327,3 +179,4 @@ PyMODINIT_FUNC PyInit_fasthedges(void)
 
     return m;
 }
+

@@ -72,7 +72,7 @@ public:
 
 enum class hedge_rate
   {
-   illegal=0,
+   codewords=0,
    three_fourths = 1,
    six_tenths = 2,
    one_half = 3,
@@ -86,8 +86,7 @@ enum class hedge_rate
 class bitwrapper {
 public:
   std::vector<uint8_t> &bits;
-
-  uint8_t operator[] (uint32_t index)
+  uint8_t operator[] (uint32_t index) const
   {
     if (index >= bits.size()*8)
       return 0; // this will handle the padding without error
@@ -97,9 +96,10 @@ public:
     return (b >> m) & 1;
   }
   
-  uint32_t get_bits(uint32_t lower, uint32_t upper ) {
+  uint32_t get_bits(uint32_t lower, uint32_t upper ) const { //bits are returned in increasing order e.g. bit 0, 1 , ... First bits are the least sigbits of bytes
     uint32_t offset = 0;
     uint32_t val = 0;
+    assert((upper-lower)<=32); //can only fit 32 bits into a single value right now
     for (uint32_t k = lower; k < upper; k++)
       {
 	val |= (operator[](k) << offset);
@@ -121,6 +121,7 @@ public:
   }
   
   bitwrapper(std::vector<uint8_t> &abits):bits(abits){}
+
 };
 
 uint64_t ranhash(uint64_t u);
@@ -210,41 +211,29 @@ public:
     return choose[res];
   }
 
-  char nextSymbolWithUpdate(int num_bits, int val)
+  char nextSymbolWithUpdate(int num_bits, uint32_t val, char base)
   {
     uint32_t mask = (num_bits==2)?3:((num_bits==0)?0:1);
     char c = getNextSymbol(num_bits, val);
     // perhaps we don't need to mask here, redundant with digest
-    prev = ((prev << num_bits) | (val&mask));
-
-    //std::cout << std::hex;
-    //std::cout << "prev = " << prev << " " << prev_bits << std::endl;   
-    //std::cout << "salt = " << salt << std::endl;
-    
+    prev = ((prev << num_bits) | (val&mask));   
     index++;
     constraint.next(c);
     //bits_accounted_for+=num_bits;
     return c;
-  }
-  
-  /*  char * pos;
-  char * const observed;
-  char corrected;
-  int  bit_guess;
-  char nt_guess;
-  bool matched;
-  float score;*/
+  }  
+ 
 };
 
 
   
 class hedge;
 
-template<typename DNAConstraint = Constraint, typename Reward = Reward>
+  template<typename DNAConstraint = Constraint, typename Reward = Reward, template <typename> class Context = context>
 class search_tree {
 public:
   hedge *h;
-  context<DNAConstraint> c;
+  Context<DNAConstraint> c;
   float score;
   uint32_t offset;
   std::string *observed;
@@ -257,32 +246,34 @@ public:
 
   search_tree(hedge *_h,
 	      search_tree *_parent,
-	      const context<DNAConstraint> &_c,
+	      const Context<DNAConstraint> &_c,
 	      float _score,
 	      uint32_t _offset,
 	      std::string *_observed,
-	      int nbits, int bit, char base, bool insertion=false, char _kind='m');
+	      int nbits, uint32_t bit, char base, bool insertion=false, char _kind='m');
 
   search_tree(hedge *_h,
-	      const context<DNAConstraint> &_c,
+	      const Context<DNAConstraint> &_c,
 	      float _score,
 	      uint32_t _offset,
 	      std::string *_observed);
 
   std::vector< search_tree > makeGuesses();
+  std::vector< search_tree > makeCWGuesses();
   std::vector< search_tree > make2bitGuesses();
   std::vector< search_tree > make1bitGuesses();
   std::vector< search_tree > make0bitGuesses();
+  
 
   void guessHelper(std::vector< search_tree > &,
-					 char c, int nbits, int val);
+					 char c, int nbits, uint32_t val);
 
   
 
-  search_tree addMatch(char c, uint8_t bits, uint8_t val);
-  search_tree addSubst(char c, uint8_t bits, uint8_t val);
-  search_tree addDel(char c, uint8_t bits, uint8_t val);
-  search_tree addIns2(char c, uint8_t bits, uint8_t val, double penalty);
+  search_tree addMatch(char c, uint8_t bits, uint32_t val);
+  search_tree addSubst(char c, uint8_t bits, uint32_t val);
+  search_tree addDel(char c, uint8_t bits, uint32_t val);
+  search_tree addIns2(char c, uint8_t bits, uint32_t val, double penalty);
   search_tree addIns();
   
   bool checkPad(); 
@@ -364,9 +355,18 @@ public:
       i++;
     }
 
-    assert (false && "Did't find matching rate.");
+    //Make a "rate" for codewords
+    // patterns --> {x} where x is bits per codeword
+    // pattern_sum --> {x}
+    // pattern_length --> {1}
+    // could probably just allow raw_rate to represent the bits/codeword, then push to the other pattern vectors
+    //this hack should let the rest of the methods to work like padding, index range, etc.
     
-    return hr::one_half;
+    pattern_sum[0] = r;
+    pattern_length[0]=1;
+    patterns[0][0]=r;
+    
+    return hr::codewords;
   }
 
     int check_if_padding_needed(int bits)
@@ -378,7 +378,7 @@ public:
       return s - bits%s;
     }
   }
-  int get_index_range(int bits)
+  int get_index_range(int bits) 
   {
     int i = 0;
     int j = 0;
@@ -401,6 +401,8 @@ public:
     int len = pattern_length[ (int) rate ];
     return patterns[(int)rate][index%len];
   }
+
+  hedge_rate get_rate(){ return rate;}
   
   hedge(double rate,
 	int seq_bytes,
@@ -410,8 +412,9 @@ public:
 	int salt_bits);
 
   std::string encode(std::vector<uint8_t> seqId, std::vector<uint8_t> message);
-  
-  template <typename Constraint = Constraint, typename Reward = Reward>
+
+
+  template <typename Constraint = Constraint, typename Reward = Reward, template <typename> class Context = context>
   uint32_t decode(std::string &observed,
 	      std::vector<uint8_t> &seqId,
 	      std::vector<uint8_t> &message,
@@ -421,12 +424,15 @@ public:
   void print(bool extra=false);
 };
 
-template<typename DNAConstraint, typename Reward>
-bool search_tree<DNAConstraint, Reward>::isIncomplete()
-{
-  return c.index < h->max_index;
-}
 
+#ifndef NULL_VALUE
+#define NULL_VALUE 0xffffffff
+#endif
+
+  
+#include "fast_hedges.tpp"
+
+  
 }
 
 #endif //HEDGES_CPP
