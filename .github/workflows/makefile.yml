@@ -22,4 +22,4 @@ jobs:
     - name: Run setup
       run: make develop
       
-    - run: pytest
+    - run: python -m pytest tests
