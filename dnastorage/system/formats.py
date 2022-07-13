@@ -6,8 +6,8 @@ from dnastorage.codec import binary
 from dnastorage.codec import huffman
 from dnastorage.codec import fountain
 from dnastorage.arch.strand import *
-from dnastorage.arch.builder import customize_RS_CFC8, customize_RS_CFC8_pipeline
-from dnastorage.arch.builder import build_overhang_bitstring_strand, SDC_pipeline
+from dnastorage.arch.builder import customize_RS_CFC8, customize_RS_CFC8_pipeline, RS_Codeword_hedges_pipeline
+from dnastorage.arch.builder import build_overhang_bitstring_strand, SDC_pipeline, Basic_Hedges_Pipeline
 from dnastorage.exceptions import *
 
 
@@ -211,6 +211,8 @@ def DEC_Goldman_200(pf, primer5, primer3):
 
 
 
+#-----------------------------------------PIPELINE DEFS----------------------------------------------
+
 def PIPE_250_FSMD(pf,**kwargs):
     blockSizeInBytes=90
     outerECCStrands=40
@@ -220,6 +222,7 @@ def PIPE_250_FSMD(pf,**kwargs):
                                       blockSizeInBytes=blockSizeInBytes,outerECCStrands=outerECCStrands,\
                                       dna_length=250,title="FSMD-Pipe")
     return pipe
+
 
 def PIPE_RS_CFC8(pf,**kwargs):
     #pipe = customize_RS_CFC8_pipeline(pf,outerECC=37,innerECC=3,dna_length=208,**kwargs)
@@ -243,30 +246,21 @@ def CUSTOM_PIPE_RS_CFC8(pf,**kwargs):
     pipe = customize_RS_CFC8_pipeline(pf,title=title,**kwargs)
     return pipe
 
-def SDC_PIPE(pf,**kwargs):
-    # only let primers through to influence design
-    primer5 = kwargs.get("primer5",'A'*20)
-    primer3 = kwargs.get("primer3",'A'*20)
-    pipe = SDC_pipeline(pf,\
-                        blockSizeInBytes=180*6,\
-                        strandSizeInBytes=6,\
-                        outerECCStrands=255-180,\
-                        hedges_rate=1.0/4,\
-                        hedges_pad=8,\
-                        hedges_prev_bits=8,\
-                        dna_length=300,\
-                        title="SDC",\
-                        primer5=primer5,\
-                        primer3=primer3\
-                        )
-
-    #pipe = customize_RS_CFC8_pipeline(pf,outerECC=37,innerECC=3,dna_length=208,**kwargs)
-    return pipe
-
 def CUSTOM_SDC_PIPE(pf,**kwargs):
     title = kwargs.pop("title","CustomSDC")
-    #title = kwargs.get("title","CustomSDC")
     return SDC_pipeline(pf,title=title,**kwargs)
+
+
+def CUSTOM_BASIC_HEDGES(pf,**kwargs):
+    return Basic_Hedges_Pipeline(pf,**kwargs)
+
+def CUSTOM_RS_CODEWORD_HEDGES_PIPE(pf,**kwargs):
+    return RS_Codeword_hedges_pipeline(pf,**kwargs)
+    
+
+
+#----------------------------END PIPELINE DEFS----------------------------------------------
+
 
 
 # DO NOT ALTER ENTRIES IN THIS TABLE, BUT YOU MAY ADD NEW ONES
@@ -295,12 +289,15 @@ FileSystemFormats = {
 
     #------ Pipelines
     0x0100 : [0x0100, 208, 15, "Pipe-RS+CFC8","RS+CFC8 implemented with pipelines",PIPE_RS_CFC8,PIPE_RS_CFC8],
-    0x0500 : [0x0500, 208, 90, "SDC","Final format for SDC experiments",SDC_PIPE,SDC_PIPE],
     #------ ^^ Above are hardcoded, below are flexible VV    
     0x0700 : [0x0700, 500, 15, "CustomPipe-RS+CFC8","Customizable RS+CFC8 implemented with pipelines",
               CUSTOM_PIPE_RS_CFC8, CUSTOM_PIPE_RS_CFC8],
     0x0701 : [0x0701, 208, 15, "CustomSDC","Support for SDC experiments",\
               CUSTOM_SDC_PIPE,CUSTOM_SDC_PIPE],
+    0x0702 : [0x0702,208,15,"CustomPipe-RS+Codeword+Hedges","Customizable Codeword-based encoder implemented with pipelines and a hedges decoder",
+              CUSTOM_RS_CODEWORD_HEDGES_PIPE,CUSTOM_RS_CODEWORD_HEDGES_PIPE],
+    0x0703 : [0x0703,208,15,"BasicHedges","Basic Hedges implementation with just primers",
+              CUSTOM_BASIC_HEDGES,CUSTOM_BASIC_HEDGES],
     #------ Segmented
     0x2000 : [0x2000, 200, 20, "Segmented", "Segmented file format to support Preview", None, None],
     0x2021 : [0x2021, 160, 9, "RS+CFC8+RE1", "Reed-Solomon coded with Comma-free codewords",

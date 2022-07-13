@@ -6,6 +6,7 @@ from dnastorage.codec import binary
 from dnastorage.codec import huffman
 from dnastorage.codec import fountain
 from dnastorage.codec import PipeLine as pipeline
+import dnastorage.codec.codebooks as codebooks
 from dnastorage.codec.deprecated.rscodec import *
 from dnastorage.codec.phys import *
 from dnastorage.codec.strand import *
@@ -16,6 +17,7 @@ from dnastorage.exceptions import *
 from dnastorage.codec.binarystringcodec import *
 from dnastorage.codec.consolidation import *
 from dnastorage.codec.hedges import *
+from dnastorage.codec.cwhedges import *
 
 from dnastorage.fi.probes import *
 
@@ -37,7 +39,40 @@ def check_required(required, **kwargs):
         missing_s = "".join(missing)
     if len(missing) >= 1:
         print ("{} {} missing but required to build a {}.".format(missing_s,verb,title))
-        print ("Warning: Hard coded assumptions may not match expectations.")        
+        print ("Warning: Hard coded assumptions may not match expectations.")
+
+def RS_Codeword_hedges_pipeline(pf,**kwargs):
+    blockSizeInBytes=kwargs.get("blockSizeInBytes",150*15)
+    strandSizeInBytes=kwargs.get("strandSizeInBytes",15)
+    primer5 = kwargs.get("primer5","")
+    primer3 = kwargs.get("primer3","")
+    outerECCStrands = kwargs.get("outerECCStrands",255-blockSizeInBytes//strandSizeInBytes)
+    codebook_func = getattr(codebooks,kwargs.get("codebook","CFC_ALL"))
+    fault_injection= kwargs.get("fi",False)
+    upper_strand_length = kwargs.get("dna_length",208)
+    pipeline_title=kwargs.get("title","anonymous_pipeline")
+    barcode = kwargs.get("barcode",tuple())
+    
+    #create the components we are gonna use
+    rsOuter = ReedSolomonOuterPipeline(blockSizeInBytes//strandSizeInBytes,outerECCStrands)
+    
+    #set up the comma free codebook
+    codebook = codebook_func()
+  
+    commafree = CodewordHedgesPipeline(codebook) #use hedges-like decoding method
+    
+    p5 = PrependSequencePipeline(primer5,handler="align")
+    p3 = AppendSequencePipeline(reverse_complement(primer3),handler="align")
+    consolidator = SimpleMajorityVote()
+    
+    if fault_injection is False:
+        return pipeline.PipeLine((rsOuter,commafree,p3,p5),consolidator,blockSizeInBytes,strandSizeInBytes,upper_strand_length,1,packetizedfile=pf,
+                                 barcode=barcode)
+    else:
+        innerECCprobe = CodewordErrorRateProbe(probe_name="{}::RSInner".format(pipeline_title))
+        commafreeprobe = CodewordErrorRateProbe(probe_name="{}::CommaFree".format(pipeline_title))
+        return pipeline.PipeLine((rsOuter,innerECCprobe,commafreeprobe,commafree,p3,p5),consolidator,
+                                 blockSizeInBytes,strandSizeInBytes,upper_strand_length,1,packetizedfile=pf,barcode=barcode)
 
 def customize_RS_CFC8_pipeline(pf,**kwargs):    
     required = ["blockSizeInBytes","strandSizeInBytes","innerECC",\
@@ -51,7 +86,6 @@ def customize_RS_CFC8_pipeline(pf,**kwargs):
     innerECC = kwargs.get("innerECC",0)
     outerECCStrands = kwargs.get("outerECCStrands",255-blockSizeInBytes//strandSizeInBytes)
     
-    magic_strand = kwargs.get("magic","")
     cut = kwargs.get("cut","")
     fault_injection= kwargs.get("fi",False)
     upper_strand_length = kwargs.get("dna_length",208)
@@ -60,21 +94,19 @@ def customize_RS_CFC8_pipeline(pf,**kwargs):
     
     #create the components we are gonna use
     rsOuter = ReedSolomonOuterPipeline(blockSizeInBytes//strandSizeInBytes,outerECCStrands)
-    #commafree = CommaFreeCodewordsPipeline(numberBytes=innerECC+strandSizeInBytes)
     commafree = CommaFreeCodecPipeline(numberBytes=innerECC+strandSizeInBytes)
     rsInner = ReedSolomonInnerCodecPipeline(innerECC)
-    magic = PrependSequencePipeline(magic_strand,handler="align")
     p5 = PrependSequencePipeline(primer5,handler="align")
     p3 = AppendSequencePipeline(reverse_complement(primer3),handler="align")
     consolidator = SimpleMajorityVote()
 
     if fault_injection is False:
-        return pipeline.PipeLine((rsOuter,rsInner,commafree,p3,magic,p5),consolidator,blockSizeInBytes,strandSizeInBytes,upper_strand_length,1,packetizedfile=pf,
+        return pipeline.PipeLine((rsOuter,rsInner,commafree,p3,p5),consolidator,blockSizeInBytes,strandSizeInBytes,upper_strand_length,1,packetizedfile=pf,
                                  barcode=barcode)
     else:
         innerECCprobe = CodewordErrorRateProbe(probe_name="{}::RSInner".format(pipeline_title))
         commafreeprobe = CodewordErrorRateProbe(probe_name="{}::CommaFree".format(pipeline_title))
-        return pipeline.PipeLine((rsOuter,innerECCprobe,rsInner,commafreeprobe,commafree,p3,magic,p5),consolidator,
+        return pipeline.PipeLine((rsOuter,innerECCprobe,rsInner,commafreeprobe,commafree,p3,p5),consolidator,
                                  blockSizeInBytes,strandSizeInBytes,upper_strand_length,1,packetizedfile=pf,barcode=barcode)
 
     
@@ -144,7 +176,73 @@ def SDC_pipeline(pf,**kwargs):
     return pipeline.PipeLine(out_pipeline+inner_pipeline+DNA_pipeline,consolidator,blockSizeInBytes,strandSizeInBytes,upper_strand_length,1,packetizedfile=pf,
                             barcode=barcode)
 
+
+
+
+def Basic_Hedges_Pipeline(pf,**kwargs):
+    required = ["blockSizeInBytes","strandSizeInBytes","hedges_rate",\
+                "dna_length"]
+    check_required(required,**kwargs) 
+        
+    #print(kwargs)
+    fault_injection= kwargs.get("fi",False)
+    blockSizeInBytes=kwargs.get("blockSizeInBytes",180*15)
+    strandSizeInBytes=kwargs.get("strandSizeInBytes",15)
+    primer5 = kwargs.get("primer5",'A'*20)
+    primer3 =kwargs.get("primer3",'A'*20)
+    check_primers = kwargs.get("check_primers",False)
+    other_strands=kwargs.get("other_strands",[])
     
+    hedges_rate = kwargs.get("hedges_rate",1/2.)
+    # pad_bits and prev_bits should match by default:
+    hedges_pad_bits=kwargs.get("hedges_pad",8)
+    hedges_previous = kwargs.get("hedge_prev_bits",8)
+
+    if "outerECCStrands" not in kwargs and "blockSizeInBytes" in kwargs:
+        outerECCStrands = 255 - blockSizeInBytes//strandSizeInBytes
+    else:
+        outerECCStrands = kwargs.get("outerECCStrands",255-180)
+        
+    upper_strand_length = kwargs.get("dna_length",300)
+    pipeline_title=kwargs.get("title","")
+    barcode = kwargs.get("barcode",tuple())
+    
+    #Error correction components
+    if "outerECCdivisor" not in kwargs:
+        rsOuter = ReedSolomonOuterPipeline(blockSizeInBytes//strandSizeInBytes,outerECCStrands)
+    elif "outerECCdivisor" in kwargs:
+        rsOuter = ReedSolomonOuterPipeline(kwargs["outerECCdivisor"],outerECCStrands)
+  
+    hedges = FastHedgesPipeline(rate=hedges_rate,pad_bits=hedges_pad_bits,prev_bits=hedges_previous)
+    crc = CRC8()
+    
+    #components related to DNA functionality
+    p5 = PrependSequencePipeline(primer5,ignore=False,handler="align",search_range=30)
+    p3 = PrependSequencePipeline(primer3,ignore=False,handler="align",search_range=30)
+
+    consolidator = SimpleMajorityVote()
+    out_pipeline = (rsOuter,)
+    inner_pipeline = (crc,hedges)
+    DNA_pipeline = (p3,p5)
+
+    if fault_injection: #some counters for data collection
+        index_probe = IndexDistribution(probe_name=pipeline_title,prefix_to_match=barcode)
+        hedges_probe = CodewordErrorRateProbe(probe_name="{}::hedges".format(pipeline_title))
+        inner_pipeline = (index_probe,crc,hedges_probe,hedges)
+        dna_counter_probe = FilteredDNACounter(probe_name=pipeline_title)
+        DNA_pipeline=(dna_counter_probe,)+DNA_pipeline
+
+    if check_primers: #checks data strands for matches in 
+        primer_check_probe = StrandCheckProbe(strands=[primer5,primer3]+other_strands) 
+        DNA_pipeline=DNA_pipeline+(primer_check_probe,)
+
+    return pipeline.PipeLine(out_pipeline+inner_pipeline+DNA_pipeline,consolidator,blockSizeInBytes,strandSizeInBytes,upper_strand_length,1,packetizedfile=pf,
+                            barcode=barcode)
+
+
+
+
+
 def customize_RS_CFC8(is_enc,pf,primer5,primer3,intraBlockIndex=1,\
                       interBlockIndex=2,innerECC=2,strandSizeInBytes=15,\
                       blockSizeInBytes=15*185,Policy=None,\
