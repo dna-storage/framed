@@ -1,4 +1,6 @@
 # dnastorage
+![testing](https://github.ncsu.edu/dna-based-storage/dnastorage/actions/workflows/makefile.yml/badge.svg)
+
 
 Python modules and C++ tools to support modeling and simulation of a DNA-based information storage system.
 
