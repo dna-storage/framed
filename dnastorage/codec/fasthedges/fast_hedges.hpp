@@ -158,7 +158,7 @@ public:
     case hr::one_sixth: return -0.324;
     case hr::one_eighth: return -.410;
     default:
-      return -0.5;
+      return -0.2;
     }
   }
 
@@ -318,7 +318,7 @@ public:
   int adj_message_bits;
   int adj_seq_bits;
   int adj_pad_bits;
-
+  int codeword_sync_period;
   int max_index;
   
   std::vector< std::vector<int> > patterns =
@@ -356,20 +356,21 @@ public:
     }
 
     //Make a "rate" for codewords
-    // patterns --> {x} where x is bits per codeword
+    // patterns --> {x,x,x,y} where x is bits per codeword, and y=0 when using synchronzation points
     // pattern_sum --> {x}
-    // pattern_length --> {1}
-    // could probably just allow raw_rate to represent the bits/codeword, then push to the other pattern vectors
+    // pattern_length --> {sync_period+1}, sync_period is the number of codewords before a 0-cw synchronization point
     //this hack should let the rest of the methods to work like padding, index range, etc.
     
     pattern_sum[0] = r;
-    pattern_length[0]=1;
-    patterns[0][0]=r;
-    
+    pattern_length[0]=1+this->codeword_sync_period; //allow sync points to exist within codeword strings
+    for(int i=0; i<pattern_length[0]; i++){
+      patterns[0].push_back(r); 
+    }
+    if(this->codeword_sync_period>0) patterns[0][pattern_length[0]-1]=0; //set the last point in the array as the sync point
     return hr::codewords;
   }
 
-    int check_if_padding_needed(int bits)
+  int check_if_padding_needed(int bits)
   {
     int s = pattern_sum[(int)rate];    
     if (bits % s == 0) {
@@ -409,7 +410,8 @@ public:
 	int message_bytes,
 	int pad_bits,
 	int prev_bits,
-	int salt_bits);
+	int salt_bits,
+	int codeword_sync_period);
 
   std::string encode(std::vector<uint8_t> seqId, std::vector<uint8_t> message);
 

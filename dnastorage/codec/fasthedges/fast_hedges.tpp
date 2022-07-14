@@ -276,7 +276,7 @@ std::vector<search_tree<DNAConstraint,Reward,Context>> search_tree<DNAConstraint
   std::vector<search_tree<DNAConstraint,Reward,Context>> ret;
   char next_guess;
   uint32_t val = NULL_VALUE;
-  uint32_t bits = h->get_n_bits(c.index);
+  uint32_t bits = h->get_n_bits(c.index); //this bits value identifies how much the current codeword counts towards the number of stored bits 
   while((next_guess = c.getNextSymbol(bits,val))!=0){
     //do something with this guess
     if(val == NULL_VALUE) bits = 0; //nullify the number of bits, we haven't reached a codeword yet

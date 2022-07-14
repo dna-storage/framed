@@ -22,9 +22,16 @@ def CFC_2(): #using only 2 codewords, should be 8 HD
 
 def CFC_DUMMY():
     codebook = {
-        0:"CCCCCCCC",
-        1:"GGGGGGGG",
-        2:"TTTTTTTT",
-        3:"AAAAAAAA"
+        0:"CCCC",
+        1:"GGGG",
+        2:"TTTT",
+        3:"AAAA"
     }
     return codebook
+
+
+def TEST_SYNC_BOOK():
+    syncbook=["AAAAAA",
+              "GGGGGG"
+    ]
+    return syncbook

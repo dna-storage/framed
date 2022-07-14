@@ -47,13 +47,16 @@ uint64_t digest(uint64_t prev, uint64_t prev_bits,
 
   
   hedge::hedge(double rate,
-	     int seq_bytes,
-	     int message_bytes,
-	     int pad_bits,
-	     int prev_bits,
-	     int salt_bits)
+	       int seq_bytes,
+	       int message_bytes,
+	       int pad_bits,
+	       int prev_bits,
+	       int salt_bits,
+	       int codeword_sync_period
+	       )
 {
   this->raw_rate = rate;
+  this->codeword_sync_period=codeword_sync_period;
   this->rate = pick_rate(rate);
   this->seq_bytes = seq_bytes;
   this->message_bytes = message_bytes;
@@ -216,7 +219,7 @@ int main()
 {
   int message_size = 15;
   
-  hedge h(1/4.0,4,message_size,4,8,8);
+  hedge h(1/4.0,4,message_size,4,8,8,0);
 
   std::vector<uint8_t> arr = {100,102,103,106};
   std::string buff;
