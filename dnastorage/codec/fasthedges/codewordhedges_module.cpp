@@ -37,8 +37,7 @@ static PyObject*
 codewordhedges_codebook_destroy(PyObject *self, PyObject *args){
   const char * name;
   if(PyArg_ParseTuple(args,"s",&name)){
-    destroy_codebook(name,CodewordhedgesError);
-    return  Py_BuildValue("s",NULL);
+    return destroy_codebook(name,CodewordhedgesError);
   }
   else{
     PyErr_SetString(CodewordhedgesError, "Error in codebook destroy");

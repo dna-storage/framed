@@ -137,9 +137,14 @@ create_codebook(PyObject*codebook, const char* name, PyObject* exception)
     trie_root->insert(DNA,value);
   }
   //add the trie to the module
-
-
   std::string codebook_name(name);
+
+  if(codeword_hedges::CodebookMap.find(codebook_name)!=codeword_hedges::CodebookMap.end()){
+    PyErr_WarnEx(PyExc_RuntimeWarning,"Codebook already exists, deleting old codebook to avoid memory leak",1);
+    delete codeword_hedges::CodebookMap[codebook_name];
+    codeword_hedges::CodebookMap.erase(codebook_name);
+  }
+  
   codeword_hedges::CodebookMap[codebook_name] = trie_root;
 
 #ifdef DEBUG
@@ -149,15 +154,19 @@ create_codebook(PyObject*codebook, const char* name, PyObject* exception)
   return Py_BuildValue("s",NULL);
 }
 
-
-void destroy_codebook(const char* name, PyObject* exception){ //removes a codebook associated with the module
+static PyObject* destroy_codebook(const char* name, PyObject* exception){ //removes a codebook associated with the module
   std::string codebook_name(name);
   if(codeword_hedges::CodebookMap.find(codebook_name) == codeword_hedges::CodebookMap.end()){
-    PyErr_SetString(exception,"Codebook name not found on destroy operation");
-    return;
+    PyErr_WarnEx(PyExc_RuntimeWarning,"Codebook does not exist on delete, returning to avoid double deletion",1);
+    return NULL;
+  }
+  if(codeword_hedges::CodebookMap[codebook_name]==nullptr){
+    PyErr_SetString(exception,"Nullptr being freed on codebook destroy operation");
+    return NULL;
   }
   delete codeword_hedges::CodebookMap[codebook_name];
   codeword_hedges::CodebookMap.erase(codebook_name);			       
+  return Py_BuildValue("s",NULL);
 }
 
 

@@ -3,6 +3,7 @@ from dnastorage.codec.base import *
 from dnastorage.codec_types import *
 from math import log2,floor
 import bitarray
+import os 
 
 from dnastorage.codec.hedges import hedges_state
 
@@ -51,6 +52,7 @@ class CodewordHedgesPipeline(BaseCodec,CWtoDNA):
         return strand
 
     def __del__(self):
+        #print("{} process freeing codeword hedges".format(os.getpid()))
         codewordhedges.codebook_destroy("codewords") #destroy the codebook that is stored as a c-pointer
 
     #store some pertinent information like bit lengths of data seen to be able to reinstantiate the decoder in a correct state    
@@ -108,3 +110,5 @@ if __name__ == "__main__":
     print("Bytes after decoding {}".format(test_DNA.codewords))
 
     assert(test_bytes == list(test_DNA.codewords) and "Error Bytes don't match")
+
+    del cwhedge
