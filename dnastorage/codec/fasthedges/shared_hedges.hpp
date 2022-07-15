@@ -165,17 +165,12 @@ static PyObject *
 create_syncbook(PyObject* syncbook,PyObject* exception)
 {
   PyObject* PyDNA;
-  Py_ssize_t pos = 0;
-
-  assert(PyIter_Check(syncbook) && "Syncbook cannot be passed to iterator");
-
-  PyObject* book_iterator = PyObject_GetIter(syncbook);
-  if(codeword_hedges::SyncBook.size()>0){
-    PyErr_WarnEx(PyExc_RuntimeWarning,"Syncbook already has items, clearing and overwriting",1);
-  } 
-  while((PyDNA=PyIter_Next(book_iterator))){
+  Py_ssize_t syncbook_length = PyList_Size(syncbook);
+    
+  for(Py_ssize_t pos =0; pos<syncbook_length; pos++){
+    PyDNA = PyList_GetItem(syncbook,pos);
     if(!PyUnicode_Check(PyDNA)){
-      PyErr_SetString(exception,"Dictionary values are not unicode");
+      PyErr_SetString(exception,"Dictionarmy values are not unicode");
       return NULL;
     }
     const char* strand = PyUnicode_AsUTF8(PyDNA);

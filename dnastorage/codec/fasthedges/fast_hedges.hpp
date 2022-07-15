@@ -222,7 +222,8 @@ public:
     //bits_accounted_for+=num_bits;
     return c;
   }  
- 
+
+  bool at_codeword_end(void){ return true;} //always at codeword end
 };
 
 
@@ -361,7 +362,9 @@ public:
     // pattern_length --> {sync_period+1}, sync_period is the number of codewords before a 0-cw synchronization point
     //this hack should let the rest of the methods to work like padding, index range, etc.
     
+    
     pattern_sum[0] = r;
+    patterns[0].clear();
     pattern_length[0]=1+this->codeword_sync_period; //allow sync points to exist within codeword strings
     for(int i=0; i<pattern_length[0]; i++){
       patterns[0].push_back(r); 
