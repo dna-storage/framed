@@ -78,7 +78,7 @@ To install dnastorage package for local development:
 
 Check to make sure it's (mostly) working properly. These tests need some further development to thoroughly validate the infrastructure:
 
-    pytest tests
+    pytest new_tests
 
    
 # License
