@@ -1,56 +1,94 @@
 # dnastorage
 ![testing](https://github.ncsu.edu/dna-based-storage/dnastorage/actions/workflows/makefile.yml/badge.svg)
 
+- [Overview](#overview)
+- [Documentation](#documentation)
+- [System Requirements](#system-requirements)
+- [Installation Guide](#installation-guide)
+- [License](#license)
+- [Issues](https://github.ncsu.com/dna-based-storage/dnastorage/issues)
 
-Python modules and C++ tools to support modeling and simulation of a DNA-based information storage system.
+# Overview
 
-## Getting Started
+Core encoding, decoding, and file manipulation support for modeling DNA-based information storage systems.
 
-### Dependencies
+# Documentation
 
-To use this software, you need:
+As documentation for the software becomes available, it will be placed under the docs folder.
+
+# System Requirements
+
+## Hardware Requirements
+The dnastorage module requires only a standard computer with enough RAM and compute power to support the needed operations. However, encoding or decoding large files may perform poorly, necessitating a more capable system.
+
+## Software Requirements
+### OS Requirements
+This package is supported for macOS and Linux. The package has been tested on the following systems:
+
++ macOS: Catalina 10.15.3
++ Linux: Ubuntu 18.04.3
+
+Note that most OSes will support our software by using Docker. You will also need:
 - git (optional but recommended)
 - Python
 - C++ compiler
 - pip, python package installer
 
-Linux computers have this software by default. Macs and Windows may not have them. (There are a variety of ways to get Python, more details coming soon.)
 
-### Installation Steps for Python Tools
+### Python Dependences
 
-1. Clone or download the repository into a working directory
+Our code has been tested on python versions 3.6 to 3.8. It has the following dependences:
 
-      1. cd /full/path/to/some/directory
-      2. git clone https://github.ncsu.edu/jtuck/dnastorage.git
+```
+nose
+sphinx
+biopython
+editdistance
+statistics
+matplotlib
+numpy
+scipy
+Pillow
+python-Levenshtein
+joblib
+editdistance
+bitarray
+pytest
+```
 
-2. Run make to install package dependencies and build nupack software
+# Installation Guide
 
-      - make init
+If you already have python 3 installed on your system, the simplest thing to do is download or checkout the code from GitHub.  Then, run the following commands:
 
-3. Set two environment variables. You will need to do this each time you want to use this software. Or, add these commands to your shell profile to have them run automatically each time you open terminal.
+    git clone [this repository] dnastorage
+    cd dnastorage
+    
+I recommend making a virtual environment first, but this is optional:
 
-      - export PATH="/full/path/to/some/directory/dnastorage/other_software/nupack3.0.6/bin:$PATH"
-      - export PYTHONPATH="/full/path/to/some/directory/dnastorage/"
+    python -m venv venv
+    source venv/bin/activate
+    
+Then, use pip to install the requirements and packages:
 
-  
-4. Run tests to make sure it works okay. (Note, still adding more meaningful tests.  This may pass even though something isn't installed properly.)
+    pip install -r requirements.txt
 
-      - make test
+To install dnastorage package for local development:
 
-### Installation steps for C++ DNA Storage System Simulator
+    python setup.py develop
 
-1. Run the makefile in system_sim directory to get simulator dependencies.
+Check to make sure it's (mostly) working properly. These tests need some further development to thoroughly validate the infrastructure:
 
-    1. cd system_sim (resulting path should be "/full/path/to/some/directory/dnastorage/system_sim")
-    2. make init
+    pytest tests
 
-2. Run the makefile in system_sim directory to compile the simulator
-   2. make
+   
+# License
 
-3. To delete the executable and object files run the makefile in the system_sim directory
-   1. make clean
+This software is released under the LGPLv3 license.
+
+# Acknowledgment
+
+This work was supported by the National Science Foundation (Grants CNS-1650148, CNS-1901324, ECCS 2027655) and a North Carolina State University Research and Innovation Seed Funding Award (Grant 1402-2018-2509).
 
 
-The compiled executable will be in the directory "/full/path/to/some/directory/dnastorage/dnastorage/system_sim/bin" with the name "system_sim".
-The compiled object files will be in the directory "/full/path/to/some/directory/dnastorage/dnastorage/system_sim/build".
-The source code for the system simulator can be found in the directory "/full/path/to/some/directory/dnastorage/dnastorage/system_sim/src".
+
+
