@@ -49,10 +49,12 @@ class CodewordHedgesPipeline(BaseCodec,CWtoDNA):
 
         final_cw_list=[]
         if self._syncbook!=None: #bake in the synchronization points for decoding simulation purposes
+            sync_counter=0
             for i in range(0,len(codeword_list)):
                 final_cw_list.append(codeword_list[i])
-                if i%self._hedges_state.cw_sync_period==0:
-                    final_cw_list.append(self._syncbook[i%len(self._syncbook)])
+                if (i+1)%self._hedges_state.cw_sync_period==0:
+                    final_cw_list.append(self._syncbook[sync_counter%len(self._syncbook)])
+                    sync_counter+=1
         else:
             final_cw_list=codeword_list
         strand.dna_strand = "".join(final_cw_list)
@@ -124,7 +126,7 @@ if __name__ == "__main__":
     #Test out the decoder with synbooks
     test_DNA = BaseDNA(codewords=test_bytes)
     syncbook=TEST_SYNC_BOOK()
-    cwhedge = CodewordHedgesPipeline(test_codebook,syncbook=syncbook,sync_period=1)
+    cwhedge = CodewordHedgesPipeline(test_codebook,syncbook=syncbook,sync_period=5)
     cwhedge.encode(test_DNA)
     print("DNA Bytes {}".format(test_DNA.codewords))
     print("DNA after encoding with synchronization points: {}".format(test_DNA.dna_strand))
