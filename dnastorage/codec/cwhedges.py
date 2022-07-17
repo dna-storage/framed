@@ -98,7 +98,7 @@ if __name__ == "__main__":
 
     from commafreecodec import cfc_all
     
-    test_codebook=CFC_ALL()
+    test_codebook=CFC_DUMMY()
     
     
     print(len(test_codebook))
@@ -107,7 +107,7 @@ if __name__ == "__main__":
 
     test_DNA = BaseDNA(codewords=test_bytes)
 
-    '''
+    
     print("DNA Bytes {}".format(test_DNA.codewords))
     
     cwhedge.encode(test_DNA)
@@ -119,8 +119,6 @@ if __name__ == "__main__":
     print("Bytes after decoding {}".format(test_DNA.codewords))
 
     assert(test_bytes == list(test_DNA.codewords) and "Error Bytes don't match")
-
-    '''
 
     
     #Test out the decoder with synbooks

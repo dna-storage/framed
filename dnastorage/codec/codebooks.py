@@ -7,6 +7,14 @@ for testing purposes, using a smaller codebook, etc.
 from dnastorage.codec.commafreecodec import cfc_all
 
 
+#-------------Miscellaneous Books------------------------------
+
+def NONE_BOOK(): #used as a null option
+    return None
+
+#------------End Miscellaneous Books -------------------------
+
+#----------------Codebook Dictionaries for use with CW hedges-------------------------
 def CFC_ALL():#using entire cfc codebook
     codebook={}
     for i in range(0,len(cfc_all)): 
@@ -22,16 +30,22 @@ def CFC_2(): #using only 2 codewords, should be 8 HD
 
 def CFC_DUMMY():
     codebook = {
-        0:"CCCC",
-        1:"GGGG",
-        2:"TTTT",
-        3:"AAAA"
+        0:"TAG",
+        1:"AGCT",
+        2:"AGGCT",
+        3:"ACCGT"
     }
     return codebook
 
+#-------------------------End Codebook Diction------------------------------------------
+
+
+#------------------Synchronization Arrays to be used as Sync code books for CW Hedges------------
 
 def TEST_SYNC_BOOK():
-    syncbook=["AAAAAA",
-              "GGGGGG"
+    syncbook=["TAATATAAC",
+              "GTATAGGTA"
     ]
     return syncbook
+
+#----------------End Synchronization Arrays-----------------------------------------

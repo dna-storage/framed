@@ -41,6 +41,7 @@ def check_required(required, **kwargs):
         print ("{} {} missing but required to build a {}.".format(missing_s,verb,title))
         print ("Warning: Hard coded assumptions may not match expectations.")
 
+        
 def RS_Codeword_hedges_pipeline(pf,**kwargs):
     blockSizeInBytes=kwargs.get("blockSizeInBytes",150*15)
     strandSizeInBytes=kwargs.get("strandSizeInBytes",15)
@@ -48,6 +49,8 @@ def RS_Codeword_hedges_pipeline(pf,**kwargs):
     primer3 = kwargs.get("primer3","")
     outerECCStrands = kwargs.get("outerECCStrands",255-blockSizeInBytes//strandSizeInBytes)
     codebook_func = getattr(codebooks,kwargs.get("codebook","CFC_ALL"))
+    syncbook_func = getattr(codebooks,kwargs.get("syncbook","NONE_BOOK"))
+    sync_period =  kwargs.get("sync_period",0)
     fault_injection= kwargs.get("fi",False)
     upper_strand_length = kwargs.get("dna_length",208)
     pipeline_title=kwargs.get("title","anonymous_pipeline")
@@ -58,8 +61,9 @@ def RS_Codeword_hedges_pipeline(pf,**kwargs):
     
     #set up the comma free codebook
     codebook = codebook_func()
-  
-    commafree = CodewordHedgesPipeline(codebook) #use hedges-like decoding method
+    syncbook = syncbook_func()
+    
+    commafree = CodewordHedgesPipeline(codebook,syncbook,sync_period) #use hedges-like decoding method
     
     p5 = PrependSequencePipeline(primer5,handler="align")
     p3 = AppendSequencePipeline(reverse_complement(primer3),handler="align")
@@ -74,6 +78,7 @@ def RS_Codeword_hedges_pipeline(pf,**kwargs):
         return pipeline.PipeLine((rsOuter,innerECCprobe,commafreeprobe,commafree,p3,p5),consolidator,
                                  blockSizeInBytes,strandSizeInBytes,upper_strand_length,1,packetizedfile=pf,barcode=barcode)
 
+    
 def customize_RS_CFC8_pipeline(pf,**kwargs):    
     required = ["blockSizeInBytes","strandSizeInBytes","innerECC",\
                 "dna_length"]
@@ -115,7 +120,6 @@ def SDC_pipeline(pf,**kwargs):
                 "dna_length"]
     check_required(required,**kwargs) 
         
-    #print(kwargs)
     fault_injection= kwargs.get("fi",False)
     blockSizeInBytes=kwargs.get("blockSizeInBytes",180*15)
     strandSizeInBytes=kwargs.get("strandSizeInBytes",15)
@@ -148,7 +152,6 @@ def SDC_pipeline(pf,**kwargs):
   
     hedges = FastHedgesPipeline(rate=hedges_rate,pad_bits=hedges_pad_bits,prev_bits=hedges_previous)
     crc = CRC8()
-
     
     #components related to DNA functionality
     p5 = PrependSequencePipeline(primer5,ignore=True)
