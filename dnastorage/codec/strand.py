@@ -153,21 +153,60 @@ class CRC8(BaseCodec,CWtoCW):
     
     def _decode(self,strand):
         if None in strand.codewords:
-            strand.codewords=[None]*(len(strand.codewords)-1) #delete strand
+            strand.codewords=[None]*(len(strand.codewords)-1) #remove strand from consideration
             return strand
         crc = self._crc(strand.codewords)
         if crc!=self._checksum:
-            strand.codewords=[None]*(len(strand.codewords)-1) #delete strand
+            strand.codewords=[None]*(len(strand.codewords)-1) #remove strand from consideration
         else:
             strand.codewords=strand.codewords[0:len(strand.codewords)-1]
         return strand
 
+class CRC8_Index(CRC8,CWtoCW): #Instead of CRCing the whole strand, we just CRC the index to make sure we don't miss-place indices
+    def __init__(self,CodecObj=None,Policy=None):
+        CWtoCW.__init__(self)
+        CRC8.__init__(self)
+
+    def _encode(self,strand): #insert CRC close to index as possible
+        crc = self._crc(strand.codewords[0:strand.index_bytes])
+        strand.codewords = strand.codewords[0:strand.index_bytes] + [crc] + strand.codewords[strand.index_bytes::]
+        return strand
+
+    def _decode(self,strand):
+        if None in strand.codewords[0:strand.index_bytes+1]:
+            strand.codewords=[None]*(len(strand.codewords)-1) #remove strand from consideration
+            return strand
+        crc = self._crc(strand.codewords[0:strand.index_bytes+1])
+        if crc!=self._checksum:
+            strand.codewords=[None]*(len(strand.codewords)-1) #remove strand from consideration
+        else:
+            strand.codewords=strand.codewords[0:strand.index_bytes] +strand.codewords[strand.index_bytes+1::] #remove embedded crc
+        return strand
+
+
+    
 if __name__=="__main__":
-    s = BaseDNA(codewords=[5,6,7,8,9,214])
+    import copy
+    codewords=[5,6,7,8,9,214]
+    original_codewords = copy.copy(codewords)
+    s = BaseDNA(codewords=codewords)
     crc = CRC8()
     crc.encode(s)
     print(s.codewords)
-    #s.codewords[3]=241
     crc.decode(s)
     print(s.codewords)
+
+    assert(s.codewords==original_codewords)
+    
+    print("Testing Index CRC")
+    crc = CRC8_Index()
+
+    s.index_bytes = 2
+    crc.encode(s)
+    print(s.codewords)
+    crc.decode(s)
+    print(s.codewords)
+
+    assert(s.codewords==original_codewords)
+    
     
