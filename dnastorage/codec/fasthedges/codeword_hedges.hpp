@@ -22,6 +22,8 @@ namespace codeword_hedges{
   class DNAtrie;
   
   std::map<std::string,codeword_hedges::DNAtrie*> CodebookMap; //global codebook map, easiest thing I can think of right now
+  std::vector<std::string> SyncBook; //global syncbook, holds a list of strings, each string should be considered in order as sync points
+  
 
   uint8_t convert_base_to_bits(const char& base){ //binary representation for bases
     switch(base){
@@ -298,19 +300,24 @@ namespace codeword_hedges{
       assert(_root_node->is_root() && "Root node of trie not actually a root node");
       
     }
-
-    char getNextSymbol(int x, int y){ assert(0 && "not implemented for codeword context");} //unused function just to make constant calls happy
     
-    char getNextSymbol(uint32_t& num_bits, uint32_t& val){ //num_bits, val are references to be able to load with codeword values
+    bool at_codeword_end(void){ //indicates whether a new guess would transfer from the end of the codeword
+      if(_guessing_syncs){
+	return _current_trie_prefix>=codeword_hedges::SyncBook[_sync_counter].size();
+      }
+      else{
+	return _current_trie_position->is_leaf() && (_current_trie_prefix>=_current_trie_position->get_length());
+      }
+    }
+             
+    char getNextSymbol(int x, int y){ assert(0 && "not implemented for codeword context");} //unused function just to make constant calls happy
+
+    char _getNextSymbolTrie(uint32_t& val){//handles the case where we are guessing from the Codewords Trie
       char ret_char=0x00;
-      val = NULL_VALUE;
       if(_done_guessing) return 0x00; //done guessing, give null character
       if(_current_trie_prefix>=_current_trie_position->get_length() && _current_transition_guesses.size()==0 && !_done_guessing){
 	//we reached the end of this node, so we'll be guessing all transitions out
 	if(_current_trie_position->is_leaf()){
-	  //need to roll over to root node, so get guesses from the root
-	  val = _current_trie_position->get_value();
-	  assert(val!=NULL_VALUE && "Leaf node has null value");
 	  _current_transition_guesses=_root_node->get_transition_bases();
 	}
 	else{
@@ -320,10 +327,6 @@ namespace codeword_hedges{
 	_current_transition_guesses.pop_back();
       }
       else if(_current_trie_prefix>=_current_trie_position->get_length() && _current_transition_guesses.size()>0){
-	if(_current_trie_position->is_leaf()){
-	  val = _current_trie_position->get_value();
-	  assert(val!=NULL_VALUE && "Leaf node has null value");
-	}
 	ret_char=_current_transition_guesses.back();
 	_current_transition_guesses.pop_back();
 	
@@ -334,20 +337,58 @@ namespace codeword_hedges{
       }
 
       if(_current_transition_guesses.size()==0) _done_guessing=true; //done with generating guesses from the current state
-      
+
       return ret_char;
     }
     
-    char nextSymbolWithUpdate(int num_bits, uint32_t value, char c){
+    char _getNextSymbolSync(void){
+      if(_done_guessing) return 0x00;
+      _done_guessing=true; //just guess one value
+      //simply return the character for the synchronization string, pretty much the same idea as guessing within a node
+      std::string current_sync_string = codeword_hedges::SyncBook[_sync_counter];
+      if(_current_trie_prefix>=current_sync_string.size()){
+	current_sync_string = codeword_hedges::SyncBook[(_sync_counter+1)%codeword_hedges::SyncBook.size()];
+	return current_sync_string[0];
+      }
+      else{
+	return current_sync_string[_current_trie_prefix];
+      }
+    }
+    
+    char getNextSymbol(uint32_t num_bits, uint32_t& val){ //num_bits, val are references to be able to load with codeword values
+      val = NULL_VALUE;
+      if(at_codeword_end()){
+	if(!this->_guessing_syncs) val = _current_trie_position->get_value();
+	else _is_sync_transfer=true;
+	_update_index=true;
+      }
+      if(num_bits==0){ //if num_bits is 0, hedges class is telling us to look at constant synchronization points
+	assert(codeword_hedges::SyncBook.size()>0);
+	if(!this->_guessing_syncs) {
+	  this->_guessing_syncs=true;
+	  _current_trie_prefix=0;
+	}
+	assert(_guessing_syncs);
+	return _getNextSymbolSync(); //returns character based on sync codewords
+      }
+      else{
+	if(this->_guessing_syncs) {
+	  this->_guessing_syncs=false; //reset that we are no longer guessing syncs
+	  _current_trie_position = _root_node;
+	  _current_trie_prefix=0; 
+	}
+	return _getNextSymbolTrie(val); //returns character based on codeword Trie
+      }
+    }
+
+    
+    char _nextSymbolWithUpdateTrie(uint32_t num_bits,char c){
       char ret_symbol = 0x00;
-      _done_guessing=false; //make sure this flag rolls over
-      _current_transition_guesses.clear();//clearing the guesses vector so when the next node ends it doesn't use a stale vector
       //we need to update the position we are in the trie based on what base was chosen as a guess
       if(_current_trie_prefix>=_current_trie_position->get_length()){
 	_current_trie_prefix=1; //don't set to 0, we already guessed the base to get to this node, so we don't want to double count the base
 	if(_current_trie_position->is_leaf()) {
 	  _current_trie_position=_root_node->get_child(c); //this is a complete roll over,-->root-->child at c
-	  this->index++;
 	  assert(num_bits>0); //if you reach the end of the leaf, should not 
 	}
 	else{
@@ -362,15 +403,52 @@ namespace codeword_hedges{
       
       return ret_symbol;
     }
-  
+
+    char _nextSymbolWithUpdateSync(){
+      std::string current_sync_string = codeword_hedges::SyncBook[this->_sync_counter];
+	if(_current_trie_prefix>=current_sync_string.size()){
+	  //We hit the end of the sync string, need to move on to the next
+	  _current_trie_prefix=1;
+	  return current_sync_string[_current_trie_prefix-1];
+	}
+	else{
+	  _current_trie_prefix++; //keeping going along the sync string
+	  return current_sync_string[_current_trie_prefix-1]; 
+	}
+    }
+    
+    char nextSymbolWithUpdate(int num_bits, uint32_t value, char c){
+      if(_update_index){
+	this->index++;
+	if(_is_sync_transfer) _sync_counter= (_sync_counter+1)%codeword_hedges::SyncBook.size(); //need to make sure sync counter rolls
+      }
+      _state_clear(); //clear necessary state on this node
+      if(this->_guessing_syncs){
+	return _nextSymbolWithUpdateSync(); //use synchronization codeword state 
+      }
+      else{
+	return _nextSymbolWithUpdateTrie(num_bits,c); //use trie codeword state 
+      }
+    }
+
+    void _state_clear(){
+      _done_guessing=false; //make sure this flag rolls over
+      _current_transition_guesses.clear();//clearing the guesses vector so when the next node ends it doesn't use a stale vector
+      _update_index=false;
+      _is_sync_transfer=false;
+    }
+    
+    
   private:
-    //unit32_t _value=NULL_VALUE; //value of the codeword
     DNAtrie* _root_node=nullptr; //the root node of the codeword trie
     DNAtrie* _current_trie_position=nullptr; //current position in the trie for this context
     uint8_t _current_trie_prefix=0; //tracks position within  a node
     bool _done_guessing=false; //flag to know when to stop guessing
     std::vector<char> _current_transition_guesses; //tracks the current transitions
-    
+    bool _guessing_syncs=false; //tracks whether we are guessing synchronization point or not
+    uint32_t _sync_counter=0; // counter to track what sync number we are on
+    bool _update_index=false; //flag to test whether to update index
+    bool _is_sync_transfer=false; //flag for indicating sync transfer
   };
   
 } //end namespace codeword_hedges

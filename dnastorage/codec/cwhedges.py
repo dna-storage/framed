@@ -1,6 +1,7 @@
 from dnastorage.codec.base_conversion import *
 from dnastorage.codec.base import *
 from dnastorage.codec_types import *
+from dnastorage.codec.codebooks import *
 from math import log2,floor
 import bitarray
 import os 
@@ -11,19 +12,21 @@ import dnastorage.codec.codewordhedges as codewordhedges
 
 
 class CodewordHedgesPipeline(BaseCodec,CWtoDNA):
-    def __init__(self,codebook,guess_limit=100000,CodecObj=None,Policy=None):
+    def __init__(self,codebook,syncbook=None,sync_period=0,guess_limit=100000,CodecObj=None,Policy=None):
         self._bits_per_cw = math.floor(log2(len(codebook)))
         assert self._bits_per_cw <=32 and "Codewords are limited to representing 32 bits at most, see C++ implementation if it needs to be changed"
         self._codebook = {}
+        self._syncbook = syncbook
         #take the first 2**(self._bits_per_cw) codewords from the codebook
         for key,DNA in sorted(codebook.items(),key= lambda x: x[0]):
             if key >= 2**(self._bits_per_cw): break
             self._codebook[key]=DNA
-        self._hedges_state = hedges_state(rate=self._bits_per_cw,seq_bytes=0,pad_bits=0,prev_bits=0)
+        self._hedges_state = hedges_state(rate=self._bits_per_cw,seq_bytes=0,pad_bits=0,prev_bits=0,sync_period=sync_period)
         CWtoDNA.__init__(self)
         BaseCodec.__init__(self,CodecObj=CodecObj,Policy=Policy)
         #initialize codebooks
         codewordhedges.codebook_init(self._codebook,"codewords")
+        if syncbook!=None: codewordhedges.syncbook_init(self._syncbook)
         self._guess_limit=guess_limit
         
     def _encode(self,strand):
@@ -44,16 +47,23 @@ class CodewordHedgesPipeline(BaseCodec,CWtoDNA):
             bits = b_array[start_bit:end_bit]
             key = int.from_bytes(bits.tobytes(),"little") #need to use little endian to be consistent with the rest of the C++ library
             codeword_list.append(self._codebook[key])
-        strand.dna_strand = "".join(codeword_list)
+
+        final_cw_list=[]
+        if self._syncbook!=None: #bake in the synchronization points for decoding simulation purposes
+            sync_counter=0
+            for i in range(0,len(codeword_list)):
+                final_cw_list.append(codeword_list[i])
+                if (i+1)%self._hedges_state.cw_sync_period==0:
+                    final_cw_list.append(self._syncbook[sync_counter%len(self._syncbook)])
+                    sync_counter+=1
+        else:
+            final_cw_list=codeword_list
+        strand.dna_strand = "".join(final_cw_list)
         return strand
 
     def _decode(self,strand):
         strand.codewords = codewordhedges.decode(strand.dna_strand,self._hedges_state,self._guess_limit)
         return strand
-
-    def __del__(self):
-        #print("{} process freeing codeword hedges".format(os.getpid()))
-        codewordhedges.codebook_destroy("codewords") #destroy the codebook that is stored as a c-pointer
 
     #store some pertinent information like bit lengths of data seen to be able to reinstantiate the decoder in a correct state    
     def _encode_header(self):
@@ -88,17 +98,17 @@ if __name__ == "__main__":
     }'''
 
     from commafreecodec import cfc_all
-
-    test_codebook={}
-    for i in range(0,len(cfc_all)): #using cfc codebook to test
-        test_codebook[i]=cfc_all[i]
-
+    
+    test_codebook=CFC_DUMMY()
+    
+    
     print(len(test_codebook))
     print(test_codebook)
     cwhedge  = CodewordHedgesPipeline(test_codebook)
 
     test_DNA = BaseDNA(codewords=test_bytes)
 
+    
     print("DNA Bytes {}".format(test_DNA.codewords))
     
     cwhedge.encode(test_DNA)
@@ -110,5 +120,15 @@ if __name__ == "__main__":
     print("Bytes after decoding {}".format(test_DNA.codewords))
 
     assert(test_bytes == list(test_DNA.codewords) and "Error Bytes don't match")
+    
+    #Test out the decoder with synbooks
+    test_DNA = BaseDNA(codewords=test_bytes)
+    syncbook=TEST_SYNC_BOOK()
+    cwhedge = CodewordHedgesPipeline(test_codebook,syncbook=syncbook,sync_period=5)
+    cwhedge.encode(test_DNA)
+    print("DNA Bytes {}".format(test_DNA.codewords))
+    print("DNA after encoding with synchronization points: {}".format(test_DNA.dna_strand))
+    cwhedge.decode(test_DNA)
+    print("Bytes after decoding with synchronization points: {}".format(test_DNA.codewords))
+    assert(test_bytes == list(test_DNA.codewords) and "Error Bytes don't match for synchronization points")
 
-    del cwhedge

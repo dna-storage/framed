@@ -38,6 +38,7 @@ static hedges::hedge make_hedge_from_pyobject(PyObject *object)
   int pad_bits = getLong(object, "pad_bits");
   int prev_bits = getLong(object, "prev_bits");
   int salt_bits = getLong(object, "salt_bits");
+  int codeword_sync_period = getLong(object,"cw_sync_period");
 
   if (pad_bits == -1) {
     if (rate > 0.33)
@@ -52,7 +53,7 @@ static hedges::hedge make_hedge_from_pyobject(PyObject *object)
   if (salt_bits == -1)
     salt_bits = 8;
   
-  hedges::hedge h(rate, seq_bytes, message_bytes, pad_bits, prev_bits, salt_bits);
+  hedges::hedge h(rate, seq_bytes, message_bytes, pad_bits, prev_bits, salt_bits,codeword_sync_period);
   return h;
 }
 
@@ -168,6 +169,31 @@ static PyObject* destroy_codebook(const char* name, PyObject* exception){ //remo
   codeword_hedges::CodebookMap.erase(codebook_name);			       
   return Py_BuildValue("s",NULL);
 }
+
+static PyObject *
+create_syncbook(PyObject* syncbook,PyObject* exception)
+{
+  PyObject* PyDNA;
+  Py_ssize_t syncbook_length = PyList_Size(syncbook);
+    
+  for(Py_ssize_t pos =0; pos<syncbook_length; pos++){
+    PyDNA = PyList_GetItem(syncbook,pos);
+    if(!PyUnicode_Check(PyDNA)){
+      PyErr_SetString(exception,"Dictionarmy values are not unicode");
+      return NULL;
+    }
+    const char* strand = PyUnicode_AsUTF8(PyDNA);
+    std::string DNA(strand);
+    codeword_hedges::SyncBook.push_back(DNA);
+  }
+  return Py_BuildValue("s",NULL);
+}
+
+static PyObject* clear_syncbook(PyObject* exception){ //removes a codebook associated with the module
+  codeword_hedges::SyncBook.clear();
+  return Py_BuildValue("s",NULL);
+}
+
 
 
 #endif

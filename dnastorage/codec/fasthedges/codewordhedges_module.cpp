@@ -46,10 +46,37 @@ codewordhedges_codebook_destroy(PyObject *self, PyObject *args){
   return  Py_BuildValue("s",NULL);
 }
 
+
+//Define the function for initializing codebooks
+static PyObject*
+codewordhedges_syncbook_init(PyObject *self, PyObject *args){
+  PyObject* syncbook;
+  if(PyArg_ParseTuple(args,"O",&syncbook)){
+    return create_syncbook(syncbook,CodewordhedgesError);
+    if(syncbook!=NULL && !PyList_Check(syncbook)){
+      PyErr_SetString(CodewordhedgesError, "Given Python object is not a list");
+      return NULL;
+    }
+  }
+  else{
+    PyErr_SetString(CodewordhedgesError, "Error in syncbook init");
+    return NULL;
+  }
+  return  Py_BuildValue("s",NULL);
+}
+
+static PyObject*
+codewordhedges_syncbook_clear(PyObject *self, PyObject *args){
+  return clear_syncbook(CodewordhedgesError);
+}
+
+
 static PyMethodDef CodewordhedgesMethods[] = { //codeword based hedges methods, only going to really need decode
     {"decode",  codewordhedges_decode, METH_VARARGS, "Decode from DNA back into bytes."},
     {"codebook_init", codewordhedges_codebook_init, METH_VARARGS, "Create objects to store codebook information"},
     {"codebook_destroy",codewordhedges_codebook_destroy, METH_VARARGS, "Destroy a given codebook"},
+    {"syncbook_init",codewordhedges_syncbook_init,METH_VARARGS,"Initializes an array that will be used for regular sync points"},
+    {"syncbook_clear",codewordhedges_syncbook_clear,METH_NOARGS,"Clears an array used for regular sync points"},
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
 
