@@ -35,15 +35,18 @@ def setup_process_logger():
 
 
 def _monte_kernel(monte_start,monte_end,args): #function that will run per process
+    logging.info("Monte Carlo Sim: Start {} END {}".format(monte_start,monte_end))
+  
     #We cant use the data_keeper object here, should be private per process, need data structures to propagate results back up to parent process
-    results=[] #each element will be an object that encapsulates the entire statistics    
+    results=[] #each element will be an object that encapsulates the entire statistics
     stats.clear()
     file_to_fault_inject= open(args.file, "rb")
     file_to_fault_inject.seek(0,2)
     file_to_inject_size=file_to_fault_inject.tell()
     file_to_fault_inject.seek(0,0)
 
-    header_data_path = os.path.join(args.out_dir,"header_pipeline{}.header".format(monte_end))
+    header_data_path = os.path.join(args.out_dir,"header_pipeline{}.header".format(monte_end)) #binary data output for header of the header's pipeline
+    payload_header_data_path = os.path.join(args.out_dir,"payload_pipeline{}.header".format(monte_end)) #binary data output for header of the payload pipeline
     
     if os.path.exists(args.enc_params):
         with open(args.enc_params,'rb') as param_file:
@@ -62,7 +65,6 @@ def _monte_kernel(monte_start,monte_end,args): #function that will run per proce
         with open(args.dna_process,'rb') as param_file:
             strand_proc_dict = json.load(param_file)
                 
-
     with open(args.fault_params,'rb') as param_file:
         fault_args = json.load(param_file)
     with open(args.distribution_params,'rb') as param_file:
@@ -70,18 +72,19 @@ def _monte_kernel(monte_start,monte_end,args): #function that will run per proce
 
     assert fault_args !=None and dist_args !=None
 
-    if monte_end!=args.num_sims: #save last header data incase we want to keep it
-        write_dna = DNAFilePipeline.open(None,"w",format_name=args.arch,header_params=header_params,header_version=args.header_version,
-                                         encoder_params=encoding_params,fsmd_header_filename=header_data_path,file_barcode=tuple(args.file_barcode))
-    else:
-        base_file_path  = os.path.basename(args.file)
+    base_file_path  = os.path.basename(args.file) #we give the .dna to each instance, whether we actually write it, to make sure header data is consistent across runs
+    if monte_end!=args.num_sims: 
         write_dna = DNAFilePipeline.open("{}.dna".format(base_file_path),"w",format_name=args.arch,header_params=header_params,header_version=args.header_version,
-                                         encoder_params=encoding_params,fsmd_header_filename=header_data_path,file_barcode=tuple(args.file_barcode))
+                                         encoder_params=encoding_params,fsmd_header_filename=header_data_path, payload_header_filename = payload_header_data_path,
+                                         file_barcode=tuple(args.file_barcode),do_write=False)
+    else: #save 1 copy of the DNA file
+        write_dna = DNAFilePipeline.open("{}.dna".format(base_file_path),"w",format_name=args.arch,header_params=header_params,header_version=args.header_version,
+                                         encoder_params=encoding_params,fsmd_header_filename=header_data_path,file_barcode=tuple(args.file_barcode),
+                                         payload_header_filename = payload_header_data_path,do_write=True)
         
     write_dna.write(file_to_fault_inject.read())
     write_dna.close()
 
-    
     stats["total_encoded_strands"]=len(write_dna.strands)
     stats["header_strand_length"]=len(write_dna.strands[0].dna_strand) #header strands should be first
     stats["payload_strand_length"]=len(write_dna.strands[-1].dna_strand)#strands with real payload should be at the end
@@ -106,15 +109,9 @@ def _monte_kernel(monte_start,monte_end,args): #function that will run per proce
         stats.inc("total_strands_analyzed",len(fault_environment.get_strands()))
 
         read_dna = DNAFilePipeline.open(None,"r",input_strands=fault_environment.get_strands(),header_params=header_params,
-                                        header_version=args.header_version,format_name=args.arch,encoder_params=encoding_params,fsmd_header_filename=header_data_path,
-                                        file_barcode=tuple(args.file_barcode))
-        '''
-        else:
-            print("reading from file")
-            read_dna = DNAFilePipeline.open("{}.dna".format(base_file_path),"r",header_params=header_params,
-                                            header_version=args.header_version,format_name=args.arch,encoder_params=encoding_params,fsmd_header_filename=header_data_path,
-                                            file_barcode=tuple(args.file_barcode))
-        ''' 
+                                        header_version=args.header_version,format_name=args.arch,encoder_params=encoding_params,
+                                        fsmd_header_filename=header_data_path,file_barcode=tuple(args.file_barcode),
+                                        payload_header_filename = payload_header_data_path)
         if read_dna is None:
             #dead header
             stats.inc("dead_header",1)
@@ -148,6 +145,7 @@ def _monte_kernel(monte_start,monte_end,args): #function that will run per proce
     
     if monte_end!=args.num_sims: #save last header data incase we want to keep it
         os.remove(header_data_path)
+        os.remove(payload_header_data_path)
     file_to_fault_inject.close()    
     return results
 

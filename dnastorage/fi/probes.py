@@ -9,8 +9,12 @@ from dnastorage.codec.base_conversion import unpack_bytes_to_indexes
 from dnastorage.primer.primer_util import *
 import copy
 import numpy as np
+import sys, traceback
 
 
+import logging
+logger = logging.getLogger("dnastorage.fi.probes")
+logger.addHandler(logging.NullHandler())
 
 class CodewordErrorRateProbe(BaseCodec,Probe):
     #This probe should be placed after a single strand codec so that analysis can be performed 
@@ -114,7 +118,7 @@ class FilteredDNACounter(BaseCodec,Probe):
         else:
             self._name = probe_name
         self._strands_filtered_key = "{}::filtered_strand".format(self._name)
-        stats[self._strands_filtered_key]=0
+        #stats[self._strands_filtered_key]=0
         FilteredDNACounter.probe_id+=1
     def _encode(self,s):
         return s
@@ -129,6 +133,7 @@ class IndexDistribution(BaseCodec,Probe):
     probe_id=0
     def __init__(self,probe_name="",CodecObj=None,prefix_to_match=tuple()):
         BaseCodec.__init__(self,CodecObj)
+
         if probe_name=="":
             self._name = "index_dist_probe_{}".format(IndexDistribution.probe_id)
         else:
@@ -145,11 +150,16 @@ class IndexDistribution(BaseCodec,Probe):
         self._fastq_map = "{}::fastq_map".format(self._name)
         stats[self._fastq_map]={}
         self._prefix_to_match = prefix_to_match
+        self._correct_key="{}::correct_indexes".format(self._name)
+        self._incorrect_key="{}::incorrect_indexes".format(self._name)
+        self._initial_index_ints_attr = "{}::initial_index_attribute"
+
         IndexDistribution.probe_id+=1
         
     def _encode(self,s):
         stats.inc(self._total_indexes_encode)
         stats.inc(self._index_dist_probe_key_encode,dflt=dict(),coords=s.index_ints)
+        setattr(s,self._initial_index_ints_attr,copy.copy(s.index_ints)) #take a snapshot of the indices
         return s
 
     def _decode(self,s):
@@ -167,6 +177,11 @@ class IndexDistribution(BaseCodec,Probe):
             #record where the fastq sequence is
             if hasattr(s,"fastq_record_id"):
                 stats[self._fastq_map][index_ints]=stats[self._fastq_map].get(index_ints,[])+[s.fastq_record_id]
+            if hasattr(s,self._initial_index_ints_attr):
+                if index_ints == tuple(getattr(s,self._initial_index_ints_attr)):
+                    stats.inc(self._correct_key)
+                else:
+                    stats.inc(self._incorrect_key)
         return s
 
 class StrandCheckProbe(BaseCodec,Probe):

@@ -49,13 +49,13 @@ class PipeLine(EncodePacketizedFile,DecodePacketizedFile):
         self._inner_codecs=[]
         self._cw_to_DNA=[] #These processes are those that turn CW information into DNA
         self._DNA_to_DNA=[] #These processes are those that post-process dna strand information, e.g. primers, cut sites, etc.
-        self._basestrand_bytes=basestrand_bytes
+        self._basestrand_bytes=basestrand_bytes #base number of bytes in a strand before encoding occurs
         self._DNA_upper_bound=DNA_upper_bound #upper bound DNA length
         self._decode_strands=[] #strands that will be decoded
         self._final_decode_iterations=final_decode_iterations #how many complete final decoding processes should be done
-        self._consolidator=consolidator
-        self._final_decode_run=False
-        self._filtered_strands=[]
+        self._consolidator=consolidator #component that consolidates multiple reads with the same index
+        self._final_decode_run=False #flag that tracks the final decode run_hedges
+        self._filtered_strands=[] #strands that have been filtered out due to physical pipeline or incoherence during the decode process
         self._barcode=barcode
         for index,component in enumerate(components):
             if index>0: prev_component=components[index-1]
@@ -154,17 +154,22 @@ class PipeLine(EncodePacketizedFile,DecodePacketizedFile):
 
         return final_DNA_strands
 
+    def _strand_valid_index(self,strand): #test if strand has valid index
+        return not (None in strand.codewords[0:self._index_bytes] or len(strand.codewords)<self._index_bytes)
+           
+    def _inner_pipeline(self,strand):
+        self._cw_to_DNA_cascade.decode(strand)
+        self._inner_cascade.decode(strand)
+      
     def final_decode(self):
         #performs the final decode on the streamed in strands 
         self._final_decode_run=True
         if isinstance(self._consolidator,DNAConsolidate):
             self._decode_strands = self._consolidator.decode(self._decode_strands)
-
         after_inner=[]
         for strand in self._decode_strands:
-            self._cw_to_DNA_cascade.decode(strand)
-            self._inner_cascade.decode(strand)
-            if None in strand.codewords[0:self._index_bytes] or len(strand.codewords)<self._index_bytes:
+            self._inner_pipeline(strand)
+            if not self._strand_valid_index(strand):
                 self.filter_strand(strand)
                 continue
             strand.index_ints = unpack_bytes_to_indexes(strand.codewords[0:self._index_bytes],self._index_bit_set)
@@ -275,7 +280,7 @@ class PipeLine(EncodePacketizedFile,DecodePacketizedFile):
             if strand.dna_strand ==None:
                 self.filter_strand(strand)
                 return
-
+            
         strand.index_bytes = self._index_bytes
         strand.index_bit_set =  self._index_bit_set
         self._decode_strands.append(strand)

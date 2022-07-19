@@ -8,7 +8,9 @@ from dnastorage.system.formats import *
 import hashlib
 from importlib_metadata import version
 
-
+import logging
+logger = logging.getLogger("dnastorage.system.header_class")
+logger.addHandler(logging.NullHandler())
 
 def version_0_1():
     #returns a formatting dictionary for the given version
@@ -21,7 +23,7 @@ def version_0_1():
     version_dict["header_barcode"]=(0xEE,1,int)
     version_dict["pipeline_barcode_ID"]=(None,"v",bytes) 
     version_dict["decoding_format"]=('FSMD-Pipe',"v",str)
-    version_dict["dnastorage_module_version"]=(version("dnastorage"),"v",str) #version of core decoding code
+    version_dict["dnastorage_module_version"]=(version("dnastorage"),"v",str) #version of core decoding code, note pre-defined values only matter during decoding
     return version_dict
 
 
@@ -104,12 +106,14 @@ class Header(object):
         barcode = (self._format_dict["header_barcode"][0],)+barcode_suffix
         self._pipeline = enc_func(None,**encoder_params,barcode=barcode)
         self._format_dict["pipeline_barcode_ID"]=(barcode_suffix,)+self._format_dict["pipeline_barcode_ID"][1::]
+        self.encoded_header_bytes = None 
     
     def get_header_pipeline_data(self):
         buff=self._pipeline.encode_header_data()
         buff+=self._encoded_header_hash
         buff+=convertIntToBytes(self._header_length,4)
         return buff
+    
     def set_pipeline_data(self,buff):
         buff=self._pipeline.decode_header_data(buff)
         self._encoded_header_hash=buff[:hashlib.md5().digest_size]
@@ -145,9 +149,12 @@ class Header(object):
         self._encoded_header_hash = dhash.digest()
         self._header_length = len(data)
 
-        pf = ReadPacketizedFilestream(BytesIO(data))
+        b  = BytesIO(data)
+        pf = ReadPacketizedFilestream(b)
         self._pipeline.set_read_pf(pf)
+        self.encoded_header_bytes = b.getvalue() #bytes that were encoded as the header for a pipeline
         strands = []
+        
         for block in self._pipeline:
             for s in block:
                 strands.append(s)
@@ -162,30 +169,15 @@ class Header(object):
                 value = encode_dict[field]
             comment += "% {} : {}\n".format(field,value)
         return comment
-            
-    
-    def decode_file_header(self,strands):
-        b = BytesIO()
-        pf = WritePacketizedFilestream(b,self._header_length,0)
-        self._pipeline.set_write_pf(pf)
-        self._non_header_strands=[]
-        for s in strands:
-            self._pipeline.decode(s)
-        #should be able to finish decoding here
-        
-        self._pipeline.final_decode()
 
-        try:
-            data = [ ord(x) for x in b.getvalue() ]
-        except Exception as e:
-            data = [ x for x in b.getvalue() ]
 
+    def header_from_bytes(self,data): #returns the header dictionary from bytes
+        logger.info("Header length {} expected length {}".format(len(data),self._header_length))
         if self._encoded_header_hash!=None: #quick check to determine if header survived correctly
             dhash = hashlib.md5()
             dhash.update(bytearray(data[:self._header_length]))
             if dhash.digest() != self._encoded_header_hash:
                 return None
-        
         pos = 0
         #now read out bytes
         return_header={}
@@ -206,15 +198,30 @@ class Header(object):
                 return_header[field]=tuple([int(x) for x in value_bytes])
             elif t is str and is_variable:
                 return_header[field]="".join([chr(x) for x in value_bytes])
-
         #get other data
         size_other_data = convertBytesToInt(data[pos:pos+2])
         pos += 2
         return_header['other_data'] = [ x for x in data[pos:pos+size_other_data] ]
-
         print(return_header)
         self._decode_header=return_header
         return return_header
+    
+    def decode_file_header(self,strands):
+        b = BytesIO()
+        pf = WritePacketizedFilestream(b,self._header_length,0)
+        self._pipeline.set_write_pf(pf)
+        self._non_header_strands=[]
+        for s in strands:
+            self._pipeline.decode(s)
+        #should be able to finish decoding here
+        self._pipeline.final_decode()
+
+        try:
+            data = [ ord(x) for x in b.getvalue() ]
+        except Exception as e:
+            data = [ x for x in b.getvalue() ]
+            
+        return self.header_from_bytes(data)
         
     def pick_nonheader_strands(self):
         return self._pipeline.get_filtered()
@@ -225,6 +232,8 @@ class Header(object):
         else:
             return None
 
+
+   
 if __name__=="__main__":
    
 

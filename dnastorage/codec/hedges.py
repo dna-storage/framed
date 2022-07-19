@@ -5,10 +5,11 @@ from dnastorage.codec.base import *
 import heapq
 from dnastorage.codec_types import*
 from math import log10, log2, ceil, sqrt
-
 import dnastorage.codec.fasthedges as fasthedges
-
 from random import randint
+from dnastorage.primer.primer_util import reverse_complement
+
+
 try:
     from random import randbytes
 except:
@@ -852,8 +853,9 @@ class PyHedgesPipeline(BaseCodec,CWtoDNA):
         
     def _decode(self,strand):
         index,data,corr = self._hedges.decode(strand.dna_strand,best_guess=True,max_guesses=self._guess_limit)
-        strand.codewords =[_ for _ in index.tobytes()+data.tobytes()] 
+        strand.codewords =[_ for _ in index.tobytes()+data.tobytes()]
         return strand
+
     #store some pertinent information like bit lengths of data seen to be able to reinstantiate the decoder in a correct state    
     def _encode_header(self):
         data = []
@@ -893,9 +895,10 @@ class hedges_state:
             self.salt_bits = 32
     
 class FastHedgesPipeline(BaseCodec,CWtoDNA):
-    def __init__(self,rate,pad_bits=8,prev_bits=8,guess_limit=100000,CodecObj=None,Policy=None):
+    def __init__(self,rate,pad_bits=8,prev_bits=8,guess_limit=100000,CodecObj=None,Policy=None,try_reverse = False):
         self._hedges_state = hedges_state(rate=rate,pad_bits=pad_bits,prev_bits=prev_bits)
         self._guess_limit=guess_limit
+        self._try_reverse=try_reverse #option to try reverse complement, should do this if DNA not guarenteed to be in right position
         CWtoDNA.__init__(self)
         BaseCodec.__init__(self,CodecObj=CodecObj,Policy=Policy)
 
@@ -909,8 +912,17 @@ class FastHedgesPipeline(BaseCodec,CWtoDNA):
         return strand
         
     def _decode(self,strand):
+        reverse = False
+        if self._try_reverse: #if we need to check reverse, try a small number of guesses
+            reverse_codewords = fasthedges.decode(reverse_complement(strand.dna_strand), self._hedges_state, 1000)
+            forward_codewords = fasthedges.decode(strand.dna_strand, self._hedges_state, 1000)
+            reverse_none = sum([1 if _==None else 0 for _ in reverse_codewords])
+            forward_none = sum([1 if _==None else 0 for _ in forward_codewords])
+            if reverse_none<forward_none: #utilize reverse complement
+                reverse=True
         #print (self._hedges_state.seq_bytes, self._hedges_state.message_bytes)
-        strand.codewords = fasthedges.decode(strand.dna_strand, self._hedges_state, self._guess_limit)
+        if not reverse: strand.codewords = fasthedges.decode(strand.dna_strand, self._hedges_state, self._guess_limit)
+        else: strand.codewords = fasthedges.decode(reverse_complement(strand.dna_strand), self._hedges_state, self._guess_limit)
         return strand
     
     #store some pertinent information like bit lengths of data seen to be able to reinstantiate the decoder in a correct state    

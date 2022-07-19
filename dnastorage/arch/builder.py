@@ -178,25 +178,24 @@ def SDC_pipeline(pf,**kwargs):
 
 
 
-
 def Basic_Hedges_Pipeline(pf,**kwargs):
     required = ["blockSizeInBytes","strandSizeInBytes","hedges_rate",\
-                "dna_length"]
+                "dna_length", "crc_type"]
     check_required(required,**kwargs) 
         
-    #print(kwargs)
     fault_injection= kwargs.get("fi",False)
     blockSizeInBytes=kwargs.get("blockSizeInBytes",180*15)
     strandSizeInBytes=kwargs.get("strandSizeInBytes",15)
     primer5 = kwargs.get("primer5",'A'*20)
     primer3 =kwargs.get("primer3",'A'*20)
-    check_primers = kwargs.get("check_primers",False)
-    other_strands=kwargs.get("other_strands",[])
+    crc_type = kwargs.get("crc_type","strand")
     
     hedges_rate = kwargs.get("hedges_rate",1/2.)
     # pad_bits and prev_bits should match by default:
     hedges_pad_bits=kwargs.get("hedges_pad",8)
     hedges_previous = kwargs.get("hedge_prev_bits",8)
+    try_reverse = kwargs.get("try_reverse",False)
+    
 
     if "outerECCStrands" not in kwargs and "blockSizeInBytes" in kwargs:
         outerECCStrands = 255 - blockSizeInBytes//strandSizeInBytes
@@ -213,9 +212,12 @@ def Basic_Hedges_Pipeline(pf,**kwargs):
     elif "outerECCdivisor" in kwargs:
         rsOuter = ReedSolomonOuterPipeline(kwargs["outerECCdivisor"],outerECCStrands)
   
-    hedges = FastHedgesPipeline(rate=hedges_rate,pad_bits=hedges_pad_bits,prev_bits=hedges_previous)
-    crc = CRC8()
-    
+    hedges = FastHedgesPipeline(rate=hedges_rate,pad_bits=hedges_pad_bits,prev_bits=hedges_previous,try_reverse=try_reverse)
+
+    if crc_type=="strand": crc = CRC8()
+    elif crc_type=="index": crc = CRC8_Index()
+    else: assert 0 and "Invalid CRC selection"
+        
     #components related to DNA functionality
     p5 = PrependSequencePipeline(primer5,ignore=False,handler="align",search_range=30)
     p3 = PrependSequencePipeline(primer3,ignore=False,handler="align",search_range=30)
@@ -232,15 +234,9 @@ def Basic_Hedges_Pipeline(pf,**kwargs):
         dna_counter_probe = FilteredDNACounter(probe_name=pipeline_title)
         DNA_pipeline=(dna_counter_probe,)+DNA_pipeline
 
-    if check_primers: #checks data strands for matches in 
-        primer_check_probe = StrandCheckProbe(strands=[primer5,primer3]+other_strands) 
-        DNA_pipeline=DNA_pipeline+(primer_check_probe,)
-
+   
     return pipeline.PipeLine(out_pipeline+inner_pipeline+DNA_pipeline,consolidator,blockSizeInBytes,strandSizeInBytes,upper_strand_length,1,packetizedfile=pf,
                             barcode=barcode)
-
-
-
 
 
 def customize_RS_CFC8(is_enc,pf,primer5,primer3,intraBlockIndex=1,\

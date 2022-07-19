@@ -142,9 +142,7 @@ class CRC8(BaseCodec,CWtoCW):
         for b in byte_array:
             crc=crc^b
             crc = self._memo_array[crc]
-        #print(crc)
         return crc
-            
             
     def _encode(self,strand):
         crc = self._crc(strand.codewords)
@@ -162,7 +160,7 @@ class CRC8(BaseCodec,CWtoCW):
             strand.codewords=strand.codewords[0:len(strand.codewords)-1]
         return strand
 
-class CRC8_Index(CRC8,CWtoCW): #Instead of CRCing the whole strand, we just CRC the index to make sure we don't miss-place indices
+class CRC8_Index(CRC8,CWtoCW): #Instead of CRCing the whole strand, we just CRC the index to make sure we don't miss-place indices, useful for matching strands correctly from sequencing experiments
     def __init__(self,CodecObj=None,Policy=None):
         CWtoCW.__init__(self)
         CRC8.__init__(self)
