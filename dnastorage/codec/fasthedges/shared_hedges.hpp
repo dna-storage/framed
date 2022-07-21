@@ -39,6 +39,7 @@ static hedges::hedge make_hedge_from_pyobject(PyObject *object)
   int prev_bits = getLong(object, "prev_bits");
   int salt_bits = getLong(object, "salt_bits");
   int codeword_sync_period = getLong(object,"cw_sync_period");
+  int parity_period = getLong(object,"parity_period");
 
   if (pad_bits == -1) {
     if (rate > 0.33)
@@ -52,8 +53,8 @@ static hedges::hedge make_hedge_from_pyobject(PyObject *object)
     prev_bits = 8;
   if (salt_bits == -1)
     salt_bits = 8;
-  
-  hedges::hedge h(rate, seq_bytes, message_bytes, pad_bits, prev_bits, salt_bits,codeword_sync_period);
+    
+  hedges::hedge h(rate, seq_bytes, message_bytes, pad_bits, prev_bits, salt_bits,codeword_sync_period,parity_period);
   return h;
 }
 
@@ -74,15 +75,9 @@ shared_decode(PyObject *self, PyObject *args)
       std::vector<uint8_t> mess(h.message_bytes), seq(h.seq_bytes);
 
       std::string sstrand(strand);
-      uint32_t t = h. template decode<Constraint,Reward,Context>(sstrand,seq,mess,guesses);
-
-      // std::cout << "[";
-      // for(auto i : seq)
-      // 	std::cout << int(i) << ", ";
-      // for(auto i : mess)
-      // 	std::cout << int(i) << ", ";
-      // std::cout << "]" << std::endl; 
-
+      uint32_t t;
+      if(h.parity_period==0) t = h. template decode<Constraint,Reward,Context,hedges::search_tree>(sstrand,seq,mess,guesses);
+      else t  = h. template decode<Constraint,Reward,Context,hedges::search_tree_parity>(sstrand,seq,mess,guesses); //parity search tree considers parity data during decoding
       int sz = seq.size() + mess.size();
       PyObject *list = PyList_New(sz);
       for(auto i=0; i<sz; i++)

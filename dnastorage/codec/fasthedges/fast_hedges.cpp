@@ -52,7 +52,8 @@ uint64_t digest(uint64_t prev, uint64_t prev_bits,
 	       int pad_bits,
 	       int prev_bits,
 	       int salt_bits,
-	       int codeword_sync_period
+	       int codeword_sync_period,
+	       int parity_period
 	       )
 {
   this->raw_rate = rate;
@@ -62,11 +63,20 @@ uint64_t digest(uint64_t prev, uint64_t prev_bits,
   this->message_bytes = message_bytes;
   this->pad_bits = pad_bits;
   this->prev_bits = prev_bits;
-  this->salt_bits = salt_bits;  
-  this->adj_seq_bits = seq_bytes*8 + check_if_padding_needed(seq_bytes*8);
-  this->adj_pad_bits = pad_bits + check_if_padding_needed(message_bytes*8 + pad_bits);   
-  this->adj_message_bits = message_bytes*8 + this->adj_pad_bits;
+  this->salt_bits = salt_bits;
+  this->parity_period = parity_period;
+
+  //Take into account parity when determining adjusted message bits so that the index can be correctly calcualted
+  uint32_t total_parameter_data_bits = message_bytes*8+pad_bits;
+  if(this->parity_period>0){
+    assert(this->parity_period>1 && "Parity can't be set to a period of just 1");
+    //parity is interleaved into pad_bits speced by user, so that needs to be taken into account in the total bits
+    total_parameter_data_bits = (this->parity_period+1) + (total_parameter_data_bits-this->parity_period)/(this->parity_period-1) + total_parameter_data_bits;   
+  }
   
+  this->adj_seq_bits = seq_bytes*8 + check_if_padding_needed(seq_bytes*8);
+  this->adj_pad_bits = this->pad_bits + check_if_padding_needed(total_parameter_data_bits);
+  this->adj_message_bits = total_parameter_data_bits + (this->adj_pad_bits-this->pad_bits);
   max_index = get_index_range(adj_message_bits + adj_seq_bits);
   
 }
@@ -219,7 +229,7 @@ int main()
 {
   int message_size = 15;
   
-  hedge h(1/4.0,4,message_size,4,8,8,0);
+  hedge h(1/4.0,4,message_size,4,8,8,0,0);
 
   std::vector<uint8_t> arr = {100,102,103,106};
   std::string buff;

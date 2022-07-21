@@ -12,6 +12,7 @@
 #include <memory>
 #include <vector>
 #include <list>
+#include <limits>
 
 namespace hedges {
 
@@ -21,7 +22,7 @@ public:
   using container_type = container;
   std::shared_ptr<bit_tree> parent;
   unit val;
-
+  
   bit_tree(std::shared_ptr<bit_tree> _parent, unit _val):parent(_parent),val(_val){}
 
   container get_n(int n) {
@@ -227,55 +228,74 @@ public:
 };
 
 
-  
-class hedge;
 
-  template<typename DNAConstraint = Constraint, typename Reward = Reward, template <typename> class Context = context>
+  
+  //moved the guess infrastructure out so that different search trees can be used
+  template<typename Reward=Reward, typename SearchTree>
+  std::vector< SearchTree> makeGuesses(SearchTree* s);
+  template<typename Reward = Reward, typename SearchTree>
+  std::vector< SearchTree> makeCWGuesses(SearchTree* s);
+  template<typename Reward = Reward, typename SearchTree>
+  std::vector< SearchTree> make2bitGuesses(SearchTree* s);
+  template<typename Reward = Reward, typename SearchTree>
+  std::vector< SearchTree> make1bitGuesses(SearchTree* s);
+  template<typename Reward = Reward, typename SearchTree>
+  std::vector< SearchTree > make0bitGuesses(SearchTree* s);
+  template<typename Reward = Reward, typename SearchTree>
+  void guessHelper(SearchTree* s, std::vector<SearchTree>& ret, char c, int nbits, uint32_t val);  
+  template<typename Reward=Reward, typename SearchTree>
+  SearchTree addMatch(SearchTree* s, char c, uint8_t bits, uint32_t val);
+  template<typename Reward=Reward, typename SearchTree>
+  SearchTree addSubst(SearchTree* s, char c, uint8_t bits, uint32_t val);
+  template<typename Reward=Reward, typename SearchTree>
+  SearchTree addDel(SearchTree*s, char c, uint8_t bits, uint32_t val);
+  template<typename Reward=Reward, typename SearchTree>
+  SearchTree addIns2(SearchTree* s,char c, uint8_t bits, uint32_t val, double penalty);
+  template<typename Reward=Reward, typename SearchTree>
+  SearchTree addIns(SearchTree* s);
+
+
+  
+#define MAX_SCORE std::numeric_limits<float>::max()
+  
+  class hedge;
+  
+  template< typename Context = context<Constraint>>
 class search_tree {
 public:
   hedge *h;
-  Context<DNAConstraint> c;
+  Context c;
   float score;
   uint32_t offset;
   std::string *observed;
-
   char kind;
   char guess;
 
   std::shared_ptr<bit_tree<uint8_t>> bits;
   std::shared_ptr<bit_tree<char>>    bases;
 
-  search_tree(hedge *_h,
-	      search_tree *_parent,
-	      const Context<DNAConstraint> &_c,
-	      float _score,
-	      uint32_t _offset,
-	      std::string *_observed,
-	      int nbits, uint32_t bit, char base, bool insertion=false, char _kind='m');
+    search_tree(hedge *_h,
+		search_tree *_parent,
+		const Context &_c,
+		float _score,
+		uint32_t _offset,
+		std::string *_observed,
+		int nbits, uint32_t bit, char base, bool insertion=false, char _kind='m');
+    
+    search_tree(hedge *_h,
+		const Context &_c,
+		float _score,
+		uint32_t _offset,
+		std::string *_observed)  :h(_h),c(_c),score(_score),offset(_offset), observed(_observed), bits(nullptr), bases(nullptr){}
 
-  search_tree(hedge *_h,
-	      const Context<DNAConstraint> &_c,
-	      float _score,
-	      uint32_t _offset,
-	      std::string *_observed);
-
-  std::vector< search_tree > makeGuesses();
-  std::vector< search_tree > makeCWGuesses();
-  std::vector< search_tree > make2bitGuesses();
-  std::vector< search_tree > make1bitGuesses();
-  std::vector< search_tree > make0bitGuesses();
-  
-
-  void guessHelper(std::vector< search_tree > &,
-					 char c, int nbits, uint32_t val);
+    search_tree(hedge *_h,
+		const Context &_c,
+		float _score,
+		uint32_t _offset,
+		std::string *_observed, char _kind, char base)
+      :h(_h),c(_c),score(_score),offset(_offset), observed(_observed), kind(_kind), guess(base),  bits(nullptr), bases(nullptr){}
 
   
-
-  search_tree addMatch(char c, uint8_t bits, uint32_t val);
-  search_tree addSubst(char c, uint8_t bits, uint32_t val);
-  search_tree addDel(char c, uint8_t bits, uint32_t val);
-  search_tree addIns2(char c, uint8_t bits, uint32_t val, double penalty);
-  search_tree addIns();
   
   bool checkPad(); 
   bool isIncomplete();
@@ -295,7 +315,35 @@ public:
       return (*observed)[i];
   }
 };
+  
+  template<typename Context = context<Constraint>>
+  class search_tree_parity : public hedges::search_tree<Context>{
+  public:
+    //Inherit all the other bookeeping stuff from the base search tree
+    search_tree_parity(hedge *_h,
+		       search_tree_parity *_parent,
+		       const Context &_c,
+		       float _score,
+		       uint32_t _offset,
+		       std::string *_observed,
+		       int nbits, uint32_t bit, char base, bool insertion=false, char _kind='m');
 
+    search_tree_parity(hedge *_h,
+			const Context &_c,
+			float _score,
+			uint32_t _offset,
+			std::string *_observed):
+		       search_tree<Context>(_h,_c,_score,_offset,_observed)
+		       {}
+
+  protected:
+    uint32_t _bit_counter = 0; //track which bit we are at, helps with knowing when to compare parity
+    uint8_t _parity = 0; //parity bit for this part of the search tree
+  };
+
+
+
+  
 template <typename node>
 struct BestScore {
   bool operator() (const node &a, const node &b) {
@@ -320,11 +368,11 @@ public:
   int adj_seq_bits;
   int adj_pad_bits;
   int codeword_sync_period;
+  int parity_period;
   int max_index;
   
   std::vector< std::vector<int> > patterns =
-    {
-     {0},
+    {{0},
      {2,1},
      {2,1,1,1,1},
      {1},
@@ -414,12 +462,14 @@ public:
 	int pad_bits,
 	int prev_bits,
 	int salt_bits,
-	int codeword_sync_period);
+	int codeword_sync_period,
+	int parity_period);
 
   std::string encode(std::vector<uint8_t> seqId, std::vector<uint8_t> message);
 
 
-  template <typename Constraint = Constraint, typename Reward = Reward, template <typename> class Context = context>
+  template <typename Constraint = Constraint, typename Reward = Reward, template <typename> class Context = context,
+	    template<typename> class SearchTree = search_tree>
   uint32_t decode(std::string &observed,
 	      std::vector<uint8_t> &seqId,
 	      std::vector<uint8_t> &message,

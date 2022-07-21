@@ -875,13 +875,14 @@ class PyHedgesPipeline(BaseCodec,CWtoDNA):
 
 
 class hedges_state:
-    def __init__(self, rate=1.0/4, seq_bytes=2, message_bytes=14, pad_bits=8, prev_bits = 8,sync_period=0):
+    def __init__(self, rate=1.0/4, seq_bytes=2, message_bytes=14, pad_bits=8, prev_bits = 8,sync_period=0,parity_period=0):
         self.rate = float(rate)
         self.seq_bytes = seq_bytes
         self.message_bytes = message_bytes
         self.pad_bits = pad_bits #this is user-defined pad bits, not those determined under the hood to make patterns work out
         self.prev_bits = prev_bits
         self.salt_bits = seq_bytes * 8
+        self.parity_period=parity_period #period in which to consider built in parity
         self.cw_sync_period=sync_period #sync period is the period in which we put syncpoints
         if self.salt_bits > 32:
             self.salt_bits = 32

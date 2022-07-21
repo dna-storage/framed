@@ -14,6 +14,7 @@ codewordhedges_decode(PyObject *self, PyObject *args)
   return shared_decode<hedges::Constraint,hedges::Reward,codeword_hedges::context>(self,args);
 }
 
+
 //Define the function for initializing codebooks
 static PyObject*
 codewordhedges_codebook_init(PyObject *self, PyObject *args){
