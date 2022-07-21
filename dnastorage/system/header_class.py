@@ -185,7 +185,7 @@ class Header(object):
             is_variable=False
             t = self._format_dict[field][2]
             length = self._format_dict[field][1]
-            if length is "v":
+            if length=="v":
                 is_variable=True
                 size_bytes = data[pos:pos+2]
                 length = convertBytesToInt(size_bytes)

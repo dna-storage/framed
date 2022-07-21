@@ -217,6 +217,22 @@ class PrependSequencePipeline(PrependSequence,DNAtoDNA):
             strand.dna_strand = None
         return strand
 
+
+class ReversePipeline(BaseCodec,DNAtoDNA):
+    def __init__(self,CodecObj=None,Policy=None):
+        DNAtoDNA.__init__(self)
+        BaseCodec.__init__(self,CodecObj=CodecObj,Policy=Policy)
+    def _encode(self,strand):
+        #this is a wrapper around the basic PrependSequence _encode so that the strand interface
+        strand.dna_strand=strand.dna_strand[::-1]
+        return strand
+    def _decode(self,strand):
+        if strand.dna_strand is None: return strand
+        strand.dna_strand = strand.dna_strand[::-1] 
+        return strand
+
+
+    
 class AppendSequencePipeline(AppendSequence,DNAtoDNA):
     def __init__(self,seq,CodecObj=None,Policy=None,isPrimer=False,ignore=False,handler="ed",search_range=50):
         AppendSequence.__init__(self,seq,CodecObj=CodecObj,Policy=Policy,isPrimer=isPrimer,handler=handler,search_range=search_range)

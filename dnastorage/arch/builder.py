@@ -22,6 +22,12 @@ from dnastorage.codec.cwhedges import *
 from dnastorage.fi.probes import *
 
 
+import logging
+logger = logging.getLogger("dnastorage.arch.builder")
+logger.addHandler(logging.NullHandler())
+
+
+
 def available_file_architectures():
     return ["UW+MSv1","Illinois",'Goldman','Fountain','Binary','Dense','NRDense','RS+CFC8','RS+ROT','RS+NRD', 'Sys', 'OverhangStrand']
 
@@ -183,31 +189,32 @@ def SDC_pipeline(pf,**kwargs):
 
 def Basic_Hedges_Pipeline(pf,**kwargs):
     required = ["blockSizeInBytes","strandSizeInBytes","hedges_rate",\
-                "dna_length", "crc_type"]
+                "dna_length", "crc_type", "reverse_payload"]
     check_required(required,**kwargs) 
         
     fault_injection= kwargs.get("fi",False)
     blockSizeInBytes=kwargs.get("blockSizeInBytes",180*15)
     strandSizeInBytes=kwargs.get("strandSizeInBytes",15)
-    primer5 = kwargs.get("primer5",'A'*20)
-    primer3 =kwargs.get("primer3",'A'*20)
-    crc_type = kwargs.get("crc_type","strand")
-    
-    hedges_rate = kwargs.get("hedges_rate",1/2.)
+    primer5 = kwargs.get("primer5",'A'*20) #basic 5' primer region
+    primer3 =kwargs.get("primer3",'A'*20) #basic 3' primer region
+    crc_type = kwargs.get("crc_type","strand") #location where to put the CRC check
+    reverse_payload = kwargs.get("reverse_payload",False) #should the payload be reversed
+    upper_strand_length = kwargs.get("dna_length",300) #if strands longer than this value, throw exceptions
+    pipeline_title=kwargs.get("title","") #name for the pipeline
+    barcode = kwargs.get("barcode",tuple()) #specific barcode for the pipeline
+
+    hedges_rate = kwargs.get("hedges_rate",1/2.) #rate of hedges encode/decode
     # pad_bits and prev_bits should match by default:
     hedges_pad_bits=kwargs.get("hedges_pad",8)
     hedges_previous = kwargs.get("hedge_prev_bits",8)
-    try_reverse = kwargs.get("try_reverse",False)
+    try_reverse = kwargs.get("try_reverse",False) #should the reverse be tried, for hedges decoding, set this if primer3/primer5 are not used
     
 
     if "outerECCStrands" not in kwargs and "blockSizeInBytes" in kwargs:
         outerECCStrands = 255 - blockSizeInBytes//strandSizeInBytes
     else:
         outerECCStrands = kwargs.get("outerECCStrands",255-180)
-        
-    upper_strand_length = kwargs.get("dna_length",300)
-    pipeline_title=kwargs.get("title","")
-    barcode = kwargs.get("barcode",tuple())
+  
     
     #Error correction components
     if "outerECCdivisor" not in kwargs:
@@ -218,7 +225,9 @@ def Basic_Hedges_Pipeline(pf,**kwargs):
     hedges = FastHedgesPipeline(rate=hedges_rate,pad_bits=hedges_pad_bits,prev_bits=hedges_previous,try_reverse=try_reverse)
 
     if crc_type=="strand": crc = CRC8()
-    elif crc_type=="index": crc = CRC8_Index()
+    elif crc_type=="index":
+        logger.info("BasicHedges: Using Index CRC")
+        crc = CRC8_Index()
     else: assert 0 and "Invalid CRC selection"
         
     #components related to DNA functionality
@@ -228,8 +237,14 @@ def Basic_Hedges_Pipeline(pf,**kwargs):
     consolidator = SimpleMajorityVote()
     out_pipeline = (rsOuter,)
     inner_pipeline = (crc,hedges)
-    DNA_pipeline = (p3,p5)
-
+    
+    if reverse_payload:
+        logger.info("BasicHedges: Using reverse after payload DNA")
+        r = ReversePipeline()
+        DNA_pipeline = (r,p3,p5)
+    else:
+        DNA_pipeline = (p3,p5)
+        
     if fault_injection: #some counters for data collection
         index_probe = IndexDistribution(probe_name=pipeline_title,prefix_to_match=barcode)
         hedges_probe = CodewordErrorRateProbe(probe_name="{}::hedges".format(pipeline_title))
