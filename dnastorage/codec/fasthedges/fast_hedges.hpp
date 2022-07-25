@@ -159,7 +159,7 @@ public:
     case hr::one_sixth: return -0.324;
     case hr::one_eighth: return -.410;
     default:
-      return -0.2;
+      return -0.1;
     }
   }
 
@@ -335,10 +335,12 @@ public:
 			std::string *_observed):
 		       search_tree<Context>(_h,_c,_score,_offset,_observed)
 		       {}
+    void _update_parity(uint8_t bit);
 
   protected:
     uint32_t _bit_counter = 0; //track which bit we are at, helps with knowing when to compare parity
     uint8_t _parity = 0; //parity bit for this part of the search tree
+    uint64_t _history =0; //parity history
   };
 
 
@@ -369,6 +371,8 @@ public:
   int adj_pad_bits;
   int codeword_sync_period;
   int parity_period;
+  int parity_history;
+  int parity_history_mask;
   int max_index;
   
   std::vector< std::vector<int> > patterns =
@@ -463,7 +467,8 @@ public:
 	int prev_bits,
 	int salt_bits,
 	int codeword_sync_period,
-	int parity_period);
+	int parity_period,
+	int parity_history);
 
   std::string encode(std::vector<uint8_t> seqId, std::vector<uint8_t> message);
 

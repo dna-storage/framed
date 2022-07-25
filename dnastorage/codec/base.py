@@ -279,7 +279,7 @@ class BaseOuterCodec(BaseCodec):
             after_index[self._level-1]=0
             after_index[self._level-2]+=1
         #check if this level index is actually in a zero range, allows for easy detection of zero strands 
-        if not is_zero and self._zero_range is not () and (tuple(after_index)[self._level-1:]>=self._zero_range[0] and tuple(after_index)[self._level-1:]<=self._zero_range[1]):
+        if not is_zero and self._zero_range != tuple() and (tuple(after_index)[self._level-1:]>=self._zero_range[0] and tuple(after_index)[self._level-1:]<=self._zero_range[1]):
             is_zero=True
         else:
             is_zero=False
@@ -300,7 +300,7 @@ class BaseOuterCodec(BaseCodec):
             after_index[self._level-1]=self._total_sub_packets
             after_index[self._level-2]-=1
         #check if this level index is actually in a zero range, allows for easy detection of zero strands 
-        if not is_zero and self._zero_range is not tuple() and (tuple(after_index)[self._level-1:]>=self._zero_range[0] and tuple(after_index)[self._level-1:]<=self._zero_range[1]):
+        if not is_zero and self._zero_range != tuple() and (tuple(after_index)[self._level-1:]>=self._zero_range[0] and tuple(after_index)[self._level-1:]<=self._zero_range[1]):
             is_zero=True
         return after_index,is_zero
 

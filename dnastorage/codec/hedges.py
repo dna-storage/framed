@@ -875,7 +875,7 @@ class PyHedgesPipeline(BaseCodec,CWtoDNA):
 
 
 class hedges_state:
-    def __init__(self, rate=1.0/4, seq_bytes=2, message_bytes=14, pad_bits=8, prev_bits = 8,sync_period=0,parity_period=0):
+    def __init__(self, rate=1.0/4, seq_bytes=2, message_bytes=14, pad_bits=8, prev_bits = 8,sync_period=0,parity_period=0,parity_history=0):
         self.rate = float(rate)
         self.seq_bytes = seq_bytes
         self.message_bytes = message_bytes
@@ -886,7 +886,10 @@ class hedges_state:
         self.cw_sync_period=sync_period #sync period is the period in which we put syncpoints
         if self.salt_bits > 32:
             self.salt_bits = 32
-
+        self.parity_history = parity_history
+        if self.parity_history>64:
+            self.parity_history=64
+        
     def set_message_bytes(self,message_bytes):
         self.message_bytes = message_bytes
 
@@ -907,9 +910,6 @@ class FastHedgesPipeline(BaseCodec,CWtoDNA):
     def _encode(self,strand):
         self._hedges_state.set_message_bytes(len(strand.codewords)-strand.index_bytes)
         self._hedges_state.set_seqnum_bytes(strand.index_bytes)
-        #self._hedges_state.set_message_bytes(len(strand.codewords))
-        #self._hedges_state.set_seqnum_bytes(0)
-        #fasthedges.echo(self._hedges_state)        
         strand.dna_strand = fasthedges.encode(bytes(strand.codewords),self._hedges_state)
         return strand
         

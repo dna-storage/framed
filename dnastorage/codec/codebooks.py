@@ -43,9 +43,7 @@ def CFC_DUMMY():
 #------------------Synchronization Arrays to be used as Sync code books for CW Hedges------------
 
 def TEST_SYNC_BOOK():
-    syncbook=["TAATATAAC",
-              "GTATAGGTA"
-    ]
+    syncbook=["TAATATAAC"]
     return syncbook
 
 #----------------End Synchronization Arrays-----------------------------------------

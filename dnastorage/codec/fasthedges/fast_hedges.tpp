@@ -48,6 +48,19 @@ search_tree<Context>::search_tree(hedge *_h,
   }  
 }
 
+
+template <typename Context>
+void search_tree_parity<Context>::_update_parity(uint8_t bit){
+  if(this->h->parity_history==0){
+    _parity^=bit; //not really using a moving history, so we just use complete history
+  }
+  else{
+    //we need to take into account the parity_history bits in this calculation
+    _parity = _parity ^ bit ^ (_history>>(this->h->parity_history-1)&1ULL);
+  }
+
+}
+
 template<typename Context>
 search_tree_parity<Context>::search_tree_parity(hedge *_h,
 						search_tree_parity *parent,
@@ -66,6 +79,7 @@ search_tree_parity<Context>::search_tree_parity(hedge *_h,
 
   this->_bit_counter = parent->_bit_counter;
   this->_parity = parent->_parity;
+  this->_history=parent->_history;
   if (!insertion) {    
     char tmp = this->c.nextSymbolWithUpdate(nbits, bit, base);
     assert (tmp == base);
@@ -82,14 +96,16 @@ search_tree_parity<Context>::search_tree_parity(hedge *_h,
 	if((_bit_counter)%this->h->parity_period==0 && _bit_counter!=0){
 	  //found a parity bit
 	  if(bit_iter!=_parity) this->score = MAX_SCORE; //parity bit does not match, this path must fail
-	  else _parity^=bit_iter; //add bit to parity bit
+	  
+	  else this->_update_parity(bit_iter); //calculate the parity with new bit
 	}
 	else{
 	  this->bits=std::make_shared<bit_tree<uint8_t>>(p,bit_iter);
 	  p=this->bits;
-	  _parity^=bit_iter; //add data bit to parity_period
+	  this->_update_parity(bit_iter); //calculate updated parity with new bit
 	}
 	_bit_counter++; //increment along the bit counter
+	_history=(_history<<1) | bit_iter; 
       }
     }
     else{

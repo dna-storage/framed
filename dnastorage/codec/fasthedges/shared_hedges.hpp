@@ -40,7 +40,7 @@ static hedges::hedge make_hedge_from_pyobject(PyObject *object)
   int salt_bits = getLong(object, "salt_bits");
   int codeword_sync_period = getLong(object,"cw_sync_period");
   int parity_period = getLong(object,"parity_period");
-
+  int parity_history = getLong(object,"parity_history");
   if (pad_bits == -1) {
     if (rate > 0.33)
       pad_bits = 8;
@@ -54,7 +54,8 @@ static hedges::hedge make_hedge_from_pyobject(PyObject *object)
   if (salt_bits == -1)
     salt_bits = 8;
     
-  hedges::hedge h(rate, seq_bytes, message_bytes, pad_bits, prev_bits, salt_bits,codeword_sync_period,parity_period);
+  hedges::hedge h(rate, seq_bytes, message_bytes, pad_bits, prev_bits, salt_bits,
+		  codeword_sync_period,parity_period,parity_history);
   return h;
 }
 

@@ -12,7 +12,7 @@ import dnastorage.codec.codewordhedges as codewordhedges
 
 
 class CodewordHedgesPipeline(BaseCodec,CWtoDNA):
-    def __init__(self,codebook,syncbook=None,sync_period=0, parity_period=0, pad_bits=0,
+    def __init__(self,codebook,syncbook=None,sync_period=0, parity_period=0, pad_bits=0, parity_history = 0, 
                  guess_limit=100000,CodecObj=None,Policy=None):
         self._bits_per_cw = math.floor(log2(len(codebook)))
         assert self._bits_per_cw <=32 and "Codewords are limited to representing 32 bits at most, see C++ implementation if it needs to be changed"
@@ -22,7 +22,8 @@ class CodewordHedgesPipeline(BaseCodec,CWtoDNA):
         for key,DNA in sorted(codebook.items(),key= lambda x: x[0]):
             if key >= 2**(self._bits_per_cw): break
             self._codebook[key]=DNA
-        self._hedges_state = hedges_state(rate=self._bits_per_cw,seq_bytes=0,pad_bits=pad_bits,prev_bits=0,sync_period=sync_period,parity_period=parity_period)
+        self._hedges_state = hedges_state(rate=self._bits_per_cw,seq_bytes=0,pad_bits=pad_bits,prev_bits=0,sync_period=sync_period,
+                                          parity_period=parity_period,parity_history=parity_history)
         CWtoDNA.__init__(self)
         BaseCodec.__init__(self,CodecObj=CodecObj,Policy=Policy)
         #initialize codebooks
@@ -37,7 +38,12 @@ class CodewordHedgesPipeline(BaseCodec,CWtoDNA):
         index=0
         while index!=len(b_array):
             if (index)%self._hedges_state.parity_period==0 and index!=0: #place parity bits at regular intervals
-                b_array = b_array[0:index]+bitarray.bitarray(str(bit_util.parity(b_array[0:index])),endian="little")+b_array[index::]
+                start_bit = index-self._hedges_state.parity_history
+                if index<self._hedges_state.parity_history or self._hedges_state.parity_history==0:
+                    start_bit = 0
+                parity_bit = bitarray.bitarray(str(bit_util.parity(b_array[start_bit:index])),endian="little")
+                print(parity_bit)
+                b_array = b_array[0:index]+parity_bit+b_array[index::]
             index+=1
         return b_array
 
@@ -68,7 +74,7 @@ class CodewordHedgesPipeline(BaseCodec,CWtoDNA):
             codeword_list.append(self._codebook[key])
             
         final_cw_list=[]
-        if self._syncbook!=None: #bake in the synchronization points for decoding simulation purposes
+        if self._syncbook!=None and self._hedges_state.cw_sync_period!=0: #bake in the synchronization points for decoding simulation purposes
             sync_counter=0
             for i in range(0,len(codeword_list)):
                 final_cw_list.append(codeword_list[i])
@@ -135,11 +141,22 @@ if __name__ == "__main__":
     #Test out the decoder with parity
     print("Test bytes {}".format(test_bytes))
     test_DNA = BaseDNA(codewords=test_bytes)
-    cwhedge = CodewordHedgesPipeline(test_codebook,parity_period=3)
+    cwhedge = CodewordHedgesPipeline(test_codebook,parity_period=3,parity_history=0)
     cwhedge.encode(test_DNA)
     print("DNA Bytes {}".format(test_DNA.codewords))
     print("DNA after encoding with parity: {}".format(test_DNA.dna_strand))
     cwhedge.decode(test_DNA)
     print("Bytes after decoding with parity: {}".format(test_DNA.codewords))
-    assert(test_bytes == list(test_DNA.codewords) and "Error Bytes don't match for synchronization points")
-    
+    assert(test_bytes == list(test_DNA.codewords) and "Error Bytes don't match for parity")
+
+
+    #Test out the decoder with parity and history
+    print("Test bytes {}".format(test_bytes))
+    test_DNA = BaseDNA(codewords=test_bytes)
+    cwhedge = CodewordHedgesPipeline(test_codebook,parity_period=3,parity_history=8)
+    cwhedge.encode(test_DNA)
+    print("DNA Bytes {}".format(test_DNA.codewords))
+    print("DNA after encoding with parity and history: {}".format(test_DNA.dna_strand))
+    cwhedge.decode(test_DNA)
+    print("Bytes after decoding with parity and history: {}".format(test_DNA.codewords))
+    assert(test_bytes == list(test_DNA.codewords) and "Error Bytes don't match for parity and history")

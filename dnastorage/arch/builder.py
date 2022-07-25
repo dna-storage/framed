@@ -54,9 +54,12 @@ def RS_Codeword_hedges_pipeline(pf,**kwargs):
     primer5 = kwargs.get("primer5","")
     primer3 = kwargs.get("primer3","")
     outerECCStrands = kwargs.get("outerECCStrands",255-blockSizeInBytes//strandSizeInBytes)
-    codebook_func = getattr(codebooks,kwargs.get("codebook","CFC_ALL"))
-    syncbook_func = getattr(codebooks,kwargs.get("syncbook","NONE_BOOK"))
-    sync_period =  kwargs.get("sync_period",0)
+    codebook_func = getattr(codebooks,kwargs.get("codebook","CFC_ALL")) #codebook for encoding information
+    syncbook_func = getattr(codebooks,kwargs.get("syncbook","NONE_BOOK")) #book of strands used to "synchronize" codewords
+    sync_period =  kwargs.get("sync_period",0) #period for synchronization regions
+    parity_period = kwargs.get("parity_period",0) #period for parity interleaving
+    parity_history = kwargs.get("parity_history",0) #history which parity is calculated over
+    pad_bits = kwargs.get("pad_bits",8) #bits used for padding end of hedges strand
     fault_injection= kwargs.get("fi",False)
     upper_strand_length = kwargs.get("dna_length",208)
     pipeline_title=kwargs.get("title","anonymous_pipeline")
@@ -69,7 +72,8 @@ def RS_Codeword_hedges_pipeline(pf,**kwargs):
     codebook = codebook_func()
     syncbook = syncbook_func()
     
-    commafree = CodewordHedgesPipeline(codebook,syncbook,sync_period) #use hedges-like decoding method
+    commafree = CodewordHedgesPipeline(codebook,syncbook,sync_period,parity_period=parity_period,
+                                       pad_bits=pad_bits,parity_history=parity_history) #use hedges-like decoding method
     
     p5 = PrependSequencePipeline(primer5,handler="align")
     p3 = AppendSequencePipeline(reverse_complement(primer3),handler="align")

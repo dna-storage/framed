@@ -53,7 +53,8 @@ uint64_t digest(uint64_t prev, uint64_t prev_bits,
 	       int prev_bits,
 	       int salt_bits,
 	       int codeword_sync_period,
-	       int parity_period
+	       int parity_period,
+	       int parity_history
 	       )
 {
   this->raw_rate = rate;
@@ -65,7 +66,11 @@ uint64_t digest(uint64_t prev, uint64_t prev_bits,
   this->prev_bits = prev_bits;
   this->salt_bits = salt_bits;
   this->parity_period = parity_period;
+  this->parity_history = parity_history;
 
+  this->parity_history_mask =((1ULL)<<parity_history)-1; //generate mask for parity history, used by search tree nodes
+
+  
   //Take into account parity when determining adjusted message bits so that the index can be correctly calcualted
   uint32_t total_parameter_data_bits = message_bytes*8+pad_bits;
   if(this->parity_period>0){
@@ -229,7 +234,7 @@ int main()
 {
   int message_size = 15;
   
-  hedge h(1/4.0,4,message_size,4,8,8,0,0);
+  hedge h(1/4.0,4,message_size,4,8,8,0,0,0);
 
   std::vector<uint8_t> arr = {100,102,103,106};
   std::string buff;
