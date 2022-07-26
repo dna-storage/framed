@@ -10,11 +10,18 @@ from dnastorage.codec.hedges import hedges_state
 
 import dnastorage.codec.codewordhedges as codewordhedges
 
+import logging
+logger = logging.getLogger("dnastorage.codec.cwhedges")
+logger.addHandler(logging.NullHandler())
+
+
 
 class CodewordHedgesPipeline(BaseCodec,CWtoDNA):
     def __init__(self,codebook,syncbook=None,sync_period=0, parity_period=0, pad_bits=0, parity_history = 0, 
                  guess_limit=100000,CodecObj=None,Policy=None):
         self._bits_per_cw = math.floor(log2(len(codebook)))
+        logger.info("CWHEDGES BITS PER CW {}".format(self._bits_per_cw))
+        logger.info("CWHEDGES Codebook Size {}".format(len(codebook)))
         assert self._bits_per_cw <=32 and "Codewords are limited to representing 32 bits at most, see C++ implementation if it needs to be changed"
         self._codebook = {}
         self._syncbook = syncbook
@@ -42,7 +49,6 @@ class CodewordHedgesPipeline(BaseCodec,CWtoDNA):
                 if index<self._hedges_state.parity_history or self._hedges_state.parity_history==0:
                     start_bit = 0
                 parity_bit = bitarray.bitarray(str(bit_util.parity(b_array[start_bit:index])),endian="little")
-                print(parity_bit)
                 b_array = b_array[0:index]+parity_bit+b_array[index::]
             index+=1
         return b_array
@@ -53,9 +59,7 @@ class CodewordHedgesPipeline(BaseCodec,CWtoDNA):
         b_array = bitarray.bitarray(endian = "little") #little endian is what the c code uses
         b_array.frombytes(bytearray(strand.codewords))
         b_array = b_array + bitarray.bitarray('0',endian = "little")*self._hedges_state.pad_bits
-        print("Before parity Bit array length {} bit array {}".format(len(b_array),b_array))
         b_array = self._set_parity(b_array)
-        print("After parity Bit array length {} bit array {}".format(len(b_array),b_array))
         #set hedges state
         self._hedges_state.set_message_bytes(len(strand.codewords))
         

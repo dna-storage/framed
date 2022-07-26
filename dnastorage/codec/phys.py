@@ -5,6 +5,10 @@ from dnastorage.codec_types import *
 from dnastorage.strand_representation import *
 from Bio import pairwise2
 
+import logging
+logger = logging.getLogger('dna.storage.system.dnafile')
+logger.addHandler(logging.NullHandler())
+
 
 class CombineCodewords(BaseCodec):
     def __init__(self,CodecObj=None,Policy=None):
@@ -143,7 +147,9 @@ class PrependSequence(BaseCodec):
             if len(align)==0: return strand
             align=align[0]
             score= align[2]
-            if score<(len(self._seq)-8):
+            score = sum([1 if _==_2 else 0 for _,_2 in zip(align[1],align[0])])
+            if score<(len(self._seq) - (len(self._seq)*0.3)): #KV made change for score to count total matches after realigning 
+                logger.info("Strand ID {} \n Searched Sequence: {} \n Desired Sequence: {}".format(id(strand),strand[0:self._search_range+slen],self._seq))
                 return strand #finding alignment unsuccessful
             else:
                 return strand[align[4]:]
@@ -191,14 +197,16 @@ class AppendSequence(BaseCodec):
             else:
                 raise err
         elif self._handler=="align":
-            align = pairwise2.align.localms(strand[len(strand)-self._search_range:len(strand)],self._seq,1,-1,-1,-1,one_alignment_only=True)
+            align = pairwise2.align.localms(strand[len(strand)-len(self._seq)-self._search_range:len(strand)],self._seq,1,-1,-1,-1,one_alignment_only=True)
             if len(align)==0:return strand
             align=align[0]
             score= align[2]
-            if score<(len(self._seq)-8):
+            score = sum([1 if _==_2 else 0 for _,_2 in zip(align[1],align[0])])
+            if score<(len(self._seq) - (len(self._seq)*0.3)):
+                logger.info("Strand ID {} \n Searched Sequence: {} \n Desired Sequence: {}".format(id(strand),strand[len(strand)-len(self._seq)-self._search_range:len(strand)],self._seq))
                 return strand
             else:
-                return strand[0:align[3]+len(strand)-self._search_range]
+                return strand[0:align[3]+len(strand)-len(self._seq)-self._search_range]
 
 class PrependSequencePipeline(PrependSequence,DNAtoDNA):
     def __init__(self,seq,CodecObj=None,Policy=None,isPrimer=False,ignore=False,handler="ed",search_range=50):
@@ -210,9 +218,12 @@ class PrependSequencePipeline(PrependSequence,DNAtoDNA):
         strand.dna_strand=PrependSequence._encode(self,strand.dna_strand)
         return strand
     def _decode(self,strand):
+        if hasattr(strand, "payload::initial_index_attribute"):
+            logger.info("Prepend analysis on is reversed {} payload strand".format(strand.is_reversed))
         if strand.dna_strand is None or self._ignore or self._seq=="": return strand
         strand_before =strand.dna_strand
         strand.dna_strand=PrependSequence._decode(self,strand.dna_strand)
+        logger.info("leaving prepend")
         if strand_before==strand.dna_strand and self._seq != "":
             strand.dna_strand = None
         return strand
@@ -243,9 +254,12 @@ class AppendSequencePipeline(AppendSequence,DNAtoDNA):
         strand.dna_strand=AppendSequence._encode(self,strand.dna_strand)
         return strand
     def _decode(self,strand):
+        if hasattr(strand, "payload::initial_index_attribute"):
+            logger.info("Append analysis on is reversed {} payload strand".format(strand.is_reversed))
         if strand.dna_strand is None or self._ignore or self._seq=="": return strand
         strand_before =strand.dna_strand
         strand.dna_strand=AppendSequence._decode(self,strand.dna_strand)
+        logger.info("leaving append")
         if strand_before==strand.dna_strand:
             strand.dna_strand = None
         return strand

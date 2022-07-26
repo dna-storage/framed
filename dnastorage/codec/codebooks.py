@@ -5,6 +5,17 @@ for testing purposes, using a smaller codebook, etc.
 
 
 from dnastorage.codec.commafreecodec import cfc_all
+import os
+
+
+
+def load_text_codebook(path):
+    return_list=[]
+    with open(path,'r') as codebook:
+        for code in codebook:
+            x = code.strip()
+            if len(x)>0: return_list.append(x)
+    return return_list
 
 
 #-------------Miscellaneous Books------------------------------
@@ -37,6 +48,26 @@ def CFC_DUMMY():
     }
     return codebook
 
+
+def ED_2_L8(): #length 8, edit distance 2
+    path = "/tuck_data/kvolkel/dnastorage/dnastorage/codec/codebooks/ed_codebook_cw_size_8_ed_2.txt"
+    if not os.path.exists(path):
+        assert 0 and "Path to codebook not found"
+    
+    return {x:y for x,y in enumerate(load_text_codebook(path))}
+
+def ED_4_L8():
+    path = "/tuck_data/kvolkel/dnastorage/dnastorage/codec/codebooks/ed_codebook_cw_size_8_ed_4.txt"
+    if not os.path.exists(path):
+        assert 0 and "Path to codebook not found"
+    return {x:y for x,y in enumerate(load_text_codebook(path))}
+
+
+def ED_5_L8():
+    path = "/tuck_data/kvolkel/dnastorage/dnastorage/codec/codebooks/ed_codebook_cw_size_8_ed_5.txt"
+    if not os.path.exists(path):
+        assert 0 and "Path to codebook not found"
+    return {x:y for x,y in enumerate(load_text_codebook(path))}
 #-------------------------End Codebook Diction------------------------------------------
 
 

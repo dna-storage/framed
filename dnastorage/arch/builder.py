@@ -75,8 +75,8 @@ def RS_Codeword_hedges_pipeline(pf,**kwargs):
     commafree = CodewordHedgesPipeline(codebook,syncbook,sync_period,parity_period=parity_period,
                                        pad_bits=pad_bits,parity_history=parity_history) #use hedges-like decoding method
     
-    p5 = PrependSequencePipeline(primer5,handler="align")
-    p3 = AppendSequencePipeline(reverse_complement(primer3),handler="align")
+    p5 = PrependSequencePipeline(primer5,handler="align",search_range=20)
+    p3 = AppendSequencePipeline(reverse_complement(primer3),handler="align",search_range=20)
     consolidator = SimpleMajorityVote()
     
     if fault_injection is False:
@@ -236,7 +236,7 @@ def Basic_Hedges_Pipeline(pf,**kwargs):
         
     #components related to DNA functionality
     p5 = PrependSequencePipeline(primer5,ignore=False,handler="align",search_range=30)
-    p3 = PrependSequencePipeline(primer3,ignore=False,handler="align",search_range=30)
+    p3 = AppendSequencePipeline(primer3,ignore=False,handler="align",search_range=30)
 
     consolidator = SimpleMajorityVote()
     out_pipeline = (rsOuter,)

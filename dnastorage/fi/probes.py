@@ -152,7 +152,7 @@ class IndexDistribution(BaseCodec,Probe):
         self._prefix_to_match = prefix_to_match
         self._correct_key="{}::correct_indexes".format(self._name)
         self._incorrect_key="{}::incorrect_indexes".format(self._name)
-        self._initial_index_ints_attr = "{}::initial_index_attribute"
+        self._initial_index_ints_attr = "{}::initial_index_attribute".format(self._name)
 
         IndexDistribution.probe_id+=1
         
