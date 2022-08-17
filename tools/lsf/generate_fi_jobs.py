@@ -89,10 +89,9 @@ if __name__=="__main__":
         distribution_params=params_dict["distribution_params"]
         fault_model_params=params_dict["fault_params"]
         header_params = params_dict["header_params"]
+        fi_env_params = params_dict["fi_env_params"]
         encoding_architecture = params_dict["arch"]
-        fault_model = params_dict["fault_model"]
         file_path = params_dict["file"]
-        distribution=params_dict["strand_distribution"]
        
     except:
         raise ValueError("Parameter file does not have right parameters")
@@ -105,7 +104,7 @@ if __name__=="__main__":
     
     base_file = os.path.basename(file_path).split(".")[0]
     #need to make up parts of directories where things are going to exist
-    top_experiment_portion="{}:{}:{}".format(base_file,fault_model,distribution)
+    top_experiment_portion="{}:{}:{}".format(base_file,fi_env_params["fault_model"],fi_env_params["distribution"])
 
     run_path = os.path.join(args.dump_dir,top_experiment_portion)
     run_path = os.path.join(run_path,encoding_architecture)
@@ -114,7 +113,7 @@ if __name__=="__main__":
     distribution_param_list=recursive_param_aggregation([(_[0],_[1]) for _ in distribution_params.items()])
     encoder_param_list=recursive_param_aggregation([(_[0],_[1]) for _ in encoder_params.items()])
     header_instance=recursive_param_aggregation([(_[0],_[1]) for _ in header_params.items()])[0]
-
+    env_instance=recursive_param_aggregation([(_[0],_[1]) for _ in fi_env_params.items()])[0]
 
     if "dna_processing" in params_dict:
         dna_proc_dict = params_dict["dna_processing"]
@@ -134,6 +133,7 @@ if __name__=="__main__":
                 #Create the paramater string
                 complete_param_string= " --enc_params {} ".format(os.path.join(final_run_path,"encoder_params.json"))
                 complete_param_string+=" --header_params {} ".format(os.path.join(final_run_path,"header_params.json"))
+                complete_param_string+=" --fi_env_params {} ".format(os.path.join(final_run_path,"fi_env_params.json"))
                 complete_param_string+=" --distribution_params {} ".format(os.path.join(final_run_path,"distribution_params.json"))
                 complete_param_string+=" --fault_params {} ".format(os.path.join(final_run_path,"fault_params.json"))
                 complete_param_string+=" --out_dir {} ".format(final_run_path) + " --cores {} ".format(args.cores)
@@ -157,6 +157,7 @@ if __name__=="__main__":
                 json.dump(fault_model_instance[2],open(os.path.join(final_run_path,"fault_params.json"),"w+"),cls=NpEncoder)
                 json.dump(encoder_instance[2],open(os.path.join(final_run_path,"encoder_params.json"),"w+"),cls=NpEncoder)
                 json.dump(header_instance[2],open(os.path.join(final_run_path,"header_params.json"),"w+"),cls=NpEncoder)
+                json.dump(env_instance[2],open(os.path.join(final_run_path,"fi_env_params.json"),"w+"),cls=NpEncoder)
                 if dna_proc_dict is not None: json.dump(dna_proc_dict,open(os.path.join(final_run_path,"dna_process.json"),"w+"),cls=NpEncoder)
 
                 print(final_run_path)

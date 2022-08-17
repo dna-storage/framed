@@ -19,11 +19,12 @@ def distribution_functions():
 
 
 class Fi_Env(object):
-    def __init__(self,distribution,fault_injection_mode,clean_strands,distribution_args,fault_model_args):
-        self._read_distributor=ReadDistribution.open(distribution,**distribution_args)
-        self._fault_mode=BaseFI.open(fault_injection_mode,**fault_model_args)
+    def __init__(self,clean_strands,distribution_args,fault_model_args,**fi_env_params):
+        self._read_distributor=ReadDistribution.open(fi_env_params["distribution"],**distribution_args)
+        self._fault_mode=BaseFI.open(fi_env_params["fault_model"],**fault_model_args)
         self._clean_strands=clean_strands #clean strand library
         self._og_strands=clean_strands
+        self._reverse_complement = fi_env_params["reverse_complement"]
         self._fault_strands=[]
 
     def _distribute_reads(self):
@@ -36,9 +37,11 @@ class Fi_Env(object):
                 read_cnt=self._read_distributor.gen()
                 dist.append((ind,read_cnt))
                 new_pool+=[copy.copy(s) for i in range(0,read_cnt)]
-            for s in new_pool:
-                rand_choice =random.randint(0,1)
-                if rand_choice==1: s.dna_strand = reverse_complement(s.dna_strand) #reverse complements
+            if self._reverse_complement: #want to allow for reverse complements to exist
+                for s in new_pool:
+                    rand_choice =random.randint(0,1)
+                    if rand_choice==1: s.dna_strand = reverse_complement(s.dna_strand) #reverse complements
+            
             random.shuffle(new_pool) #shuffle strands
             return new_pool,dist
         else:

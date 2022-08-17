@@ -51,7 +51,6 @@ def _monte_kernel(monte_start,monte_end,args): #function that will run per proce
     if os.path.exists(args.enc_params):
         with open(args.enc_params,'rb') as param_file:
                 encoding_params = json.load(param_file) #load in params for an encoding architecture through a json file
-                
     if encoding_params is None:
         encoding_params={}
 
@@ -60,17 +59,17 @@ def _monte_kernel(monte_start,monte_end,args): #function that will run per proce
         with open(args.header_params,'rb') as param_file:
                 header_params = json.load(param_file) #load in params for an encoding architecture through a json file
 
-
     if args.dna_process is not None and os.path.exists(args.dna_process):
         with open(args.dna_process,'rb') as param_file:
-            strand_proc_dict = json.load(param_file)
-                
+            strand_proc_dict = json.load(param_file)    
     with open(args.fault_params,'rb') as param_file:
         fault_args = json.load(param_file)
     with open(args.distribution_params,'rb') as param_file:
         dist_args = json.load(param_file)
+    with open(args.fi_env_params,'rb') as param_file:
+        fi_env_args = json.load(param_file)
 
-    assert fault_args !=None and dist_args !=None
+    assert fault_args !=None and dist_args !=None and fi_env_args!=None
 
     base_file_path  = os.path.basename(args.file) #we give the .dna to each instance, whether we actually write it, to make sure header data is consistent across runs
     if monte_end!=args.num_sims: 
@@ -100,7 +99,7 @@ def _monte_kernel(monte_start,monte_end,args): #function that will run per proce
                 s.dna_strand = func(s.dna_strand,*strand_proc_dict[process])
         
     #Encode file we are fault injecting on
-    fault_environment =  Fi_Env(args.strand_distribution, args.fault_model,write_dna.strands,dist_args,fault_args)
+    fault_environment =  Fi_Env(write_dna.strands,dist_args,fault_args,**fi_env_args)
     
     for sim_number in range(monte_start,monte_end):
         logging.info("Monte Carlo Sim: {}".format(sim_number))
@@ -210,8 +209,6 @@ if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser(description="Inject faults into input file and perform analysis")
-    parser.add_argument('--fault_model',required=True,choices=fault_injection_modes(),help="fault modes to use")
-    parser.add_argument('--strand_distribution',required=True,choices=distribution_functions(),help="distribution function to use")    
     parser.add_argument('--simulation_runs',dest="num_sims",action="store",type=int,default=1000,help="Number of simulations to run")
     
     parser.add_argument('--arch',required=True,choices=file_system_formats(),help="Encoding/decoding architecture")
@@ -223,6 +220,7 @@ if __name__ == "__main__":
     parser.add_argument('--header_version',type=str,required=False,action="store",default="0.1",help="Header version")
     parser.add_argument('--distribution_params',required=True,action="store",help="Parameters used to specify the distribution")
     parser.add_argument('--fault_params',required=True,action="store",help="Parameters used to specify the fault model")
+    parser.add_argument('--fi_env_params',required=True,action="store",help="Parameters for the fault injection environment")
     parser.add_argument('--dna_process',required=False,default=None,help="set of processing steps to do on dna strands before fault injection")
     parser.add_argument('--out_dir',type=str,required=True,action="store",help="Directory where data will be dumped")
     parser.add_argument('--file_barcode',required=False,default=tuple(),nargs="+",type=int,help="Barcode for the file")
