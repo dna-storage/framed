@@ -68,6 +68,13 @@ def ED_5_L8():
     if not os.path.exists(path):
         assert 0 and "Path to codebook not found"
     return {x:y for x,y in enumerate(load_text_codebook(path))}
+
+
+def ED_5_L11():
+    path = "/tuck_data/kvolkel/dnastorage/dnastorage/codec/codebooks/ed_codebook_cw_size_11_ed_5.txt"
+    if not os.path.exists(path):
+        assert 0 and "Path to codebook not found"
+    return {x:y for x,y in enumerate(load_text_codebook(path))}
 #-------------------------End Codebook Diction------------------------------------------
 
 

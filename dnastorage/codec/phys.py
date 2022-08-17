@@ -149,7 +149,7 @@ class PrependSequence(BaseCodec):
             score= align[2]
             score = sum([1 if _==_2 else 0 for _,_2 in zip(align[1],align[0])])
             if score<(len(self._seq) - (len(self._seq)*0.3)): #KV made change for score to count total matches after realigning 
-                logger.info("Strand ID {} \n Searched Sequence: {} \n Desired Sequence: {}".format(id(strand),strand[0:self._search_range+slen],self._seq))
+                #logger.info("Strand ID {} \n Searched Sequence: {} \n Desired Sequence: {}".format(id(strand),strand[0:self._search_range+slen],self._seq))
                 return strand #finding alignment unsuccessful
             else:
                 return strand[align[4]:]
@@ -203,7 +203,7 @@ class AppendSequence(BaseCodec):
             score= align[2]
             score = sum([1 if _==_2 else 0 for _,_2 in zip(align[1],align[0])])
             if score<(len(self._seq) - (len(self._seq)*0.3)):
-                logger.info("Strand ID {} \n Searched Sequence: {} \n Desired Sequence: {}".format(id(strand),strand[len(strand)-len(self._seq)-self._search_range:len(strand)],self._seq))
+                #logger.info("Strand ID {} \n Searched Sequence: {} \n Desired Sequence: {}".format(id(strand),strand[len(strand)-len(self._seq)-self._search_range:len(strand)],self._seq))
                 return strand
             else:
                 return strand[0:align[3]+len(strand)-len(self._seq)-self._search_range]
@@ -218,12 +218,9 @@ class PrependSequencePipeline(PrependSequence,DNAtoDNA):
         strand.dna_strand=PrependSequence._encode(self,strand.dna_strand)
         return strand
     def _decode(self,strand):
-        if hasattr(strand, "payload::initial_index_attribute"):
-            logger.info("Prepend analysis on is reversed {} payload strand".format(strand.is_reversed))
         if strand.dna_strand is None or self._ignore or self._seq=="": return strand
         strand_before =strand.dna_strand
         strand.dna_strand=PrependSequence._decode(self,strand.dna_strand)
-        logger.info("leaving prepend")
         if strand_before==strand.dna_strand and self._seq != "":
             strand.dna_strand = None
         return strand
@@ -254,12 +251,9 @@ class AppendSequencePipeline(AppendSequence,DNAtoDNA):
         strand.dna_strand=AppendSequence._encode(self,strand.dna_strand)
         return strand
     def _decode(self,strand):
-        if hasattr(strand, "payload::initial_index_attribute"):
-            logger.info("Append analysis on is reversed {} payload strand".format(strand.is_reversed))
         if strand.dna_strand is None or self._ignore or self._seq=="": return strand
         strand_before =strand.dna_strand
         strand.dna_strand=AppendSequence._decode(self,strand.dna_strand)
-        logger.info("leaving append")
         if strand_before==strand.dna_strand:
             strand.dna_strand = None
         return strand

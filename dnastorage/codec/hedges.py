@@ -875,10 +875,11 @@ class PyHedgesPipeline(BaseCodec,CWtoDNA):
 
 
 class hedges_state:
-    def __init__(self, rate=1.0/4, seq_bytes=2, message_bytes=14, pad_bits=8, prev_bits = 8,sync_period=0,parity_period=0,parity_history=0):
+    def __init__(self, rate=1.0/4, seq_bytes=2, message_bytes=14, pad_bits=8, prev_bits = 8,sync_period=0,parity_period=0,parity_history=0,custom_reward=-0.31):
         self.rate = float(rate)
         self.seq_bytes = seq_bytes
         self.message_bytes = message_bytes
+        self.custom_reward=custom_reward #custom reward for experimentation, will only be used if there is no default for that given rate, e.g. helps with codeword hedges experimentation
         self.pad_bits = pad_bits #this is user-defined pad bits, not those determined under the hood to make patterns work out
         self.prev_bits = prev_bits
         self.salt_bits = seq_bytes * 8
@@ -916,15 +917,21 @@ class FastHedgesPipeline(BaseCodec,CWtoDNA):
     def _decode(self,strand):
         reverse = False
         if self._try_reverse: #if we need to check reverse, try a small number of guesses
-            reverse_codewords = fasthedges.decode(reverse_complement(strand.dna_strand), self._hedges_state, 1000)
-            forward_codewords = fasthedges.decode(strand.dna_strand, self._hedges_state, 1000)
+            reverse_ret_dict = fasthedges.decode(reverse_complement(strand.dna_strand), self._hedges_state, 1000)
+            reverse_codewords = reverse_ret_dict["return_bytes"]
+            forward_ret_dict = fasthedges.decode(strand.dna_strand, self._hedges_state, 1000)
+            forward_codewords =forward_ret_dict["return_bytes"]
             reverse_none = sum([1 if _==None else 0 for _ in reverse_codewords])
             forward_none = sum([1 if _==None else 0 for _ in forward_codewords])
             if reverse_none<forward_none: #utilize reverse complement
                 reverse=True
         #print (self._hedges_state.seq_bytes, self._hedges_state.message_bytes)
-        if not reverse: strand.codewords = fasthedges.decode(strand.dna_strand, self._hedges_state, self._guess_limit)
-        else: strand.codewords = fasthedges.decode(reverse_complement(strand.dna_strand), self._hedges_state, self._guess_limit)
+        if not reverse:
+            strand_return = fasthedges.decode(strand.dna_strand, self._hedges_state, self._guess_limit)
+            strand.codewords = strand_return["return_bytes"]
+        else:
+            strand_return = fasthedges.decode(reverse_complement(strand.dna_strand), self._hedges_state, self._guess_limit)
+            strand.codewords =strand_return["return_bytes"] 
         return strand
     
     #store some pertinent information like bit lengths of data seen to be able to reinstantiate the decoder in a correct state    

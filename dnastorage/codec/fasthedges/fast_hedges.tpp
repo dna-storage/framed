@@ -129,7 +129,7 @@ template<typename Reward, typename SearchTree>
 SearchTree
 addMatch(SearchTree* s,char base, uint8_t nbits, uint32_t val)
 {
-  Reward r(s->h->rate);  
+  Reward r(s->h->rate,s->h->wild_card_reward);  
   return SearchTree(s->h,    // use same decoder settings
 		    s, // this node is parent node, needed for
 		    // bit_trees
@@ -149,7 +149,7 @@ template<typename Reward, typename SearchTree>
 SearchTree
 addSubst(SearchTree* s,char base, uint8_t nbits, uint32_t val)
 {
-  Reward r(s->h->rate);
+  Reward r(s->h->rate,s->h->wild_card_reward);
     
   return SearchTree(s->h,    // use same decoder settings
 		    s, // this node is parent node, needed for
@@ -171,7 +171,7 @@ SearchTree
 addDel(SearchTree* s,char base, uint8_t nbits, uint32_t val)
 {
   
-  Reward r(s->h->rate);
+  Reward r(s->h->rate,s->h->wild_card_reward);
   
   return SearchTree(s->h,    // use same decoder settings
 		    s, // this node is parent node, needed for
@@ -193,7 +193,7 @@ template<typename Reward, typename SearchTree>
 SearchTree
 addIns(SearchTree* s)
 {
-  Reward r(s->h->rate);  
+  Reward r(s->h->rate,s->h->wild_card_reward);  
   return SearchTree(s->h,    // use same decoder settings
 		    s, // this node is parent node, needed for
 		    // bit_trees
@@ -213,7 +213,7 @@ template<typename Reward, typename SearchTree>
 SearchTree
 addIns2(SearchTree* s,char base, uint8_t nbits, uint32_t val, double penalty)
 {
-  Reward r(s->h->rate);
+  Reward r(s->h->rate,s->h->wild_card_reward);
   return SearchTree(s->h,    // use same decoder settings
 		    s, // this node is parent node, needed for
 		    // bit_trees
@@ -254,7 +254,7 @@ std::vector<SearchTree> make0bitGuesses(SearchTree* s)
   ret.push_back( addDel<Reward>(s,c,0,0) );      
   
 
-  Reward r;
+  Reward r(s->h->rate,s->h->wild_card_reward);	
   if ( c == s->observedAt(s->offset+1) )
     {
       // guess specific insertion and skip 2 ahead
@@ -275,7 +275,7 @@ void guessHelper(SearchTree* s, std::vector<SearchTree> &ret,
 		 int nbits,
 		 uint32_t val)
 {
-  Reward r;
+  Reward r(s->h->rate,s->h->wild_card_reward);;
   
   if ( c == s->observedAt(s->offset) )
     {
@@ -432,7 +432,7 @@ std::vector<SearchTree>make2bitGuesses(SearchTree*s)
 
 template <typename Constraint, typename Reward, template <typename> class Context,
 	  template <typename> class SearchTree>
-uint32_t hedge::decode(std::string &observed,
+hedges::hedge::decode_return_t hedge::decode(std::string &observed,
 		   std::vector<uint8_t> &seqId,
 		   std::vector<uint8_t> &message,
 		   int max_guesses)
@@ -477,7 +477,7 @@ uint32_t hedge::decode(std::string &observed,
   node best = heap.top();
   bool result = best.isWinner();
 
-  uint32_t ret;
+  decode_return_t ret(best.score,0);
   
   // collect seqId and message
   std::list<uint8_t> res2 = best.bits.get()->get_all();
@@ -485,13 +485,13 @@ uint32_t hedge::decode(std::string &observed,
   bitwrapper mess(message);
 
   if ( res2.size() == (message_bytes + seq_bytes)*8 + pad_bits )
-    ret = message_bytes + seq_bytes;
+    ret.return_bytes = message_bytes + seq_bytes;
   else if (res2.size() > (message_bytes + seq_bytes)*8)
-    ret = message_bytes + seq_bytes;
+    ret.return_bytes = message_bytes + seq_bytes;
   else
     // Since we only take whole bytes, this result needs to be truncated to
     // the nearest byte. The last partial byte would be invalid.
-    ret = res2.size() / 8;
+    ret.return_bytes = res2.size() / 8;
   
   // Extract message and seqId
   int k=0;

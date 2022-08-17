@@ -18,10 +18,7 @@ from dnastorage.codec.binarystringcodec import *
 from dnastorage.codec.consolidation import *
 from dnastorage.codec.hedges import *
 from dnastorage.codec.cwhedges import *
-
 from dnastorage.fi.probes import *
-
-
 import logging
 logger = logging.getLogger("dnastorage.arch.builder")
 logger.addHandler(logging.NullHandler())
@@ -60,6 +57,7 @@ def RS_Codeword_hedges_pipeline(pf,**kwargs):
     parity_period = kwargs.get("parity_period",0) #period for parity interleaving
     parity_history = kwargs.get("parity_history",0) #history which parity is calculated over
     pad_bits = kwargs.get("pad_bits",8) #bits used for padding end of hedges strand
+    reward = kwargs.get("reward",-0.31) #reward for matches in the hedges algorithm
     fault_injection= kwargs.get("fi",False)
     upper_strand_length = kwargs.get("dna_length",208)
     pipeline_title=kwargs.get("title","anonymous_pipeline")
@@ -73,7 +71,7 @@ def RS_Codeword_hedges_pipeline(pf,**kwargs):
     syncbook = syncbook_func()
     
     commafree = CodewordHedgesPipeline(codebook,syncbook,sync_period,parity_period=parity_period,
-                                       pad_bits=pad_bits,parity_history=parity_history) #use hedges-like decoding method
+                                       pad_bits=pad_bits,parity_history=parity_history,custom_reward=reward) #use hedges-like decoding method
     
     p5 = PrependSequencePipeline(primer5,handler="align",search_range=20)
     p3 = AppendSequencePipeline(reverse_complement(primer3),handler="align",search_range=20)

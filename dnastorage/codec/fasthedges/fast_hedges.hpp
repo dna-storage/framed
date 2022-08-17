@@ -148,6 +148,7 @@ class Reward {
 public:
   using hr = hedge_rate;
   hedge_rate rate;
+  double _wild_card;
   double getReward() {
     switch(rate) {
     case hr::three_fourths: return -0.035;
@@ -158,8 +159,8 @@ public:
     case hr::one_fifth: return -0.300;
     case hr::one_sixth: return -0.324;
     case hr::one_eighth: return -.410;
-    default:
-      return -0.1;
+    default: 
+      return _wild_card; //allow for modification of reward for codewords
     }
   }
 
@@ -173,7 +174,8 @@ public:
     return 1.0;
   }
 
-  Reward(hr r=hr::one_half):rate(r){}
+  Reward(hr r=hr::one_half):rate(r),_wild_card(0){}
+  Reward(hr r=hr::one_half,double wild_card=-0.31):rate(r),_wild_card(wild_card){}
 };
 
 
@@ -353,8 +355,19 @@ struct BestScore {
   }
 };
 
+
+ 
+
+  
+  
 class hedge {
 public:
+  struct decode_return_t{
+    float score;
+    uint32_t return_bytes;
+    decode_return_t(float score,uint32_t ret_bytes):score(score),return_bytes(ret_bytes){}
+    decode_return_t():score(0),return_bytes(0){}
+  };
 
   using hr = hedge_rate;
 
@@ -374,7 +387,7 @@ public:
   int parity_history;
   int parity_history_mask;
   int max_index;
-  
+  double wild_card_reward;
   std::vector< std::vector<int> > patterns =
     {{0},
      {2,1},
@@ -468,14 +481,15 @@ public:
 	int salt_bits,
 	int codeword_sync_period,
 	int parity_period,
-	int parity_history);
+	int parity_history,
+	double wild_card_reward);
 
   std::string encode(std::vector<uint8_t> seqId, std::vector<uint8_t> message);
 
 
   template <typename Constraint = Constraint, typename Reward = Reward, template <typename> class Context = context,
 	    template<typename> class SearchTree = search_tree>
-  uint32_t decode(std::string &observed,
+  decode_return_t  decode(std::string &observed,
 	      std::vector<uint8_t> &seqId,
 	      std::vector<uint8_t> &message,
 	      int max_guesses=100000);

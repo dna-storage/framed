@@ -139,17 +139,20 @@ if __name__=="__main__":
                 complete_param_string+=" --out_dir {} ".format(final_run_path) + " --cores {} ".format(args.cores)
                 if dna_proc_dict is not None: complete_param_string+=" --dna_process {}".format(os.path.join(final_run_path,"dna_process.json"))
                 
+                sim_param_dict = {} #parameters related to the overall simulater
                 #round out the param string with stuff from the params dictionary
                 for param in params_dict:
                     if not isinstance(params_dict[param],dict) and not isinstance(params_dict[param],list):
                         complete_param_string+=" --{} {} ".format(param,params_dict[param])
+                        sim_param_dict[param]=params_dict[param]
                     elif isinstance(params_dict[param],list):
                         #expand tuples (needed for bacodes)
                         param_string = "".join([" {} ".format(x) for x in params_dict[param]])
                         complete_param_string +=" --{} {} ".format(param,param_string)
-
+                        sim_param_dict[param]=params_dict[param]
                         
                 #dump params 
+                json.dump(sim_param_dict,open(os.path.join(final_run_path,"sim_params.json"),"w+"),cls=NpEncoder)
                 json.dump(distribution_instance[2],open(os.path.join(final_run_path,"distribution_params.json"),"w+"),cls=NpEncoder)
                 json.dump(fault_model_instance[2],open(os.path.join(final_run_path,"fault_params.json"),"w+"),cls=NpEncoder)
                 json.dump(encoder_instance[2],open(os.path.join(final_run_path,"encoder_params.json"),"w+"),cls=NpEncoder)

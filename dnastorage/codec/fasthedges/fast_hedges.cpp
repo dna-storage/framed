@@ -54,7 +54,8 @@ uint64_t digest(uint64_t prev, uint64_t prev_bits,
 	       int salt_bits,
 	       int codeword_sync_period,
 	       int parity_period,
-	       int parity_history
+	       int parity_history,
+	       double wild_card_reward
 	       )
 {
   this->raw_rate = rate;
@@ -67,7 +68,8 @@ uint64_t digest(uint64_t prev, uint64_t prev_bits,
   this->salt_bits = salt_bits;
   this->parity_period = parity_period;
   this->parity_history = parity_history;
-
+  this->wild_card_reward = wild_card_reward;
+  
   this->parity_history_mask =((1ULL)<<parity_history)-1; //generate mask for parity history, used by search tree nodes
 
   
@@ -234,7 +236,7 @@ int main()
 {
   int message_size = 15;
   
-  hedge h(1/4.0,4,message_size,4,8,8,0,0,0);
+  hedge h(1/4.0,4,message_size,4,8,8,0,0,0,0.0);
 
   std::vector<uint8_t> arr = {100,102,103,106};
   std::string buff;
@@ -263,7 +265,7 @@ int main()
   observed[30] = 'C';
   observed[35] = 'T';
 
-  bool t;
+  hedges::hedge::decode_return_t t(0,0);
   for (int i=0; i<1; i++)
     {
       t = h.decode(observed, seq, mess, 100000);
@@ -271,8 +273,6 @@ int main()
 	std::cout << "." ;
     }
 
-  if (t) std::cout << "correct: " << buff << std::endl;  
-  if (t) std::cout << "decoding succeeded." << std::endl;
 
   for(auto s: seq)
     std::cout << int(s) << ", ";

@@ -17,8 +17,7 @@ logger.addHandler(logging.NullHandler())
 
 
 class CodewordHedgesPipeline(BaseCodec,CWtoDNA):
-    def __init__(self,codebook,syncbook=None,sync_period=0, parity_period=0, pad_bits=0, parity_history = 0, 
-                 guess_limit=100000,CodecObj=None,Policy=None):
+    def __init__(self,codebook,syncbook=None,sync_period=0, parity_period=0, pad_bits=0, parity_history = 0, custom_reward=-0.31, guess_limit=100000,CodecObj=None,Policy=None):
         self._bits_per_cw = math.floor(log2(len(codebook)))
         logger.info("CWHEDGES BITS PER CW {}".format(self._bits_per_cw))
         logger.info("CWHEDGES Codebook Size {}".format(len(codebook)))
@@ -30,7 +29,7 @@ class CodewordHedgesPipeline(BaseCodec,CWtoDNA):
             if key >= 2**(self._bits_per_cw): break
             self._codebook[key]=DNA
         self._hedges_state = hedges_state(rate=self._bits_per_cw,seq_bytes=0,pad_bits=pad_bits,prev_bits=0,sync_period=sync_period,
-                                          parity_period=parity_period,parity_history=parity_history)
+                                          parity_period=parity_period,parity_history=parity_history,custom_reward=custom_reward)
         CWtoDNA.__init__(self)
         BaseCodec.__init__(self,CodecObj=CodecObj,Policy=Policy)
         #initialize codebooks
@@ -91,7 +90,9 @@ class CodewordHedgesPipeline(BaseCodec,CWtoDNA):
         return strand
 
     def _decode(self,strand):
-        strand.codewords = codewordhedges.decode(strand.dna_strand,self._hedges_state,self._guess_limit)
+        decode_result= codewordhedges.decode(strand.dna_strand,self._hedges_state,self._guess_limit)
+        strand.codewords = decode_result["return_bytes"]
+        print("Score {}".format(decode_result["score"]))
         return strand
 
     #store some pertinent information like bit lengths of data seen to be able to reinstantiate the decoder in a correct state    

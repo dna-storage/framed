@@ -41,6 +41,7 @@ static hedges::hedge make_hedge_from_pyobject(PyObject *object)
   int codeword_sync_period = getLong(object,"cw_sync_period");
   int parity_period = getLong(object,"parity_period");
   int parity_history = getLong(object,"parity_history");
+  double wild_card_reward = getDouble(object,"custom_reward");
   if (pad_bits == -1) {
     if (rate > 0.33)
       pad_bits = 8;
@@ -55,7 +56,7 @@ static hedges::hedge make_hedge_from_pyobject(PyObject *object)
     salt_bits = 8;
     
   hedges::hedge h(rate, seq_bytes, message_bytes, pad_bits, prev_bits, salt_bits,
-		  codeword_sync_period,parity_period,parity_history);
+		  codeword_sync_period,parity_period,parity_history,wild_card_reward);
   return h;
 }
 
@@ -76,7 +77,8 @@ shared_decode(PyObject *self, PyObject *args)
       std::vector<uint8_t> mess(h.message_bytes), seq(h.seq_bytes);
 
       std::string sstrand(strand);
-      uint32_t t;
+      
+      hedges::hedge::decode_return_t t(0,0);
       if(h.parity_period==0) t = h. template decode<Constraint,Reward,Context,hedges::search_tree>(sstrand,seq,mess,guesses);
       else t  = h. template decode<Constraint,Reward,Context,hedges::search_tree_parity>(sstrand,seq,mess,guesses); //parity search tree considers parity data during decoding
       int sz = seq.size() + mess.size();
@@ -84,7 +86,7 @@ shared_decode(PyObject *self, PyObject *args)
       for(auto i=0; i<sz; i++)
 	{	  
 	  if (i<seq.size()) {
-	    if (i >= t) {
+	    if (i >= t.return_bytes) {
 	      PyObject *item = Py_BuildValue("s",NULL);
 	      Py_INCREF(item);
 	      PyList_SetItem(list,i,item);
@@ -95,7 +97,7 @@ shared_decode(PyObject *self, PyObject *args)
 	      PyList_SetItem(list,i,item);
 	    }
 	  } else {
-	    if (i >= t) {
+	    if (i >= t.return_bytes) {
 	      PyObject *item = Py_BuildValue("s",NULL);
 	      Py_INCREF(item);
 	      PyList_SetItem(list,i,item);
@@ -107,7 +109,8 @@ shared_decode(PyObject *self, PyObject *args)
 	  }
 	  
 	}
-      return list;
+      PyObject* return_dict =Py_BuildValue("{s:O,s:f}","return_bytes",list,"score",t.score);
+      return return_dict;
     }
 
     return Py_BuildValue("s",NULL);

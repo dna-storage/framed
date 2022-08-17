@@ -60,7 +60,7 @@ static PyObject * decode_item(const char *strand, hedge &h, int guesses=1000000)
   std::string sstrand(strand);
 
   std::vector<uint8_t> mess(h.message_bytes), seq(h.seq_bytes);
-  bool t = h.decode(sstrand,seq,mess,guesses);
+  hedges::hedge::decode_return_t t = h.decode(sstrand,seq,mess,guesses);
 
   // std::cout << "[";
   // for(auto i : seq)
