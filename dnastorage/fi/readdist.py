@@ -4,7 +4,7 @@ from scipy import stats
 import scipy
 import math
 import random
-import generate
+import dnastorage.util.generate as generate
 
 '''
 Top level class for distribution classes that generate copies of DNA strands based on some distribution

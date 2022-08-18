@@ -25,7 +25,7 @@ def recursive_param_aggregation(l,out_list=None,previous=[]):
         param_dict={}
         for p in previous:
             param_string+=" --{} {} ".format(p[0],p[1])
-            directory_string+="{}={}:".format(p[0],p[1])
+            directory_string+="{}={}___".format(p[0],p[1])
             param_dict[p[0]]=p[1]
         out_list.append((param_string,directory_string,param_dict))
         return
@@ -60,19 +60,21 @@ if __name__=="__main__":
     
     parser.add_argument('--python_env',type=str,default='',action="store",help="Script path to setup python environment.")
     parser.add_argument('--memory',default=8,type=int,action="store",help="Memory for each job")
-    parser.add_argument('--cores',default=4,type=int,action="store",help="Cores for each job")
+    parser.add_argument('--cores',default=4,type=int,action="store",help="Cores for each job, this is the active number of working processes during fi execution")
     parser.add_argument('--time',default=10,type=int,action="store",help="Time allowed for each job,in hours")
     parser.add_argument('--queue',default="tuck",type=str,action="store",help="Queue to use for jobs")
     parser.add_argument('--dump_dir',required=True,help="path to store results")
     parser.add_argument('--no',action='store_true', help="don't run bsub command, just test everything.")
     args = parser.parse_args()
 
-    job = LSFJob()
+    job = LSFJob(modules=['PrgEnv-intel'])
     job.queue=args.queue
     job.time=args.time
-    job.cores=args.cores
+    job.cores=args.cores+1 #plus one just to make sure we have enough cores
     job.memory=args.memory
-    job.one_host=True
+    job.one_host=False
+    job.using_ncsu_mpi = True #want to use ncsu's MPI enviroment
+
     if args.python_env != "":
         job.python_env=args.python_env
     job.load_module = ['conda']
@@ -104,7 +106,7 @@ if __name__=="__main__":
     
     base_file = os.path.basename(file_path).split(".")[0]
     #need to make up parts of directories where things are going to exist
-    top_experiment_portion="{}:{}:{}".format(base_file,fi_env_params["fault_model"],fi_env_params["distribution"])
+    top_experiment_portion="{}___{}___{}".format(base_file,fi_env_params["fault_model"],fi_env_params["distribution"])
 
     run_path = os.path.join(args.dump_dir,top_experiment_portion)
     run_path = os.path.join(run_path,encoding_architecture)
@@ -128,7 +130,7 @@ if __name__=="__main__":
                 #Now build the lsf job and set it off
                 md_hash = hashlib.md5()
                 md_hash.update(json.dumps(encoder_instance[2],cls=NpEncoder).encode())
-                final_run_path = os.path.join(fault_run_path,"encoder:{}".format(md_hash.hexdigest()))
+                final_run_path = os.path.join(fault_run_path,"encoder___{}".format(md_hash.hexdigest()))
                 os.makedirs(final_run_path,exist_ok=True)                
                 #Create the paramater string
                 complete_param_string= " --enc_params {} ".format(os.path.join(final_run_path,"encoder_params.json"))

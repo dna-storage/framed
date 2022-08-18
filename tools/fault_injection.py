@@ -2,7 +2,8 @@ from dnastorage.fi.fi_env import *
 import dnastorage.fi.dna_processes as dna_process
 from dnastorage.system.pipeline_dnafile import *
 from dnastorage.system.formats import *
-import generate
+from dnastorage.util.mpi_logger import *
+import dnastorage.util.generate as generate
 import logging
 import numpy as np
 import sys
@@ -10,33 +11,12 @@ import os
 import time
 import copy
 import json
-from joblib import Parallel, delayed
-from multiprocessing import Queue
-from logging.handlers import QueueHandler, QueueListener
 
+from mpi4py import MPI
+#set up logging for each mpi process
+logger = logging.getLogger()                                                                                                                                     
 
-logging_queue=Queue() #queue to enable parallel logging
-
-def setup_main_logger():
-    global logging_queue
-    #set up handlers for multiprocessing logging
-    handler=logging.StreamHandler()
-    ql = QueueListener(logging_queue,handler)
-    logger = logging.getLogger()
-    logger.addHandler(handler)
-    return ql
-
-def setup_process_logger():
-    global logging_queue
-    qh=QueueHandler(logging_queue)
-    logger=logging.getLogger()
-    logger.addHandler(qh)
-
-
-
-def _monte_kernel(monte_start,monte_end,args): #function that will run per process
-    logging.info("Monte Carlo Sim: Start {} END {}".format(monte_start,monte_end))
-  
+def _monte_kernel(monte_start,monte_end,args): #function that will run per process  
     #We cant use the data_keeper object here, should be private per process, need data structures to propagate results back up to parent process
     results=[] #each element will be an object that encapsulates the entire statistics
     stats.clear()
@@ -57,7 +37,7 @@ def _monte_kernel(monte_start,monte_end,args): #function that will run per proce
         
     if os.path.exists(args.header_params):
         with open(args.header_params,'rb') as param_file:
-                header_params = json.load(param_file) #load in params for an encoding architecture through a json file
+                header_params = json.load(param_file)#load in params for an encoding architecture through a json file
 
     if args.dna_process is not None and os.path.exists(args.dna_process):
         with open(args.dna_process,'rb') as param_file:
@@ -149,12 +129,15 @@ def _monte_kernel(monte_start,monte_end,args): #function that will run per proce
     return results
 
 
-def _monte_parallel_wrapper(monte_start,monte_end,args): #wrapper for parallelization
-    setup_process_logger()
+def _monte_parallel_wrapper(task): #wrapper for parallelization
+    monte_start,monte_end,args = task
+    logging.info("Rank {} Beginning to run monte task".format(MPI.COMM_WORLD.rank))
+    logging.info("Monte Carlo Sim: Start {} END {}".format(monte_start,monte_end))
     return _monte_kernel(monte_start,monte_end,args)
 
 #function for running monte carlo simulations for a fixed rate fault model
-def run_monte(args):
+def run_monte(pool,args):
+    logging.info("Rank {} Building Tasks".format(MPI.COMM_WORLD.rank)) 
     #run many simulations to perform statistical analysis
     stats_file_path =os.path.join(args.out_dir,"fi.stats")
     stats_pickle_path = os.path.join(args.out_dir,"fi.pickle")
@@ -165,19 +148,21 @@ def run_monte(args):
     last_monte_iter = args.num_sims%args.cores
     processIters=0
     tasks=[] #list of arguments for each task
-    parallel=Parallel(n_jobs=args.cores,backend="multiprocessing")
     for i in range(args.cores):
         if i==args.cores-1:
             tasks.append((processIters,processIters+monteIters+last_monte_iter,args))
         else:
             tasks.append((processIters,processIters+monteIters,args))
         processIters+=monteIters #set up next range of montecarlo simulations
-    results=parallel(delayed(_monte_parallel_wrapper)(*t) for t in tasks )
+
+    results = pool.map(_monte_parallel_wrapper,tasks) #map the work to different processes
+
+    pool.close() #close the pool
+    
     total_results=[]
     for job_res in results:#unpack results from jobs
         for res in job_res:
             total_results.append(res)
-
     stats.clear()
     stats.set_fd(stats_fd)
     stats.set_pickle_fd(pickle_fd)
@@ -192,22 +177,12 @@ def run_monte(args):
 
 
 
-'''
-Main file for injecting faults into an input DNA file, 3 available options are available
-
-miss_strand --- missing strand fault model, e.g. strand is not available to the decoder
-strand_fault --- faults within strand fault model, e.g. insert deletions, insertions, substitutions
-fixed_rate --- fixed fault rate applied to each nucleotide in each strand.
-Combo fault mode will not be supported immediately for fault injection due to the current run-time constraints
-miss_strand will eventually be supported
-
-'''
-
-
-
 if __name__ == "__main__":
     import argparse
-
+    import schwimmbad
+    
+    comm=MPI.COMM_WORLD
+    
     parser = argparse.ArgumentParser(description="Inject faults into input file and perform analysis")
     parser.add_argument('--simulation_runs',dest="num_sims",action="store",type=int,default=1000,help="Number of simulations to run")
     
@@ -224,18 +199,30 @@ if __name__ == "__main__":
     parser.add_argument('--dna_process',required=False,default=None,help="set of processing steps to do on dna strands before fault injection")
     parser.add_argument('--out_dir',type=str,required=True,action="store",help="Directory where data will be dumped")
     parser.add_argument('--file_barcode',required=False,default=tuple(),nargs="+",type=int,help="Barcode for the file")
-    
-
     args = parser.parse_args()
 
-    assert os.path.isdir(args.out_dir)
+    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')                                                                                                    
+    mpi_handler = MPIFileHandler(os.path.join(args.out_dir,"fi_info_{}.log".format(comm.rank)))
+    mpi_handler.setFormatter(formatter)                                                                                                                                                  
+    logger.addHandler(mpi_handler)                                                                                                                                                       
+    logger.setLevel(logging.DEBUG)
+    assert os.path.isdir(args.out_dir)                                                                                                                                             
 
-    logging.basicConfig(filename=os.path.join(args.out_dir,"fi_info.log"),level=logging.INFO,
-                        format='%(asctime)s.%(msecs)03d %(process)s %(levelname)s: %(message)s',
-                        datefmt='%Y-%m-%d %H:%M:%S')
+    #TODO: Have some support for recreating results from a set of seeds. For now, just spit out the seeds
+    #set seeds for each process, this just ensures that not everyone is initialized off the same seed
+    seed = generate.seed()
+    generate.set_seed(seed)
+
     
-    generate.seed()
-    queue_listener = setup_main_logger()
-    queue_listener.start()
-    run_monte(args)
-    queue_listener.stop()
+    logger.info("SEED {} for RANK {}".format(seed,comm.rank))
+    
+    #gather all seeds for the main process to print
+    seeds = comm.gather(seed,root=0)
+    if comm.rank ==0:
+        logger.info("Printing Gathered Seeds")
+        for i in seeds:
+            logger.info("SEED: {}".format(i))
+
+    #create pool of workers, only rank 0 should continue from here
+    pool = schwimmbad.choose_pool(mpi=True,processes = args.cores)     
+    run_monte(pool,args)
