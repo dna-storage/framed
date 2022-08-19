@@ -7,16 +7,17 @@ once ready call submit() and the job will be run with the corresponding paramete
 at the given run path. It is up to the specific experiment to set these properties.
 '''
 class LSFJob(object):
-    def __init__(self):
+    def __init__(self,modules=['conda']):
         self.cores=1 #1 core
         self.memory=8  #8 GB memory
         self.time = 10 #10 Minutes
         self.run_path = os.environ["PWD"] #Run the job in this directory
         self.queue="tuck"
         self.command=None
+        self.using_ncsu_mpi=False
         self.stdout="lsfjob.stdout"
         self.stderr="lsfjob.stderr"
-        self.load_modules = ['conda']
+        self.load_modules = modules
         if 'PYTHON_ENV' in os.environ:
             self.python_env = os.environ['PYTHON_ENV']
         else:
@@ -28,10 +29,12 @@ class LSFJob(object):
         #generate the actual file
         generate_name = "hpc_lsfjob.csh"
         with open(generate_name,"w+") as f:
-            f.write("#BSUB -n " + str(self.cores))
+            f.write("#!/bin/tcsh")
+            if self.using_ncsu_mpi: self.command = "mpirun {}".format(self.command)
+            f.write("\n#BSUB -n " + str(self.cores))
             f.write("\n#BSUB -W {}:00".format(self.time))
             if self.exclusive: f.write("\n#BSUB -x")
-            if self.one_host: f.write("\n#BSUB -R \"span[hosts=1]\"")
+            if self.one_host: f.write("\n#BSUB -R \"span[hosts=1]\"") #this is to make sure all processes/thread sit at one host
             #f.write("\n#BSUB -R span[hosts=1]")
             f.write("\n#BSUB -R \"rusage[mem={}GB]\"".format(self.memory))
             #f.write("\n#BSUB -M {}GB!".format(str(self.memory)))
@@ -40,10 +43,11 @@ class LSFJob(object):
             f.write("\n#BSUB -o {}.%J".format(self.stdout))
             f.write("\n#BSUB -e {}.%J".format(self.stderr))
             if len(self.load_modules) > 0:
-                f.write('\nmodule load {}'.format(" ".join(self.load_modules)))
+                f.write('\n \n module load {}'.format(" ".join(self.load_modules)))
             if len(self.python_env) > 0:
-                f.write('\nsource {}'.format(self.python_env))
-            f.write("\n {}".format(self.command))
+                f.write('\n source {}'.format(self.python_env))                
+            f.write("\n \n {}".format(self.command))
+                
         return generate_name
     def submit(self, no=False):
         assert self.command!=None
@@ -76,7 +80,6 @@ class LSFJob(object):
     def memory(self,n):
         self._memory=n
 
-        
     @property
     def time(self):
         return self._time
@@ -126,8 +129,6 @@ class LSFJob(object):
     def exclusive(self,e):
         self._exclusive=e
 
-
-
     @property
     def one_host(self):
         return self._one_host
@@ -135,7 +136,12 @@ class LSFJob(object):
     def one_host(self,e):
         self._one_host=e
 
-
+    @property
+    def using_ncsu_mpi(self):
+        return self._using_ncsu_mpi
+    @using_ncsu_mpi.setter
+    def using_ncsu_mpi(self,x):
+        self._using_ncsu_mpi=x
 
     @property
     def load_modules(self):

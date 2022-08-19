@@ -307,7 +307,7 @@ void guessHelper(SearchTree* s, std::vector<SearchTree> &ret,
 }
 
 
-template<typename Reward = Reward, typename SearchTree>
+template<typename Reward, typename SearchTree>
 std::vector<SearchTree> make1bitGuesses(SearchTree* s)		 
 {
   char c0 = s->c.getNextSymbol(1, 0);
@@ -323,7 +323,7 @@ std::vector<SearchTree> make1bitGuesses(SearchTree* s)
   return ret;  
 }
 
-template<typename Reward = Reward, typename SearchTree>
+template<typename Reward, typename SearchTree>
 std::vector<SearchTree> makeCWGuesses(SearchTree* s){
   std::vector<SearchTree> ret;
   char next_guess;
@@ -342,7 +342,7 @@ std::vector<SearchTree> makeCWGuesses(SearchTree* s){
 }
 
 
-template<typename Reward = Reward, typename SearchTree>
+template<typename Reward, typename SearchTree>
 std::vector<SearchTree> makeGuesses(SearchTree* s)
 {
   uint8_t nbits = s->h->get_n_bits(s->c.index);

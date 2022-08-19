@@ -37,6 +37,7 @@ namespace codeword_hedges{
       return 0x03;
     }
     assert(0); //shouldn't reach here
+    return 0xFF;
   }
   
   char convert_bits_to_base(const uint8_t& base){ //binary representation for bases
@@ -51,6 +52,7 @@ namespace codeword_hedges{
       return 'T';
     }
     assert(0); //shouldn't reach here
+    return 0xFF;
   }
 
    void print_bitwrapper_as_string(uint32_t length, const hedges::bitwrapper& DNA){ //debug function for printing bit arrays as their string

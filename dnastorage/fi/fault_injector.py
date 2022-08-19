@@ -2,7 +2,7 @@
 import os
 import random
 import csv
-import generate
+import dnastorage.util.generate as generate
 import time
 from dnastorage.strand_representation import *
 from dnastorage.fi.fault_strand_representation import *
@@ -11,8 +11,6 @@ from dnastorage.fi.fault_strand_representation import *
 sub_dict={'A':['G','C','T'],'G':['C','A','T'], 'T':['G','C','A'], 'C':['G','T','A']}
 #nucleotide list for insertion errors
 nuc_list=['A','C','T','G']
-
-
 
 #Base class with some common functions to all of the fault models
 class BaseFI:
@@ -173,7 +171,6 @@ class strand_fault_compressed(BaseFI):
         
         strand_locations_before_conversion=sorted(random.sample(strand_indexes,self.faulty))
         strand_locations=[]
-        #need to seed the C generator
         #convert the locations down to the original library to see what strand we are actually injecting 
         for samples in strand_locations_before_conversion:
             converted_index,sum_to_last_index=self.convert_index(samples,input_library,converted_index,sum_to_last_index)
@@ -373,7 +370,6 @@ class strand_fault(BaseFI):
         print ("injection sites:",len(input_library))
         
         strand_locations=random.sample(range(len(input_library)),self.faulty)
-        #need to seed the C generator
         for strand_index in strand_locations:
             fault_list[strand_index]={}
             if self.run is True:

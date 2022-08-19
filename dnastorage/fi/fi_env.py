@@ -84,8 +84,10 @@ if __name__=="__main__":
     import itertools
     import random
     import dnastorage.strand_representation
-    generate.seed()
+    import dnastorage.util.generate as generate
 
+    seed = generate.seed()
+    generate.set_seed(seed)
     #make some fake strands and inject faults just to test data flows of infrastructures
 
     dna_list=["A","G","C","T"]
