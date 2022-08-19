@@ -53,7 +53,6 @@ def recursive_param_aggregation(l,out_list=None,previous=[]):
 
 
 if __name__=="__main__":
-    from pathlib import Path
     import argparse
     parser = argparse.ArgumentParser(description="Script to generate fault injection jobs")
     parser.add_argument('--params',type=str,required=True,action="store",help="Path to json file with parameters to perform fault injection with")
@@ -96,12 +95,15 @@ if __name__=="__main__":
     except:
         raise ValueError("Parameter file does not have right parameters")
 
-    #fault_injection_path = "/tuck_data/kvolkel/dnastorage/tools/fault_injection.py"
-    # Fix me: probably should not assume a relative file path relationship, but this is better
-    # than being hard coded.
-    fault_injection_path = Path( __file__ ).parent.absolute()
-    fault_injection_path = str(fault_injection_path.parent.joinpath("fault_injection.py"))
-    
+    #KV: Fixed hard-coded fault injection path, note you need to source the dnastorage environment in the base project directory
+    if "DNASTORAGE_TOOLS" not in os.environ:
+        print("Env Variable DNASTORAGE_TOOLS not found, make sure to source dnastorage.env in base project directory")
+
+    fault_injection_path = os.environ["DNASTORAGE_TOOLS"] 
+    fault_injection_path = os.path.join(fault_injection_path,"fault_injection.py")
+
+    assert os.path.exists(fault_injection_path)
+
     base_file = os.path.basename(file_path).split(".")[0]
     #need to make up parts of directories where things are going to exist
     top_experiment_portion="{}:{}:{}".format(base_file,fi_env_params["fault_model"],fi_env_params["distribution"])
