@@ -147,14 +147,12 @@ class BaseOuterCodec(BaseCodec):
         packet=self._decode(sub_packets)
         final_packet=[]
         for s in packet:
-            if not self._zero_range is () and tuple(s.index_ints)[self._level-1:]>=self._zero_range[0] and tuple(s.index_ints)[self._level-1:]<=self._zero_range[1]:
+            if not self._zero_range == tuple()  and tuple(s.index_ints)[self._level-1:]>=self._zero_range[0] and tuple(s.index_ints)[self._level-1:]<=self._zero_range[1]:
                 continue
             else:
                 final_packet.append(s)
         return final_packet
-
-
-
+    
     def remainder(self,packet_size):
         if packet_size%self._packet_divisor !=0:
             new_packet_size = packet_size+(self._packet_divisor-packet_size%self._packet_divisor)
@@ -316,7 +314,7 @@ class BaseOuterCodec(BaseCodec):
         else:
             return index[self._level-1]<self._total_sub_packets and self._Obj.valid(index)
     def is_zero(self,index):
-        if self._zero_range is tuple():
+        if self._zero_range==tuple():
             return False
         if self._Obj==None:
             return (tuple(index)[self._level-1:]>=self._zero_range[0] and tuple(index)[self._level-1:]<=self._zero_range[1])

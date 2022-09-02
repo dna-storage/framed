@@ -56,20 +56,20 @@ if __name__=="__main__":
     import argparse
     parser = argparse.ArgumentParser(description="Script to generate fault injection jobs")
     parser.add_argument('--params',type=str,required=True,action="store",help="Path to json file with parameters to perform fault injection with")
-    
     parser.add_argument('--python_env',type=str,default='',action="store",help="Script path to setup python environment.")
     parser.add_argument('--memory',default=8,type=int,action="store",help="Memory for each job")
     parser.add_argument('--cores',default=4,type=int,action="store",help="Cores for each job, this is the active number of working processes during fi execution")
     parser.add_argument('--time',default=10,type=int,action="store",help="Time allowed for each job,in hours")
     parser.add_argument('--queue',default="tuck",type=str,action="store",help="Queue to use for jobs")
     parser.add_argument('--dump_dir',required=True,help="path to store results")
+    parser.add_argument('--core_depth',default=1,type=int,action="store",help="the number of additional cores to request per core. Example use case is if you want multiple mpi cores per mpi task")
     parser.add_argument('--no',action='store_true', help="don't run bsub command, just test everything.")
     args = parser.parse_args()
 
     job = LSFJob(modules=['PrgEnv-intel'])
     job.queue=args.queue
     job.time=args.time
-    job.cores=args.cores+1 #plus one just to make sure we have enough cores
+    job.cores=args.cores*args.core_depth+1 #plus one just to make sure we have enough cores
     job.memory=args.memory
     job.one_host=False
     job.using_ncsu_mpi = True #want to use ncsu's MPI enviroment

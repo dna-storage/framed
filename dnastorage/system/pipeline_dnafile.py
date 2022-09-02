@@ -11,59 +11,74 @@ import logging
 logger = logging.getLogger('dna.storage.system.dnafile')
 logger.addHandler(logging.NullHandler())
 
-
 DATA_BARCODE=0xCC
 
-
+def communicate_strands(strands,mpi):
+    chunked_strands=[]
+    chunk_size = len(strands)//mpi.size
+    leftover_strands = len(strands)%mpi.size
+    if mpi.rank==0:
+        for index, i in enumerate(range(0,len(strands),chunk_size)):
+            end_point = i+chunk_size
+            if index==mpi.size-1: end_point+=leftover_strands
+            chunked_strands.append(strands[i:end_point])
+            if index==mpi.size-1: break
+    logger.info("Rank {} at scatter".format(mpi.rank))
+    return_strands=mpi.scatter(chunked_strands,root=0)
+    logger.info("Rank {} has {} strands after scatter".format(mpi.rank,len(return_strands)))
+    return return_strands
+    
 class DNAFilePipeline:
     def __init__(self):
         return
     @classmethod
     def open(self, filename, op, format_name="", write_incomplete_file=False, header_version="0.1",fsmd_abbrev='FSMD',fsmd_header_filename=None,
-             payload_header_filename = None,input_strands=None,encoder_params={},header_params={},do_write = True, file_barcode=tuple()):
-
+             payload_header_filename = None,input_strands=None,encoder_params={},header_params={},do_write = True, file_barcode=tuple(),
+             mpi=None):
         # check if we are reading or writing
-        if op=="r":            
+        if op=="r":
+            strands=[]
+            if mpi:
+                if not ("mpi4py" in sys.modules or "mpi4py.MPI" in sys.modules):
+                    raise SystemError("mpi4py is not loaded, needed for pipeline mpi support")
             # 1. filename is the input file of strands
-            # 2. primer_info optionally tells us the primers we're looking,
-            #    if not specified, just assume first first 20 bases are
-            #    are the primer.
-            # 3. format is optional for reading and often ignored. Instead we look
-            #    at the header to deduce what to do.
-            #
-            # Ugly: but we have to find the header to know what to do!
-            if filename!=None and os.path.exists(filename):
-                logger.info("open {} for reading.".format(filename))
-                strands = get_strands(filename)
-            elif input_strands is not None:
-                strands=input_strands
-
-            assert strands is not None
-            header = Header(header_version,header_params,barcode_suffix=file_barcode)
+            if mpi==None or mpi.rank==0:
+                if filename!=None and os.path.exists(filename):
+                    logger.info("open {} for reading.".format(filename))
+                    strands = get_strands(filename)
+                elif input_strands is not None:
+                    strands=input_strands
+            if mpi: #communicate out strands to different processes
+                strands = communicate_strands(strands,mpi)
+            assert (strands is not None) and len(strands)>0
+            header = Header(header_version,header_params,barcode_suffix=file_barcode,mpi=mpi)
             if fsmd_header_filename!=None:
                 with open(fsmd_header_filename,"rb") as serialized_header_pipeline_data:
                     header.set_pipeline_data(serialized_header_pipeline_data.read())
-                    
-            h = header.decode_file_header(copy.deepcopy(strands)) 
-
-            if h is None:
-                if payload_header_filename!=None and os.path.exists(payload_header_filename):
-                    #try to decode from bytes
+            try:
+                h = header.decode_file_header(strands) #KV 8/24/2022 removed deepcopy
+                if mpi: #broadcast the actual decoded header
+                    logger.info("Rank {} Broadcasting header".format(mpi.rank))
+                    h = mpi.bcast(h,root=0)
+                    header.set_header_dict(h)
+                if h==None: raise ValueError("Header failed to decode, trying file")  
+            except:
+                try:
+                    #try to decode from bytes first
                     with open(payload_header_filename,"rb") as serialized_payload_pipeline_data:
                         logger.info("using binary file for payload header instead of DNA")
                         h = header.header_from_bytes(serialized_payload_pipeline_data.read())
-                    
-                if h is None:
-                    logger.info("binary file failed")
-                    return None #couldnt decode header, don't really have much else to go off of
-
+                    if h==None: raise ValueError()
+                except:
+                    logging.warning("Could not recover payload header")
+                    return None
             logger.debug("decoded header: {}".format(h))
 
             if h['main_pipeline_formatid'] == file_system_formatid_by_abbrev("Segmented"):
                 assert 0 and "Segmented files not supported at this moment with pipelines"
             else:
                 return ReadDNAFilePipeline(encoder_params=encoder_params,
-                                           header=header,file_barcode=file_barcode)
+                                           header=header,file_barcode=file_barcode,mpi=mpi)
         elif op=="w":
             return WriteDNAFilePipeline(output=filename,
                                         format_name=format_name,encoder_params=encoder_params,
@@ -71,18 +86,14 @@ class DNAFilePipeline:
                                         payload_header_filename=payload_header_filename,file_barcode=file_barcode,do_write=do_write)
         else:
             return None
-
     def flush(self):
         return
-
     def close(self):
         return
-
     def readable(self):
         assert False
     def writable(self):
         assert False
-
 
 def get_strands(filename):
     strands = []
@@ -106,14 +117,13 @@ def get_strands(filename):
 class ReadDNAFilePipeline(DNAFilePipeline):
     # ReadDNAFile reads a set of strands from a file.  It finds the header,
     # determines compatibility and encoding type, and then decodes the file.
-    #
     def __init__(self,**kwargs):
         DNAFilePipeline.__init__(self)
         self._enc_opts=kwargs["encoder_params"]
-
+        mpi=kwargs.get("mpi",None) #allow mpi-parallel decoding
         self._file_barcode=kwargs.get("file_barcode",tuple())
         header_class = kwargs["header"] #header was already decoded just grab it
-        self.header = header_class.header_dict() # store the header dictionary
+        self.header = header_class.header_dict() # store the header dictionary3
         self.strands = header_class.pick_nonheader_strands()
         self.formatid = self.header['main_pipeline_formatid']
  
@@ -124,17 +134,16 @@ class ReadDNAFilePipeline(DNAFilePipeline):
         if self.formatid == 0x1000:
             # let sub-classes handle initialization
             return
-        constructor_function = file_system_decoder(self.formatid)
-            
+        constructor_function = file_system_decoder(self.formatid)  
         self.mem_buffer = BytesIO()
         self.pf = WritePacketizedFilestream(self.mem_buffer,self.size,0)
         self.pipe = constructor_function(self.pf,**self._enc_opts,barcode=(DATA_BARCODE,)+self._file_barcode)
         self.pipe.decode_header_data(self.header["other_data"])
-        
+        self.pipe.mpi = mpi #attach the communicator to the pipeline
         for s in self.strands:
             self.pipe.decode(s)
         self.pipe.final_decode()
-
+        if mpi: logger.info("Rank {} leaving dnafile".format(mpi.rank))
         self.mem_buffer.seek(0,0) # set read point at beginning of buffer
         return
 

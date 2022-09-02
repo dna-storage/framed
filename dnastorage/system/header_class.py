@@ -7,6 +7,7 @@ import struct
 from dnastorage.system.formats import *
 import hashlib
 from importlib_metadata import version
+import sys
 
 import logging
 logger = logging.getLogger("dnastorage.system.header_class")
@@ -98,7 +99,7 @@ version_formats={"0.1": version_0_1,
 
 
 class Header(object): 
-    def __init__(self, version_number,encoder_params,barcode_suffix=tuple()):
+    def __init__(self, version_number,encoder_params,barcode_suffix=tuple(),mpi=None):
         assert version_number in version_formats
         self._version=version_number
         self._format_dict= version_formats[self._version]()
@@ -107,7 +108,8 @@ class Header(object):
         self._pipeline = enc_func(None,**encoder_params,barcode=barcode)
         self._format_dict["pipeline_barcode_ID"]=(barcode_suffix,)+self._format_dict["pipeline_barcode_ID"][1::]
         self.encoded_header_bytes = None 
-    
+        self._mpi = mpi
+        
     def get_header_pipeline_data(self):
         buff=self._pipeline.encode_header_data()
         buff+=self._encoded_header_hash
@@ -202,7 +204,6 @@ class Header(object):
         size_other_data = convertBytesToInt(data[pos:pos+2])
         pos += 2
         return_header['other_data'] = [ x for x in data[pos:pos+size_other_data] ]
-        print(return_header)
         self._decode_header=return_header
         return return_header
     
@@ -211,20 +212,23 @@ class Header(object):
         pf = WritePacketizedFilestream(b,self._header_length,0)
         self._pipeline.set_write_pf(pf)
         self._non_header_strands=[]
+        self._pipeline.mpi=self._mpi
         for s in strands:
             self._pipeline.decode(s)
         #should be able to finish decoding here
         self._pipeline.final_decode()
-
         try:
             data = [ ord(x) for x in b.getvalue() ]
         except Exception as e:
             data = [ x for x in b.getvalue() ]
-            
+        if self._mpi!=None and self._mpi.Get_rank()!=0: return dict() 
         return self.header_from_bytes(data)
         
     def pick_nonheader_strands(self):
         return self._pipeline.get_filtered()
+
+    def set_header_dict(self,h):
+        self._decode_header=h
 
     def header_dict(self):
         if self._decode_header !=None:
@@ -233,7 +237,6 @@ class Header(object):
             return None
 
 
-   
 if __name__=="__main__":
    
 

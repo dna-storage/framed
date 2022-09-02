@@ -8,6 +8,7 @@ import numpy as np
 logger = logging.getLogger('dna.util.stats')
 logger.addHandler(logging.NullHandler())
 
+
 def random_string(l=5):
     return ''.join([choice(string.ascii_letters + string.digits) for n in range(l)])
 
@@ -88,14 +89,35 @@ class dnastats(object):
             pickle.dump(self.all_stats,self.pickle_fd)
 
 
-    def aggregate(self,other_stats,copy_list=[]):
+    def aggregate(self,other_stats,copy_list=[]): #aggregate other_stats into this stats
         assert isinstance(other_stats,dnastats)
-        #aggregate other_stats into this stats
+        """
+        copy_list is understood as a list of keys that should just be copied between two stat.
+        In order to allow the most flexibility these keys are understood as sub-strings. That is,
+        if anything in copy_list matches a substring of a key in other.all_stats then that is called a match
+        in which values are only copied and nothing is accumulated.
+        """
+        skip_list=[]
+        for c in copy_list:
+            for d in other_stats.all_stats:
+                if c in d: skip_list.append(d)
+                
         for x in other_stats.all_stats:
             if x not in self.all_stats:
                 self.all_stats[x] = other_stats.all_stats[x]
-            elif x not in copy_list and not type(other_stats.all_stats[x]) is dict:
-                self.all_stats[x]=self.all_stats[x]+other_stats.all_stats[x]    
+            elif x not in skip_list:
+                if type(other_stats.all_stats[x]) is dict:
+                    self.all_stats[x]=self._aggregate_dict(self.all_stats[x],other_stats.all_stats[x])
+                else:
+                    self.all_stats[x]=self.all_stats[x]+other_stats.all_stats[x]
+
+    def _aggregate_dict(self,d1,d2):
+        merged_dict = {**d1,**d2}
+        for key,value in merged_dict.items():
+            if key in d1 and key in d2:
+                merged_dict[key]+=d1[key]
+        return merged_dict
+    
             
     def __del__(self):
         return

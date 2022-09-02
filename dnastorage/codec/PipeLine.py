@@ -1,6 +1,7 @@
 '''
 PipeLine Class file which builds the encoding/decoding pipeline based on a set of codecs. 
 '''
+import sys
 from dnastorage.codec.codecfile import *
 from dnastorage.codec.base import *
 from dnastorage.exceptions import *
@@ -11,7 +12,8 @@ from dnastorage.codec_types import *
 from io import *
 import random
 import math
-
+logger = logging.getLogger('dna.codec.pipeline')
+logger.addHandler(logging.NullHandler())
 
 def get_previous_probes(l,index):
     out_list = []
@@ -22,7 +24,6 @@ def get_previous_probes(l,index):
         else:
             break
     return out_list[::-1]
-
 
 #builds cascades of components 
 def cascade_build(component_list):
@@ -56,20 +57,19 @@ class PipeLine(EncodePacketizedFile,DecodePacketizedFile):
         self._consolidator=consolidator #component that consolidates multiple reads with the same index
         self._final_decode_run=False #flag that tracks the final decode run_hedges
         self._filtered_strands=[] #strands that have been filtered out due to physical pipeline or incoherence during the decode process
+        self.mpi=None #mpi not used on default
         self._barcode=barcode
         for index,component in enumerate(components):
             if index>0: prev_component=components[index-1]
             if isinstance(component,BaseOuterCodec):
                 if not index==0 and not isinstance(prev_component,BaseOuterCodec):
                     raise PipeLineConstructionError("Error with Outer Codec connecting")
-                self._outer_codecs.append(component)
-            
+                self._outer_codecs.append(component)            
             elif isinstance(component,CWtoCW):
                 if not index==0 and (not isinstance(prev_component,BaseOuterCodec) and not isinstance(prev_component,CWtoCW) and not isinstance(prev_component,Probe)):
                     raise PipeLineConstructionError("Error with inner codec constructions")
                 self._inner_codecs+=get_previous_probes(components,index) #add probes
                 self._inner_codecs.append(component)
-
             elif isinstance(component,CWtoDNA):
                 if not index==0 and (not isinstance(prev_component,CWtoCW) and  not isinstance(prev_component,CWtoDNA) and not isinstance(prev_component,Probe) and not isinstance(prev_component,BaseOuterCodec)):
                     raise PipeLineConstructionError("Error with DNA to CW constructions")
@@ -81,14 +81,12 @@ class PipeLine(EncodePacketizedFile,DecodePacketizedFile):
                     raise PipeLineConstructionError("Error with DNA to DNA construction")
                 self._DNA_to_DNA+=get_previous_probes(components,index) #add probes 
                 self._DNA_to_DNA.append(component)
-
             elif isinstance(component,Probe):
                 #probe should go into next cascade to avoid placement in locations like the outer codec
                 if component is components[-1]:
                     #PipeLineConstructionError("Probe placed at end of pipeline")
                     self._DNA_to_DNA.append(component) #allow probe to go on end of pipeline
                 continue
-                
             else:
                 raise PipeLineConstructionError("Error with type in pipeline construction")
  
@@ -128,17 +126,12 @@ class PipeLine(EncodePacketizedFile,DecodePacketizedFile):
         #Grab indexing information
         self._index_bit_set= (math.ceil(math.log(math.ceil(self._packetizedFile.numberOfPackets),2)),)+self._outer_cascade.get_index_bits() #need to take into account the packet index
         self._index_bit_set = (8,)*len(self._barcode)+self._index_bit_set
-        
         total_bits= sum(self._index_bit_set) 
         index_bytes = total_bits//8
         if not total_bits%8==0: index_bytes+=1
         self._index_bytes=index_bytes
-
         final_DNA_strands=[]
-
         index_pad_array=[0]*(self._index_bytes-index_bytes) #pad array just in case someone uses a larger index bytes than inferred
-        
-        
         for packet_strand in total_packet_strands:
             packet_strand.index_ints= self._barcode+packet_strand.index_ints
             packet_strand.index_bytes=self._index_bytes
@@ -178,9 +171,19 @@ class PipeLine(EncodePacketizedFile,DecodePacketizedFile):
                 continue
             strand.index_ints=strand.index_ints[len(self._barcode):]
             after_inner.append(strand)
-        
         self._decode_strands=after_inner
-        
+
+        #IF MPI: should get strands back to master
+        if self.mpi:
+            logger.info("Rank {} communicating {} strands back to rank 0".format(self.mpi.Get_rank(),len(self._decode_strands)))
+            self._decode_strands = self.mpi.gather(self._decode_strands,root=0)
+            logger.info("Finished strand gather")
+            if self.mpi.Get_rank()!=0:
+                logger.info("Rank {} leaving pipeline".format(self.mpi.Get_rank()))
+                return #mpi support only up to the outer code
+            self._decode_strands = [_ for sublist in self._decode_strands for _ in sublist] 
+            logger.info("Rank {} has {} strands after gather communication".format(self.mpi.Get_rank(),len(self._decode_strands)))
+
         if isinstance(self._consolidator,CWConsolidate):
             self._decode_strands=self._consolidator.decode(self._decode_strands)
             
@@ -350,8 +353,15 @@ class PipeLine(EncodePacketizedFile,DecodePacketizedFile):
         buf=self._outer_cascade.decode_header(buf)
         return buf
 
-
-    
+    @property
+    def mpi(self):
+        return self._mpi
+    @mpi.setter
+    def mpi(self,comm):
+        if not ("mpi4py" in sys.modules or "mpi4py.MPI" in sys.modules):
+            raise SystemError("mpi4py has not been loaded")
+        self._mpi = comm #note, this should be a communicator of processes that will work together during decoding
+        
 if __name__=="__main__":
     from dnastorage.codec.consolidation import *
     from dnastorage.codec.block import *
