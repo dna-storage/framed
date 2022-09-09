@@ -925,7 +925,6 @@ class FastHedgesPipeline(BaseCodec,CWtoDNA):
             forward_none = sum([1 if _==None else 0 for _ in forward_codewords])
             if reverse_none<forward_none: #utilize reverse complement
                 reverse=True
-        #print (self._hedges_state.seq_bytes, self._hedges_state.message_bytes)
         if not reverse:
             strand_return = fasthedges.decode(strand.dna_strand, self._hedges_state, self._guess_limit)
             strand.codewords = strand_return["return_bytes"]

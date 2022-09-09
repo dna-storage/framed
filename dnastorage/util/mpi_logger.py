@@ -86,9 +86,6 @@ class MPIFileHandler(logging.StreamHandler):
         self.stream.write('{}{}'.format(msg, self.terminator))
         self.flush()
 
-comm = MPI.COMM_WORLD
-mpi_handler = MPIFileHandler("test{}.log".format(comm.rank))
-formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
 def main():
     """
@@ -107,4 +104,7 @@ def main():
 
 
 if __name__ == "__main__":
+    comm = MPI.COMM_WORLD
+    mpi_handler = MPIFileHandler("test{}.log".format(comm.rank))
+    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
     main()

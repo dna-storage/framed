@@ -125,6 +125,7 @@ class PrependSequence(BaseCodec):
         slen = len(self._seq)
         index = strand.find(self._seq)
         if index != -1: # expected at beginning
+            #logger.info("Prepend Complete match")
             return strand[index+len(self._seq):]
         elif self._handler=="ed":
             err = DNAStrandMissingSequence("{} should have had {} at beginning.".format(strand,self._seq))
@@ -144,14 +145,16 @@ class PrependSequence(BaseCodec):
                 raise err
         elif self._handler=="align":
             align = pairwise2.align.localms(strand[0:self._search_range+slen],self._seq,1,-1,-1,-1,one_alignment_only=True)
+            #logger.info(" Searched Sequence: {} \n Desired Sequence: {}".format(strand[0:self._search_range+slen],self._seq))
             if len(align)==0: return strand
             align=align[0]
             score= align[2]
             score = sum([1 if _==_2 else 0 for _,_2 in zip(align[1],align[0])])
             if score<(len(self._seq) - (len(self._seq)*0.3)): #KV made change for score to count total matches after realigning 
-                #logger.info("Strand ID {} \n Searched Sequence: {} \n Desired Sequence: {}".format(id(strand),strand[0:self._search_range+slen],self._seq))
+                #logger.info("Full Strand {}".format(strand))
                 return strand #finding alignment unsuccessful
             else:
+                #logger.info("Out Strand {}".format(strand[align[4]:]))
                 return strand[align[4]:]
 
 
@@ -178,6 +181,7 @@ class AppendSequence(BaseCodec):
         index = strand.find(self._seq)
         slen = len(self._seq)
         if index != -1: # expected at end
+            #logger.info("Append Complete match")
             return strand[:index]
         elif self._handler=="ed":
             err = DNAStrandMissingSequence("{} should have had {} at end.".format(strand,self._seq))
@@ -197,15 +201,17 @@ class AppendSequence(BaseCodec):
             else:
                 raise err
         elif self._handler=="align":
+            #logger.info(" Searched Sequence: {} \n Desired Sequence: {}".format(strand[len(strand)-len(self._seq)-self._search_range:len(strand)],self._seq))
             align = pairwise2.align.localms(strand[len(strand)-len(self._seq)-self._search_range:len(strand)],self._seq,1,-1,-1,-1,one_alignment_only=True)
             if len(align)==0:return strand
             align=align[0]
             score= align[2]
             score = sum([1 if _==_2 else 0 for _,_2 in zip(align[1],align[0])])
             if score<(len(self._seq) - (len(self._seq)*0.3)):
-                #logger.info("Strand ID {} \n Searched Sequence: {} \n Desired Sequence: {}".format(id(strand),strand[len(strand)-len(self._seq)-self._search_range:len(strand)],self._seq))
+                #logger.info(" Full Strand {}".format(strand))
                 return strand
             else:
+                #logger.info("Out Strand: {}".format(strand[0:align[3]+len(strand)-len(self._seq)-self._search_range]))
                 return strand[0:align[3]+len(strand)-len(self._seq)-self._search_range]
 
 class PrependSequencePipeline(PrependSequence,DNAtoDNA):
@@ -220,6 +226,7 @@ class PrependSequencePipeline(PrependSequence,DNAtoDNA):
     def _decode(self,strand):
         if strand.dna_strand is None or self._ignore or self._seq=="": return strand
         strand_before =strand.dna_strand
+        #logger.info("Analyze prepend {}".format(strand.record_id))
         strand.dna_strand=PrependSequence._decode(self,strand.dna_strand)
         if strand_before==strand.dna_strand and self._seq != "":
             strand.dna_strand = None
@@ -236,7 +243,9 @@ class ReversePipeline(BaseCodec,DNAtoDNA):
         return strand
     def _decode(self,strand):
         if strand.dna_strand is None: return strand
-        strand.dna_strand = strand.dna_strand[::-1] 
+        strand.dna_strand = strand.dna_strand[::-1]
+        #logger.info("Reverse {}".format(strand.record_id))
+        #logger.info("Reverse Result {}".format(strand.dna_strand))
         return strand
 
 
@@ -253,6 +262,7 @@ class AppendSequencePipeline(AppendSequence,DNAtoDNA):
     def _decode(self,strand):
         if strand.dna_strand is None or self._ignore or self._seq=="": return strand
         strand_before =strand.dna_strand
+        #logger.info("Analyze append {}".format(strand.record_id))
         strand.dna_strand=AppendSequence._decode(self,strand.dna_strand)
         if strand_before==strand.dna_strand:
             strand.dna_strand = None

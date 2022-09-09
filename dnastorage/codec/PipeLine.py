@@ -276,14 +276,21 @@ class PipeLine(EncodePacketizedFile,DecodePacketizedFile):
         self._dna_to_dna_cascade.decode(strand)
         if strand.dna_strand == None:
             strand.dna_strand=strand.before_decode
-            strand.is_reversed=True
-            #try reverse_complement
-            strand.dna_strand=reverse_complement(strand.dna_strand)
-            self._dna_to_dna_cascade.decode(strand)
-            if strand.dna_strand ==None:
+            try:
+                is_rna = strand.is_RNA
+            except: #if it is not RNA it should throw exception
+                strand.is_reversed=True
+                #try reverse_complement
+                strand.dna_strand=reverse_complement(strand.dna_strand)
+                self._dna_to_dna_cascade.decode(strand)
+                if strand.dna_strand ==None:
+                    self.filter_strand(strand)
+                    return
+            else:#no sense in doing reverse complements for RNA 
+                assert is_rna
                 self.filter_strand(strand)
                 return
-            
+
         strand.index_bytes = self._index_bytes
         strand.index_bit_set =  self._index_bit_set
         self._decode_strands.append(strand)
@@ -293,9 +300,9 @@ class PipeLine(EncodePacketizedFile,DecodePacketizedFile):
         strand.dna_strand=strand.before_decode #single point to revert filtered strand for future processing by pipelines
         strand.is_reversed=False
         self._filtered_strands.append(strand)
-    def get_filtered(self): #get strands that don't conform
+        
+    def get_filtered(self): #get strands that are not confirmed to be a part of this pipeline
         return self._filtered_strands
-
     
     def set_read_pf(self,read_pf):
         assert(isinstance(read_pf,ReadPacketizedFilestream))

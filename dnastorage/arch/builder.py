@@ -233,8 +233,8 @@ def Basic_Hedges_Pipeline(pf,**kwargs):
     else: assert 0 and "Invalid CRC selection"
         
     #components related to DNA functionality
-    p5 = PrependSequencePipeline(primer5,ignore=False,handler="align",search_range=30)
-    p3 = AppendSequencePipeline(primer3,ignore=False,handler="align",search_range=30)
+    p5 = PrependSequencePipeline(primer5,ignore=False,handler="align",search_range=200)
+    p3 = AppendSequencePipeline(primer3,ignore=False,handler="align",search_range=200)
 
     consolidator = SimpleMajorityVote()
     out_pipeline = (rsOuter,)

@@ -171,6 +171,8 @@ class CRC8_Index(CRC8,CWtoCW): #Instead of CRCing the whole strand, we just CRC 
             strand.codewords=[None]*(len(strand.codewords)-1) #remove strand from consideration
             return strand
         crc = self._crc(strand.codewords[0:strand.index_bytes+1])
+        #logger.info("CRC {} index+crc {}".format(crc,strand.codewords[0:strand.index_bytes+1]))
+        #logger.info("Entire strand {}".format(strand.codewords))
         if crc!=self._checksum:
             strand.codewords=[None]*(len(strand.codewords)-1) #remove strand from consideration
         else:

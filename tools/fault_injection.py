@@ -1,7 +1,12 @@
+"""
+Main script for running fault injection analysis on different encoding architectures and fault environments.
+"""
+
 from dnastorage.fi.fi_env import *
 import dnastorage.fi.dna_processes as dna_process
 from dnastorage.system.pipeline_dnafile import *
 from dnastorage.system.formats import *
+from dnastorage.util.strandinterface import *
 from dnastorage.util.mpi_logger import *
 import dnastorage.util.generate as generate
 import logging
@@ -45,6 +50,7 @@ def _monte_kernel(monte_start,monte_end,args,comm=None): #function that will run
     #We cant use the data_keeper object here, should be private per process, need data structures to propagate results back up to parent process
     results=[] #each element will be an object that encapsulates the entire statistics
     stats.clear()
+    strand_interface = BaseStrandInterface.open("array")
     encoding_params,header_params,strand_proc_dict,fault_args,dist_args,fi_env_args = get_param_files(args)
     header_data_path = os.path.join(args.out_dir,"header_pipeline{}.header".format(monte_end)) #binary data output for header of the header's pipeline
     payload_header_data_path = os.path.join(args.out_dir,"payload_pipeline{}.header".format(monte_end)) #binary data output for header of the payload pipeline
@@ -57,13 +63,14 @@ def _monte_kernel(monte_start,monte_end,args,comm=None): #function that will run
         #we give the .dna to each instance, whether we actually write it, to make sure header data is consistent across runs
         base_file_path  = os.path.basename(args.file)
         if monte_end!=args.num_sims: 
-            write_dna = DNAFilePipeline.open("{}.dna".format(base_file_path),"w",format_name=args.arch,header_params=header_params,header_version=args.header_version,
+            write_dna = DNAFilePipeline.open("w",format_name=args.arch,header_params=header_params,header_version=args.header_version,
+                                             
                                              encoder_params=encoding_params,fsmd_header_filename=header_data_path, payload_header_filename = payload_header_data_path,
-                                             file_barcode=tuple(args.file_barcode),do_write=False)
+                                             file_barcode=tuple(args.file_barcode),do_write=False,dna_file_name="{}.dna".format(base_file_path))
         else: #save 1 copy of the DNA file
-            write_dna = DNAFilePipeline.open("{}.dna".format(base_file_path),"w",format_name=args.arch,header_params=header_params,header_version=args.header_version,
+            write_dna = DNAFilePipeline.open("w",format_name=args.arch,header_params=header_params,header_version=args.header_version,
                                              encoder_params=encoding_params,fsmd_header_filename=header_data_path,file_barcode=tuple(args.file_barcode),
-                                             payload_header_filename = payload_header_data_path,do_write=True)
+                                             payload_header_filename = payload_header_data_path,do_write=True,dna_file_name=os.path.join(args.out_dir,"{}.dna".format(base_file_path)))
 
         write_dna.write(file_to_fault_inject.read())
         write_dna.close()
@@ -90,10 +97,12 @@ def _monte_kernel(monte_start,monte_end,args,comm=None): #function that will run
         if is_master(comm):
             fault_environment.Run()
             strands = fault_environment.get_strands()
-        read_dna = DNAFilePipeline.open(None,"r",input_strands=strands,header_params=header_params,
+            strand_interface.strands=strands
+
+        read_dna = DNAFilePipeline.open("r",header_params=header_params,
                                         header_version=args.header_version,format_name=args.arch,encoder_params=encoding_params,
                                         fsmd_header_filename=header_data_path,file_barcode=tuple(args.file_barcode),
-                                        payload_header_filename = payload_header_data_path,mpi=comm)
+                                        payload_header_filename = payload_header_data_path,mpi=comm,strand_interface=strand_interface)
 
         if not is_master(comm): continue
         
@@ -190,8 +199,6 @@ def run_monte(pool,args):
     stats.persist()
     stats_fd.close()
     pickle_fd.close()
-
-
 
 if __name__ == "__main__":
     import argparse

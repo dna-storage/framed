@@ -175,8 +175,8 @@ class IndexDistribution(BaseCodec,Probe):
             stats.inc(self._total_indexes_decode)
             stats.inc(self._index_dist_probe_key_decode,dflt=dict(),coords=index_ints)
             #record where the fastq sequence is
-            if hasattr(s,"fastq_record_id"):
-                stats[self._fastq_map][index_ints]=stats[self._fastq_map].get(index_ints,[])+[s.fastq_record_id]
+            #if hasattr(s,"record_id"): #MUST TODO: use this to make mappings
+            #    stats[self._fastq_map][index_ints]=stats[self._fastq_map].get(index_ints,[])+[s.fastq_record_id]
             if hasattr(s,self._initial_index_ints_attr):
                 if index_ints == tuple(getattr(s,self._initial_index_ints_attr)):
                     stats.inc(self._correct_key)
