@@ -14,6 +14,7 @@ import os
 import time
 import copy
 import json
+import numpy as np
 from mpi4py import MPI
 
 logger = logging.getLogger()                                                                                                                                     
@@ -64,6 +65,7 @@ if __name__=="__main__":
         exit(1)
 
     file_list = dna_file_params["file_list"]
+    
     for file_index,file_params in enumerate(dna_file_params["file_list"]): #Inner loop, allows for multiple encoders to analyze the sequencing data in one run, could be useful for multi-filed data sets
         #load up required values, throw exceptions as necessary
         try:
@@ -97,13 +99,15 @@ if __name__=="__main__":
             strands =[]
             for _ in gather_strands: strands+=_
             strand_interface.strands = strands
-        #TODO: Do analysis on how much of the file was found
     #merge together stats that were collecting during decoding for all processes
     all_stats = world_comm.gather(stats,root=0)
     if is_master(world_comm):
         stats.clear()
         for s in all_stats: stats.aggregate(s)
         stats["strands_not_indexed"]  = len(strand_interface.strands)
+        filtered_strand_lengths = np.zeros((len(strand_interface.strands),))
+        stats["unindexed_length:average"]=np.average(filtered_strand_lengths)
+        stats["uindexed_length:stdev"]=np.std(filtered_strand_lengths)
         #write out statistics
         stats_file_path =os.path.join(args.out_dir,"sequencing.stats")
         stats_pickle_path = os.path.join(args.out_dir,"sequencing.pickle")

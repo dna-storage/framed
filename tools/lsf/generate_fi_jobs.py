@@ -1,56 +1,11 @@
+"""
+User level script to generate fault injection jobs through LSF.
+"""
+
 import os
-from lsf_submit import *
-import json
-import copy
+from lsf_utils.lsf_submit import *
+from lsf_utils.param_util import *
 import hashlib
-import numpy as np
-
-
-class NpEncoder(json.JSONEncoder): #this class should help with encoding numpy data types that will arise in the different ranges
-    def default(self, obj):
-        if isinstance(obj, np.integer):
-            return int(obj)
-        if isinstance(obj, np.floating):
-            return float(obj)
-        if isinstance(obj, np.ndarray):
-            return obj.tolist()
-        return super(NpEncoder, self).default(obj)
-
-
-def recursive_param_aggregation(l,out_list=None,previous=[]):
-    if len(l)==0:
-        #take previous names and values and create the parameter strings and directory strings
-        param_string=""
-        directory_string=""
-        param_dict={}
-        for p in previous:
-            param_string+=" --{} {} ".format(p[0],p[1])
-            directory_string+="{}={}___".format(p[0],p[1])
-            param_dict[p[0]]=p[1]
-        out_list.append((param_string,directory_string,param_dict))
-        return
-    
-    if out_list is None:
-        return_list=[]
-    else:
-        return_list=out_list
-    entry_name= l[0][0]
-    if type(l[0][1]) is list:
-        if l[0][1][0] == "value_list":
-            param_values=l[0][1][1:] #not a range
-        else:
-            param_values = np.arange(*(l[0][1]))
-    else:
-        param_values=[l[0][1]]
-    for v in param_values:
-        copy_previous=copy.copy(previous)
-        current_value=v
-        current_name=entry_name
-        copy_previous.append((current_name,current_value))
-        recursive_param_aggregation(l[1:],out_list=return_list,previous=copy_previous)
-    if out_list is None:
-        return return_list
-
 
 if __name__=="__main__":
     import argparse
@@ -93,9 +48,8 @@ if __name__=="__main__":
         fi_env_params = params_dict["fi_env_params"]
         encoding_architecture = params_dict["arch"]
         file_path = params_dict["file"]
-       
-    except:
-        raise ValueError("Parameter file does not have right parameters")
+    except Exception as e:
+        raise ValueError("Parameter file does not have right parameters: {}".format(e))
 
     #KV: Fixed hard-coded fault injection path, note you need to source the dnastorage environment in the base project directory
     if "DNASTORAGE_TOOLS" not in os.environ:
@@ -113,11 +67,11 @@ if __name__=="__main__":
     run_path = os.path.join(args.dump_dir,top_experiment_portion)
     run_path = os.path.join(run_path,encoding_architecture)
 
-    fault_model_param_list=recursive_param_aggregation([(_[0],_[1]) for _ in fault_model_params.items()])
-    distribution_param_list=recursive_param_aggregation([(_[0],_[1]) for _ in distribution_params.items()])
-    encoder_param_list=recursive_param_aggregation([(_[0],_[1]) for _ in encoder_params.items()])
-    header_instance=recursive_param_aggregation([(_[0],_[1]) for _ in header_params.items()])[0]
-    env_instance=recursive_param_aggregation([(_[0],_[1]) for _ in fi_env_params.items()])[0]
+    fault_model_param_list=param_aggregation([(_[0],_[1]) for _ in fault_model_params.items()])
+    distribution_param_list=param_aggregation([(_[0],_[1]) for _ in distribution_params.items()])
+    encoder_param_list=param_aggregation([(_[0],_[1]) for _ in encoder_params.items()])
+    header_instance=param_aggregation([(_[0],_[1]) for _ in header_params.items()])[0]
+    env_instance=param_aggregation([(_[0],_[1]) for _ in fi_env_params.items()])[0]
 
     if "dna_processing" in params_dict:
         dna_proc_dict = params_dict["dna_processing"]
