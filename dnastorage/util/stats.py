@@ -3,7 +3,7 @@ from random import choice
 import string
 import pickle
 import numpy as np
-
+import os
 
 logger = logging.getLogger('dna.util.stats')
 logger.addHandler(logging.NullHandler())
@@ -18,13 +18,17 @@ class dnastats(object):
         self.fd = fd
         self.pickle_fd=pickle_fd
         self.msg = msg
-        self.all_stats = {}
-        self.formats = {}
-
+        self.all_stats = {} #dictionary for holding all stats
+        self.formats = {} #formatting for statistics
+        self.file_register={} #registration dictionary for separating outputs into different files
+        
     def set_fd(self, fd):
         self.fd = fd
     def set_pickle_fd(self,fd):
         self.pickle_fd=fd
+        
+    def register_file(self,stats_name,filename):
+        self.file_register[stats_name]=filename
 
     # Use inc to track and dump a counter. example:
     #    stats.inc("block::errors")
@@ -67,30 +71,47 @@ class dnastats(object):
         if not (self.fd is None):
             if len(self.msg) > 0:
                 self.fd.write(self.msg+"\n")
-                logger.info(self.msg.strip("\n"))
-
             items = self.all_stats.items()
             items=sorted(items,key=lambda x: x[0])
-                
             for k,v in items:
+                if k in self.file_register: continue
                 fmt = "{}="+"{}\n".format(self.formats.get(k,"{}"))
                 self.fd.write(fmt.format(k,v))
-                logger.info(fmt.format(k,v))
         else:
-            if len(self.msg) > 0:
-                logger.info(self.msg)
             items = self.all_stats.items()
             items=sorted(items,key=lambda x: x[0])
             for k,v in items:
                 fmt = "{}="+"{}".format(self.formats.get(k,"{}"))
-                logger.info(fmt.format(k,v))
-                
         if not (self.pickle_fd is None): #dumping pickle of stats 
             pickle.dump(self.all_stats,self.pickle_fd)
+        self._write_file_register(os.path.dirname(self.fd.name))
 
-
+    def _write_file_register(self,output_dir):
+        """
+        Write out the file register to separate files. Stats that dump to the same external file
+        outside of the regular stats file will be collected together and then dumped
+        """
+        file_dictionaries={} 
+        for stat_key in self.file_register:
+            file_key = self.file_register[stat_key]
+            if file_key not in file_dictionaries:
+                file_dictionaries[file_key]={}
+            file_dictionaries[file_key][stat_key]=self.all_stats[stat_key]
+        for f in file_dictionaries:
+            dump_dict = file_dictionaries[f]
+            fd = open(os.path.join(output_dir,f),"w+")
+            pickle_fd = open(os.path.join(output_dir,"{}.pickle".format(f)),"wb+")
+            pickle.dump(dump_dict,pickle_fd)
+            items = dump_dict.items()
+            items=sorted(items,key=lambda x: x[0])
+            for k,v in items:
+                fmt = "{}="+"{}\n".format(self.formats.get(k,"{}"))
+                fd.write(fmt.format(k,v))
+            pickle_fd.close()
+            
     def aggregate(self,other_stats,copy_list=[]): #aggregate other_stats into this stats
         assert isinstance(other_stats,dnastats)
+        self.file_register={**self.file_register,**other_stats.file_register}
         """
         copy_list is understood as a list of keys that should just be copied between two stat.
         In order to allow the most flexibility these keys are understood as sub-strings. That is,
@@ -101,7 +122,6 @@ class dnastats(object):
         for c in copy_list:
             for d in other_stats.all_stats:
                 if c in d: skip_list.append(d)
-                
         for x in other_stats.all_stats:
             if x not in self.all_stats:
                 self.all_stats[x] = other_stats.all_stats[x]

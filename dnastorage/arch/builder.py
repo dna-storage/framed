@@ -209,6 +209,7 @@ def Basic_Hedges_Pipeline(pf,**kwargs):
     # pad_bits and prev_bits should match by default:
     hedges_pad_bits=kwargs.get("hedges_pad",8)
     hedges_previous = kwargs.get("hedge_prev_bits",8)
+    hedges_guesses = kwargs.get("hedges_guesses",100000)
     try_reverse = kwargs.get("try_reverse",False) #should the reverse be tried, for hedges decoding, set this if primer3/primer5 are not used
     
 
@@ -224,7 +225,7 @@ def Basic_Hedges_Pipeline(pf,**kwargs):
     elif "outerECCdivisor" in kwargs:
         rsOuter = ReedSolomonOuterPipeline(kwargs["outerECCdivisor"],outerECCStrands)
   
-    hedges = FastHedgesPipeline(rate=hedges_rate,pad_bits=hedges_pad_bits,prev_bits=hedges_previous,try_reverse=try_reverse)
+    hedges = FastHedgesPipeline(rate=hedges_rate,pad_bits=hedges_pad_bits,prev_bits=hedges_previous,try_reverse=try_reverse,guess_limit=hedges_guesses)
 
     if crc_type=="strand": crc = CRC8()
     elif crc_type=="index":

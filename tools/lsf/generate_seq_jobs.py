@@ -65,6 +65,8 @@ if __name__=="__main__":
     for d in decoders:
         assert isinstance(d,dict)
         decoder_param_lists.append(param_aggregation([(_[0],_[1]) for _ in d["encoder_params"].items()]))
+        #TODO: may also need to make it so that header parameters can be easily varried
+        
 
     decoder_prod = itertools.product(*decoder_param_lists)
     decoder_combinations=[_ for _ in decoder_prod]

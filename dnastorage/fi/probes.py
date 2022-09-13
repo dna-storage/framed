@@ -147,14 +147,16 @@ class IndexDistribution(BaseCodec,Probe):
         self._index_dist_probe_key_decode = "{}::index_dist_decode".format(self._name)
         self._total_indexes_decode = "{}::total_indexes_decode".format(self._name)
         self._total_indexes_lost = "{}::total_indexes_lost".format(self._name)
-        self._fastq_map = "{}::fastq_map".format(self._name)
-        stats[self._fastq_map]={}
+        self._seq_map = "{}::seq_map".format(self._name)
+        stats[self._seq_map]={}
         self._prefix_to_match = prefix_to_match
         self._correct_key="{}::correct_indexes".format(self._name)
         self._incorrect_key="{}::incorrect_indexes".format(self._name)
         self._initial_index_ints_attr = "{}::initial_index_attribute".format(self._name)
-
         IndexDistribution.probe_id+=1
+
+        #register sequencing mappings
+        stats.register_file(self._seq_map,"sequencing.map")
         
     def _encode(self,s):
         stats.inc(self._total_indexes_encode)
@@ -174,9 +176,9 @@ class IndexDistribution(BaseCodec,Probe):
         else:
             stats.inc(self._total_indexes_decode)
             stats.inc(self._index_dist_probe_key_decode,dflt=dict(),coords=index_ints)
-            #record where the fastq sequence is
-            #if hasattr(s,"record_id"): #MUST TODO: use this to make mappings
-            #    stats[self._fastq_map][index_ints]=stats[self._fastq_map].get(index_ints,[])+[s.fastq_record_id]
+            #if the strand we are seeing is from sequencing, record its index
+            if hasattr(s,"record_id"): 
+                stats[self._seq_map][index_ints]=stats[self._seq_map].get(index_ints,[])+[s.record_id]
             if hasattr(s,self._initial_index_ints_attr):
                 if index_ints == tuple(getattr(s,self._initial_index_ints_attr)):
                     stats.inc(self._correct_key)
