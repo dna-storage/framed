@@ -86,7 +86,7 @@ if __name__=="__main__":
                 #Now build the lsf job and set it off
                 md_hash = hashlib.md5()
                 md_hash.update(json.dumps(encoder_instance[2],cls=NpEncoder).encode())
-                final_run_path = os.path.join(fault_run_path,"encoder___{}".format(md_hash.hexdigest()))
+                final_run_path = os.path.join(fault_run_path,"encoder___{}".format(md_hash.hexdigest()[0:8]))
                 os.makedirs(final_run_path,exist_ok=True)                
                 #Create the paramater string
                 complete_param_string= " --enc_params {} ".format(os.path.join(final_run_path,"encoder_params.json"))

@@ -40,8 +40,7 @@ class Fi_Env(object):
             if self._reverse_complement: #want to allow for reverse complements to exist
                 for s in new_pool:
                     rand_choice =random.randint(0,1)
-                    if rand_choice==1: s.dna_strand = reverse_complement(s.dna_strand) #reverse complements
-            
+                    if rand_choice==1: s.dna_strand = reverse_complement(s.dna_strand) #reverse complements            
             random.shuffle(new_pool) #shuffle strands
             return new_pool,dist
         else:
@@ -52,13 +51,11 @@ class Fi_Env(object):
                 pool_size+=strand[1]
             return new_pool,pool_size
         
-
     def Run(self):
         #run an instance of fault injection and simulation
         pool,size = self._distribute_reads()
         self._fault_mode.set_library(pool)
-        self._fault_mode.Run()
-        self._fault_strands=pool #pool should be modified with FaultDNA types
+        self._fault_strands=self._fault_mode.Run()
         #make sure everything goes in as a fault strand
         for s_index,s in enumerate(self._fault_strands):
             if not isinstance(s,FaultDNA):

@@ -2,10 +2,14 @@
 import os
 import random
 import csv
+import pickle
+import re
+
 import dnastorage.util.generate as generate
 import time
 from dnastorage.strand_representation import *
 from dnastorage.fi.fault_strand_representation import *
+from Bio import SeqIO
 
 #substitution dictionary used for substitution errors
 sub_dict={'A':['G','C','T'],'G':['C','A','T'], 'T':['G','C','A'], 'C':['G','T','A']}
@@ -16,7 +20,6 @@ nuc_list=['A','C','T','G']
 class BaseFI:
     def __init__(self):
         pass
-    
     @classmethod
     def open(self,fault_injector,**kwargs):
         if fault_injector=="fixed_rate":
@@ -29,11 +32,12 @@ class BaseFI:
             return strand_fault(**kwargs)
         elif fault_injector=="distribution_rate":
             return distribution_rate(**kwargs)
+        elif fault_injector=="sequencing_experiment":
+            return sequencing_experiment(**kwargs)
         elif fault_injector=="combo":
             return combo(**kwargs)
         else:
             raise ValueError()
-        
     #These two setting functions allow easier altertion of the input library to fault injection, and parameters around fault injection
     def set_library(self,input_strands):
         self._input_library=input_strands
@@ -42,13 +46,49 @@ class BaseFI:
     def Run(self):
         raise NotImplementedError()
     
-        
     def read_csv(self,file_name):
         _file=open(file_name,'r')
         csv_parsed=csv.reader(_file,delimiter=',')
         return csv_parsed
  
 
+#use sequencing data to perform fault injection
+class sequencing_experiment(BaseFI):
+    def __init__(self,**args):
+        BaseFI.__init__(self)
+        #TODO: Take a single directory and derive neccessary paths from that, should make combining parameters easier
+        self._sequencing_data_path = args["sequencing_data_path"]
+        self._map  = pickle.load(open(args["mapping_path"],"rb")) #map: sequencing_record-->index_ints
+        tmp_map = {}
+        for sub_map in self._map: #push things into one map that should be indexed by index_ints of the DNAStrand
+            tmp_map={**tmp_map,**self._map[sub_map]}
+        self._map=tmp_map
+
+        #TODO: should get rid of this, make the initial mapping different at the mapping pass so this inefficient step is not needed
+        tmp_map={}
+        for k in self._map:
+            for _ in self._map[k]:
+                tmp_map[_]=k
+        self._map=tmp_map
+        
+    def sequence_run_injection(self):
+        out_list=[]
+        input_library_map={}
+        for strand in self._input_library:
+            input_library_map[strand.index_ints] = strand
+        #assume fastq file for now
+        for record in SeqIO.parse(self._sequencing_data_path,"fastq"):
+            seq_strand = re.subn("U","T",str(record.seq))
+            index_ints = self._map.get(record.id,None)
+            if index_ints is None: continue #dead strands
+            lib_strand=input_library_map[index_ints]
+            out_list.append(FaultDNA(lib_strand,seq_strand))
+        assert len(out_list)>0
+        return out_list
+
+    def Run(self):
+        return self.sequence_run_injection()
+  
 #this class applies a fixed error rate to each nucleotide
 #Strands are a list, not a tuple representation
 class fixed_rate(BaseFI):
@@ -58,9 +98,8 @@ class fixed_rate(BaseFI):
         
     def Run(self):
         self._injection={}
-        self._error_strands=[]
         self._injection=self.injection_sites()
-        self.inject_faults(self._injection)
+        return self.inject_faults(self._injection)
 
     #go through each nucleotide in each strand and apply a flat fault rate
     def injection_sites(self):
@@ -77,7 +116,7 @@ class fixed_rate(BaseFI):
                     
     #inject errors in the list of strands, each 
     def inject_faults(self,inject_sites):
-        #print inject_sites
+        out_list=self._input_library[:]
         for strand_indexes in inject_sites:
             for fault_indexes in sorted(inject_sites[strand_indexes],reverse=True):
                 #substitution error
@@ -102,8 +141,8 @@ class fixed_rate(BaseFI):
                 else:
                     raise ValueError()
                 assert len(new_strand)>0
-                self._input_library[strand_indexes]=FaultDNA(self._input_library[strand_indexes],new_strand)
-
+                out_list[strand_indexes]=FaultDNA(self._input_library[strand_indexes],new_strand)
+        return out_list
     
 #class that contains functionality for missing strands fault model
 class miss_strand(BaseFI):
@@ -414,7 +453,7 @@ class strand_fault(BaseFI):
 
                 else:
                     raise ValueError()
-                self._input_library[strand_indexes]=FaultDNA(self._input_library[strand_indexes],new_strand)
+                out_list[strand_indexes]=FaultDNA(self._input_library[strand_indexes],new_strand)
         return out_list
 
 

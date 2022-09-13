@@ -4,6 +4,8 @@ Parsing help for lsf json parameter scripts.
 import json
 import numpy as np
 import copy
+import os
+import hashlib
 
 class NpEncoder(json.JSONEncoder): #this class should help with encoding numpy data types that will arise in the different ranges
     def default(self, obj):
@@ -24,7 +26,12 @@ def param_aggregation(l,out_list=None,previous=[]):
         param_dict={}
         for p in previous:
             param_string+=" --{} {} ".format(p[0],p[1])
-            directory_string+="{}={}___".format(p[0],p[1])
+            if isinstance(p[1],str) and os.path.exists(p[1]): #TODO: make sure paths are handled sensibly
+                md_hash=hashlib.md5()
+                md_hash.update(p[1].encode("utf-8"))
+                directory_string+="{}={}___".format(p[0],md_hash.hexdigest()[0:8])
+            else: 
+                directory_string+="{}={}___".format(p[0],p[1])
             param_dict[p[0]]=p[1]
         out_list.append((param_string,directory_string,param_dict))
         return
