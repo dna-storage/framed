@@ -68,22 +68,24 @@ class dnastats(object):
         self.formats[name] = f
 
     def persist(self):
+        main_stats = {}
+        for key in self.all_stats:
+            if key not in self.file_register: main_stats[key]=self.all_stats[key]
         if not (self.fd is None):
             if len(self.msg) > 0:
                 self.fd.write(self.msg+"\n")
-            items = self.all_stats.items()
+            items = main_stats.items()
             items=sorted(items,key=lambda x: x[0])
             for k,v in items:
-                if k in self.file_register: continue
                 fmt = "{}="+"{}\n".format(self.formats.get(k,"{}"))
                 self.fd.write(fmt.format(k,v))
         else:
-            items = self.all_stats.items()
+            items = main_stats.items()
             items=sorted(items,key=lambda x: x[0])
             for k,v in items:
                 fmt = "{}="+"{}".format(self.formats.get(k,"{}"))
         if not (self.pickle_fd is None): #dumping pickle of stats 
-            pickle.dump(self.all_stats,self.pickle_fd)
+            pickle.dump(main_stats,self.pickle_fd)
         self._write_file_register(os.path.dirname(self.fd.name))
 
     def _write_file_register(self,output_dir):
@@ -91,7 +93,7 @@ class dnastats(object):
         Write out the file register to separate files. Stats that dump to the same external file
         outside of the regular stats file will be collected together and then dumped
         """
-        file_dictionaries={} 
+        file_dictionaries={}
         for stat_key in self.file_register:
             file_key = self.file_register[stat_key]
             if file_key not in file_dictionaries:
