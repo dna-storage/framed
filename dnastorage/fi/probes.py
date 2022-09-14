@@ -138,11 +138,9 @@ class IndexDistribution(BaseCodec,Probe):
             self._name = "index_dist_probe_{}".format(IndexDistribution.probe_id)
         else:
             self._name = probe_name
-
         #stats collected during encoding, gives baseline
         self._index_dist_probe_key_encode = "{}::index_dist_encode".format(self._name)
         self._total_indexes_encode = "{}::total_indexes_encode".format(self._name)
-
         #stats collected during decoding, measures reality
         self._index_dist_probe_key_decode = "{}::index_dist_decode".format(self._name)
         self._total_indexes_decode = "{}::total_indexes_decode".format(self._name)
@@ -153,11 +151,10 @@ class IndexDistribution(BaseCodec,Probe):
         self._correct_key="{}::correct_indexes".format(self._name)
         self._incorrect_key="{}::incorrect_indexes".format(self._name)
         self._initial_index_ints_attr = "{}::initial_index_attribute".format(self._name)
-        IndexDistribution.probe_id+=1
-
         #register sequencing mappings
         stats.register_file(self._seq_map,"sequencing.map")
-        
+        IndexDistribution.probe_id+=1
+
     def _encode(self,s):
         stats.inc(self._total_indexes_encode)
         stats.inc(self._index_dist_probe_key_encode,dflt=dict(),coords=s.index_ints)
@@ -178,7 +175,7 @@ class IndexDistribution(BaseCodec,Probe):
             stats.inc(self._index_dist_probe_key_decode,dflt=dict(),coords=index_ints)
             #if the strand we are seeing is from sequencing, record its index
             if hasattr(s,"record_id"): 
-                stats[self._seq_map][index_ints]=stats[self._seq_map].get(index_ints,[])+[s.record_id]
+                stats[self._seq_map][s.record_id]=index_ints
             if hasattr(s,self._initial_index_ints_attr):
                 if index_ints == tuple(getattr(s,self._initial_index_ints_attr)):
                     stats.inc(self._correct_key)

@@ -4,6 +4,7 @@ User level script to generate sequencing jobs through LSF.
 """
 
 import os
+import errno
 from lsf_utils.lsf_submit import *
 from lsf_utils.param_util import *
 import hashlib
@@ -107,7 +108,15 @@ if __name__=="__main__":
                 analysis_dict["file_list"].append(file_dict)
                 
             json.dump(analysis_dict,open(os.path.join(final_run_path,"file_params.json"),"w+"),cls=NpEncoder)
-            
+            json.dump({"sequencing_data_path":path},open(os.path.join(final_run_path,"sequencing_params.json"),"w+"))
+
+            try:
+                os.symlink(path,os.path.join(final_run_path,"sequencing_data_link")) 
+            except OSError as e: #force symlink
+                if e.errno==errno.EEXIST:
+                    os.remove(os.path.join(final_run_path,"sequencing_data_link"))
+                    os.symlink(path,os.path.join(final_run_path,"sequencing_data_link"))
+
             print(final_run_path)
             command = "python "+ sequencing_tool_path + complete_param_string
             job.command = command

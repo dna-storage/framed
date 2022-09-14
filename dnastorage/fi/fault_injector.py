@@ -42,7 +42,6 @@ class BaseFI:
     def set_library(self,input_strands):
         self._input_library=input_strands
         
-    
     def Run(self):
         raise NotImplementedError()
     
@@ -57,20 +56,23 @@ class sequencing_experiment(BaseFI):
     def __init__(self,**args):
         BaseFI.__init__(self)
         #TODO: Take a single directory and derive neccessary paths from that, should make combining parameters easier
-        self._sequencing_data_path = args["sequencing_data_path"]
-        self._map  = pickle.load(open(args["mapping_path"],"rb")) #map: sequencing_record-->index_ints
+        if "sequencing_data_path" in args and "mapping_path" in args:
+            assert os.path.exists(args["sequencing_data_path"]) and os.path.exists(args["mapping_path"])
+            self._sequencing_data_path = args["sequencing_data_path"]
+            self._map  = pickle.load(open(args["mapping_path"],"rb")) #map: sequencing_record-->index_ints
+        elif "experiment_path" in args:
+            #need to derive sequencing_data_path and mapping_path from an experiment_path
+            assert os.path.exists(args["experiment_path"]) and os.path.isdir(args["experiment_path"])
+            self._sequencing_data_path = os.path.join(args["experiment_path"],"sequencing_data_link")
+            map_path = os.path.join(args["experiment_path"],"sequencing.map.pickle")
+            assert os.path.exists(map_path) and os.path.exists(self._sequencing_data_path)
+            self._map=pickle.load(open(map_path,"rb"))
+        else:
+            raise ValueError("Invalid arguments for sequencing_experiment fault injection")
         tmp_map = {}
         for sub_map in self._map: #push things into one map that should be indexed by index_ints of the DNAStrand
             tmp_map={**tmp_map,**self._map[sub_map]}
-        self._map=tmp_map
-
-        #TODO: should get rid of this, make the initial mapping different at the mapping pass so this inefficient step is not needed
-        tmp_map={}
-        for k in self._map:
-            for _ in self._map[k]:
-                tmp_map[_]=k
-        self._map=tmp_map
-        
+        self._map=tmp_map      
     def sequence_run_injection(self):
         out_list=[]
         input_library_map={}
@@ -85,7 +87,6 @@ class sequencing_experiment(BaseFI):
             out_list.append(FaultDNA(lib_strand,seq_strand))
         assert len(out_list)>0
         return out_list
-
     def Run(self):
         return self.sequence_run_injection()
   
