@@ -9,6 +9,7 @@ from dnastorage.codec.base_conversion import unpack_bytes_to_indexes
 from dnastorage.primer.primer_util import *
 import copy
 import numpy as np
+import Levenshtein as ld
 import sys, traceback
 
 
@@ -76,6 +77,7 @@ class DNAErrorProbe(BaseCodec,Probe):
             self._name = probe_name
         self._initial_dna_attr = "{}::init_dna".format(self._name)
         self._total_error_rate_key = "{}::total_hamming_errors".format(self._name)
+        self._total_ed_rate_key = "{}::total_edit_errors".format(self._name)
         self._strands_seen_key = "{}::total_strands".format(self._name)
         self._correct_key="{}::correct_strands".format(self._name)
         self._incorrect_key="{}::incorrect_strands".format(self._name)
@@ -86,13 +88,8 @@ class DNAErrorProbe(BaseCodec,Probe):
         return s
 
     def _decode(self,s):
-        if not isinstance(s,FaultDNA): #only analyze fault strands
-            return
-        if not isinstance(s,BaseDNA): #only analyze strands
-            return
-        if s.dna_strand is None: #strand not passing checks
-            return 
-        if not hasattr(s,self._initial_dna_attr): return s #might have a leak over from some other encoding/decoding pipeline, cannot rely on this being true always, best compromise is to return
+        if not hasattr(s,self._initial_dna_attr) or s.dna_strand is None:
+            return s 
         base_dna = getattr(s,self._initial_dna_attr)
         fault_dna = s.dna_strand
         #now analyze error rates b/w the base and fault
@@ -104,8 +101,13 @@ class DNAErrorProbe(BaseCodec,Probe):
         else:
             stats.inc(self._incorrect_key)
         stats.inc(self._strands_seen_key)
-        return s
 
+        #do edit distance analysis
+        editops= ld.editops(base_dna,fault_dna)
+        for operation,base_index,fault_index in editops:
+            if base_index<len(base_dna):
+                stats.inc(self._total_ed_rate_key,dflt=np.zeros((len(base_dna),)),coords=base_index)
+        return s
 
 
 class FilteredDNACounter(BaseCodec,Probe):
@@ -120,11 +122,14 @@ class FilteredDNACounter(BaseCodec,Probe):
         self._strands_filtered_key = "{}::filtered_strand".format(self._name)
         #stats[self._strands_filtered_key]=0
         FilteredDNACounter.probe_id+=1
+
     def _encode(self,s):
         return s
 
     def _decode(self,s):
         if s.dna_strand is None and s.is_reversed:
+            stats.inc(self._strands_filtered_key)
+        elif s.dna_strand is None and hasattr(s,"is_nanopore") and s.is_nanopore:
             stats.inc(self._strands_filtered_key)
         return s
 

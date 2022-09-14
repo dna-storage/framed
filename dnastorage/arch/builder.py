@@ -44,7 +44,6 @@ def check_required(required, **kwargs):
         print ("{} {} missing but required to build a {}.".format(missing_s,verb,title))
         print ("Warning: Hard coded assumptions may not match expectations.")
 
-        
 def RS_Codeword_hedges_pipeline(pf,**kwargs):
     blockSizeInBytes=kwargs.get("blockSizeInBytes",150*15)
     strandSizeInBytes=kwargs.get("strandSizeInBytes",15)
@@ -69,7 +68,6 @@ def RS_Codeword_hedges_pipeline(pf,**kwargs):
     #set up the comma free codebook
     codebook = codebook_func()
     syncbook = syncbook_func()
-    
     commafree = CodewordHedgesPipeline(codebook,syncbook,sync_period,parity_period=parity_period,
                                        pad_bits=pad_bits,parity_history=parity_history,custom_reward=reward) #use hedges-like decoding method
     
@@ -91,14 +89,12 @@ def customize_RS_CFC8_pipeline(pf,**kwargs):
     required = ["blockSizeInBytes","strandSizeInBytes","innerECC",\
                 "dna_length"]
     check_required(required,**kwargs)
-    
     blockSizeInBytes=kwargs.get("blockSizeInBytes",150*15)
     strandSizeInBytes=kwargs.get("strandSizeInBytes",15)
     primer5 = kwargs.get("primer5","")
     primer3 = kwargs.get("primer3","")
     innerECC = kwargs.get("innerECC",0)
     outerECCStrands = kwargs.get("outerECCStrands",255-blockSizeInBytes//strandSizeInBytes)
-    
     cut = kwargs.get("cut","")
     fault_injection= kwargs.get("fi",False)
     upper_strand_length = kwargs.get("dna_length",208)
@@ -127,7 +123,6 @@ def SDC_pipeline(pf,**kwargs):
     required = ["blockSizeInBytes","strandSizeInBytes","hedges_rate",\
                 "dna_length"]
     check_required(required,**kwargs) 
-        
     fault_injection= kwargs.get("fi",False)
     blockSizeInBytes=kwargs.get("blockSizeInBytes",180*15)
     strandSizeInBytes=kwargs.get("strandSizeInBytes",15)
@@ -137,7 +132,6 @@ def SDC_pipeline(pf,**kwargs):
     rt_pcr_seq =kwargs.get("RT-PCR","CGCTAGCTCTAGAGATCTAG")
     check_primers = kwargs.get("check_primers",False)
     other_strands=kwargs.get("other_strands",[])
-    
     hedges_rate = kwargs.get("hedges_rate",1/2.)
     # pad_bits and prev_bits should match by default:
     hedges_pad_bits=kwargs.get("hedges_pad",8)
@@ -193,8 +187,8 @@ def Basic_Hedges_Pipeline(pf,**kwargs):
     required = ["blockSizeInBytes","strandSizeInBytes","hedges_rate",\
                 "dna_length", "crc_type", "reverse_payload"]
     check_required(required,**kwargs) 
-        
     fault_injection= kwargs.get("fi",False)
+    sequencing_run=kwargs.get("seq",False)
     blockSizeInBytes=kwargs.get("blockSizeInBytes",180*15)
     strandSizeInBytes=kwargs.get("strandSizeInBytes",15)
     primer5 = kwargs.get("primer5",'A'*20) #basic 5' primer region
@@ -204,7 +198,6 @@ def Basic_Hedges_Pipeline(pf,**kwargs):
     upper_strand_length = kwargs.get("dna_length",300) #if strands longer than this value, throw exceptions
     pipeline_title=kwargs.get("title","") #name for the pipeline
     barcode = kwargs.get("barcode",tuple()) #specific barcode for the pipeline
-
     hedges_rate = kwargs.get("hedges_rate",1/2.) #rate of hedges encode/decode
     # pad_bits and prev_bits should match by default:
     hedges_pad_bits=kwargs.get("hedges_pad",8)
@@ -212,7 +205,6 @@ def Basic_Hedges_Pipeline(pf,**kwargs):
     hedges_guesses = kwargs.get("hedges_guesses",100000)
     try_reverse = kwargs.get("try_reverse",False) #should the reverse be tried, for hedges decoding, set this if primer3/primer5 are not used
     
-
     if "outerECCStrands" not in kwargs and "blockSizeInBytes" in kwargs:
         outerECCStrands = 255 - blockSizeInBytes//strandSizeInBytes
     else:
@@ -254,8 +246,10 @@ def Basic_Hedges_Pipeline(pf,**kwargs):
         inner_pipeline = (index_probe,crc,hedges_probe,hedges)
         dna_counter_probe = FilteredDNACounter(probe_name=pipeline_title)
         DNA_pipeline=(dna_counter_probe,)+DNA_pipeline
-
-   
+    if sequencing_run:
+        DNA_error_probe = DNAErrorProbe(probe_name="{}".format(pipeline_title))
+        DNA_pipeline =(DNA_error_probe,)+DNA_pipeline
+        
     return pipeline.PipeLine(out_pipeline+inner_pipeline+DNA_pipeline,consolidator,blockSizeInBytes,strandSizeInBytes,upper_strand_length,1,packetizedfile=pf,
                             barcode=barcode)
 

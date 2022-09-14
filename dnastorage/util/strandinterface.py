@@ -6,7 +6,6 @@ from dnastorage.strand_representation import *
 import h5py
 import re
 
-
 logger = logging.getLogger("dnastorage.util.strandinterface")
 logger.addHandler(logging.NullHandler())
 
