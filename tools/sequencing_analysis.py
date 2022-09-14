@@ -105,7 +105,7 @@ if __name__=="__main__":
         stats.clear()
         for s in all_stats: stats.aggregate(s)
         stats["strands_not_indexed"]  = len(strand_interface.strands)
-        filtered_strand_lengths = np.zeros((len(strand_interface.strands),))
+        filtered_strand_lengths =[len(s.dna_strand) for s in strand_interface.strands]
         stats["unindexed_length:average"]=np.average(filtered_strand_lengths)
         stats["uindexed_length:stdev"]=np.std(filtered_strand_lengths)
         #write out statistics
