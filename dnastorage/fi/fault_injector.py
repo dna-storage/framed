@@ -80,10 +80,11 @@ class sequencing_experiment(BaseFI):
             input_library_map[strand.index_ints] = strand
         #assume fastq file for now
         for record in SeqIO.parse(self._sequencing_data_path,"fastq"):
-            seq_strand = re.subn("U","T",str(record.seq))
+            seq_strand,subs = re.subn("U","T",str(record.seq))
             index_ints = self._map.get(record.id,None)
             if index_ints is None: continue #dead strands
             lib_strand=input_library_map[index_ints]
+            print(seq_strand)
             out_list.append(FaultDNA(lib_strand,seq_strand))
         assert len(out_list)>0
         return out_list
