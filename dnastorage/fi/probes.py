@@ -77,7 +77,12 @@ class DNAErrorProbe(BaseCodec,Probe):
             self._name = probe_name
         self._initial_dna_attr = "{}::init_dna".format(self._name)
         self._total_error_rate_key = "{}::total_hamming_errors".format(self._name)
+        #keys for edit distance
         self._total_ed_rate_key = "{}::total_edit_errors".format(self._name)
+        self._inser_ed_rate_key = "{}::insertion_edit_errors".format(self._name)
+        self._del_ed_rate_key = "{}::deletion_edit_errors".format(self._name)
+        self._sub_ed_rate_key = "{}::substitution_edit_errors".format(self._name)
+        
         self._strands_seen_key = "{}::total_strands".format(self._name)
         self._correct_key="{}::correct_strands".format(self._name)
         self._incorrect_key="{}::incorrect_strands".format(self._name)
@@ -107,6 +112,12 @@ class DNAErrorProbe(BaseCodec,Probe):
         for operation,base_index,fault_index in editops:
             if base_index<len(base_dna):
                 stats.inc(self._total_ed_rate_key,dflt=np.zeros((len(base_dna),)),coords=base_index)
+                if operation=="delete":
+                    stats.inc(self._del_ed_rate_key,dflt=np.zeros((len(base_dna),)),coords=base_index)
+                elif operation=="insert":
+                    stats.inc(self._sub_ed_rate_key,dflt=np.zeros((len(base_dna),)),coords=base_index)
+                elif operation=="replace":
+                    stats.inc(self._inser_ed_rate_key,dflt=np.zeros((len(base_dna),)),coords=base_index)
         return s
 
 

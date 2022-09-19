@@ -19,7 +19,6 @@ class NpEncoder(json.JSONEncoder): #this class should help with encoding numpy d
             return obj.tolist()
         return super(NpEncoder, self).default(obj)
 
-    
 def find_data_paths(path,out_list):
     pickle_path = False
     for p in os.listdir(path):
@@ -31,10 +30,15 @@ def find_data_paths(path,out_list):
     if pickle_path: out_list.append(path)
 
 
-def load_json_dict(path):
+def load_json_dict(path,prefix=None):
     if not os.path.exists(path):
         return dict()
-    return json.load(open(path,'r'))
+    if prefix:
+        old_dict = json.load(open(path,'r'))
+        new_dict = {"{}::{}".format(prefix,key):old_dict[key] for key in old_dict}
+        return new_dict
+    else:
+        return json.load(open(path,'r'))
 
 def load_pickle_dict(path):
     assert os.path.exists(path) and "Path does not exist when loading pickle file {}".format(path)
@@ -70,19 +74,21 @@ if __name__=="__main__":
 
     final_dicts=[]
     for p in out_list:
-        all_dicts=[]
-        all_dicts.append(load_json_dict(os.path.join(p,"encoder_params.json")))
-        all_dicts.append(load_json_dict(os.path.join(p,"distribution_params.json")))
-        all_dicts.append(load_json_dict(os.path.join(p,"dna_process.json")))
-        all_dicts.append(load_json_dict(os.path.join(p,"fault_params.json")))
-        all_dicts.append(load_pickle_dict(os.path.join(p,"fi.pickle")))
-        #all_dicts.append(load_json_dict(os.path.join(p,"header_params.json"))) TODO: this needs to be fixed so it does not overwrite encoder params
-        all_dicts.append(load_json_dict(os.path.join(p,"sim_params.json")))
-        complete_dict = {}
-        for x in all_dicts: complete_dict.update(x)
-        final_dicts.append(complete_dict)
-
-
+        try:
+            all_dicts=[]
+            all_dicts.append(load_json_dict(os.path.join(p,"encoder_params.json"),prefix="encoder"))
+            all_dicts.append(load_json_dict(os.path.join(p,"distribution_params.json")))
+            all_dicts.append(load_json_dict(os.path.join(p,"dna_process.json")))
+            all_dicts.append(load_json_dict(os.path.join(p,"fault_params.json")))
+            all_dicts.append(load_pickle_dict(os.path.join(p,"fi.pickle")))
+            all_dicts.append(load_json_dict(os.path.join(p,"header_params.json"),prefix="header"))
+            all_dicts.append(load_json_dict(os.path.join(p,"sim_params.json")))
+            complete_dict = {}
+            for x in all_dicts: complete_dict.update(x)
+            final_dicts.append(complete_dict)
+        except:
+            continue
+        
     out_df = pd.DataFrame(final_dicts,dtype=object).fillna('')
     out_df.to_csv(os.path.join(args.path,"dataframe.csv"),index=False)
     out_df.to_pickle(os.path.join(args.path,"dataframe.pickle"))

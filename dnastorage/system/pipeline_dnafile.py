@@ -3,6 +3,7 @@ from dnastorage.system.header_class import *
 from dnastorage.strand_representation import *
 from dnastorage.util.stats import stats
 from dnastorage.util.strandinterface import *
+from dnastorage.util.mpi_utils import *
 import io
 import sys
 import copy
@@ -12,21 +13,6 @@ logger = logging.getLogger('dna.storage.system.dnafile')
 logger.addHandler(logging.NullHandler())
 
 DATA_BARCODE=0xCC
-
-def communicate_strands(strands,mpi):
-    chunked_strands=[]
-    chunk_size = len(strands)//mpi.size
-    leftover_strands = len(strands)%mpi.size
-    if mpi.rank==0:
-        for index, i in enumerate(range(0,len(strands),chunk_size)):
-            end_point = i+chunk_size
-            if index==mpi.size-1: end_point+=leftover_strands
-            chunked_strands.append(strands[i:end_point])
-            if index==mpi.size-1: break
-    logger.info("Rank {} at scatter".format(mpi.rank))
-    return_strands=mpi.scatter(chunked_strands,root=0)
-    logger.info("Rank {} has {} strands after scatter".format(mpi.rank,len(return_strands)))
-    return return_strands
 
 
 def check_mpi(comm): #check that required modules are loaded for mpi communication
@@ -49,7 +35,7 @@ class DNAFilePipeline:
             check_mpi(mpi)
             strands = strand_interface.strands
             if mpi: #communicate out strands to different processes
-                strands = communicate_strands(strands,mpi)
+                strands = strand_scatter(strands,mpi)
             assert (strands is not None) and len(strands)>0
             header = Header(header_version,header_params,barcode_suffix=file_barcode,mpi=mpi)
             #initialize header pipeline

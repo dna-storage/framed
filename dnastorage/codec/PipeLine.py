@@ -8,6 +8,7 @@ from dnastorage.exceptions import *
 from dnastorage.codec.base_conversion import *
 from dnastorage.strand_representation import *
 from dnastorage.primer.primer_util import *
+from dnastorage.util.mpi_utils import *
 from dnastorage.codec_types import *
 from io import *
 import random
@@ -175,14 +176,10 @@ class PipeLine(EncodePacketizedFile,DecodePacketizedFile):
 
         #IF MPI: should get strands back to master
         if self.mpi:
-            logger.info("Rank {} communicating {} strands back to rank 0".format(self.mpi.Get_rank(),len(self._decode_strands)))
-            self._decode_strands = self.mpi.gather(self._decode_strands,root=0)
-            logger.info("Finished strand gather")
+            self._decode_strands=strand_gather(self._decode_strands,self.mpi)
             if self.mpi.Get_rank()!=0:
                 logger.info("Rank {} leaving pipeline".format(self.mpi.Get_rank()))
                 return #mpi support only up to the outer code
-            self._decode_strands = [_ for sublist in self._decode_strands for _ in sublist] 
-            logger.info("Rank {} has {} strands after gather communication".format(self.mpi.Get_rank(),len(self._decode_strands)))
 
         if isinstance(self._consolidator,CWConsolidate):
             self._decode_strands=self._consolidator.decode(self._decode_strands)
