@@ -246,9 +246,11 @@ def Basic_Hedges_Pipeline(pf,**kwargs):
         inner_pipeline = (index_probe,crc,hedges_probe,hedges)
         dna_counter_probe = FilteredDNACounter(probe_name=pipeline_title)
         DNA_pipeline=(dna_counter_probe,)+DNA_pipeline
-    if sequencing_run:
-        DNA_error_probe = DNAErrorProbe(probe_name="{}".format(pipeline_title))
-        DNA_pipeline =(DNA_error_probe,)+DNA_pipeline
+        if sequencing_run:
+            dna_hook_probe = HookProbe("dna_strand",hedges_probe.name)
+            hedges_probe.dna_attr=dna_hook_probe.name
+            DNA_error_probe = DNAErrorProbe(probe_name=pipeline_title)
+            DNA_pipeline =(DNA_error_probe,dna_hook_probe)+DNA_pipeline
         
     return pipeline.PipeLine(out_pipeline+inner_pipeline+DNA_pipeline,consolidator,blockSizeInBytes,strandSizeInBytes,upper_strand_length,1,packetizedfile=pf,
                             barcode=barcode)

@@ -28,15 +28,14 @@ class DNAErrorProbe(BaseCodec,Probe):
         else:
             self.name = probe_name
         self._initial_dna_attr = "{}::init_dna".format(self.name)
-        self._total_error_rate_key = "{}::total_hamming_errors".format(self.name)
         #keys for edit distance
         self._total_ed_rate_key = "{}::total_edit_errors".format(self.name)
         self._inser_ed_rate_key = "{}::insertion_edit_errors".format(self.name)
         self._del_ed_rate_key = "{}::deletion_edit_errors".format(self.name)
         self._sub_ed_rate_key = "{}::substitution_edit_errors".format(self.name)
-        self._strands_seen_key = "{}::total_strands".format(self.name)
-        self._correct_key="{}::correct_strands".format(self.name)
-        self._incorrect_key="{}::incorrect_strands".format(self.name)
+        self._DNA_strands_seen_key = "{}::ed_total_strands".format(self.name)
+        self._DNA_correct_key="{}::ed_correct_strands".format(self.name)
+        self._DNA_incorrect_key="{}::ed_incorrect_strands".format(self.name)
         DNAErrorProbe.probe_id+=1
     def _encode(self,s):
         setattr(s,self._initial_dna_attr,copy.copy(s.dna_strand)) #take a snapshot of the dna under an attribute specific to this isntantiation
@@ -47,15 +46,11 @@ class DNAErrorProbe(BaseCodec,Probe):
             return s 
         base_dna = getattr(s,self._initial_dna_attr)
         fault_dna = s.dna_strand
-        #now analyze error rates b/w the base and fault
-        for i in range(len(base_dna)):
-            if i>=len(fault_dna) or base_dna[i]!=fault_dna[i]:
-                stats.inc(self._total_error_rate_key,dflt=np.zeros((len(base_dna),)),coords=i)
         if(fault_dna==base_dna):
-            stats.inc(self._correct_key)
+            stats.inc(self._DNA_correct_key)
         else:
-            stats.inc(self._incorrect_key)
-        stats.inc(self._strands_seen_key)
+            stats.inc(self._DNA_incorrect_key)
+        stats.inc(self._DNA_strands_seen_key)
         #do edit distance analysis
         editops= ld.editops(base_dna,fault_dna)
         for operation,base_index,fault_index in editops:
@@ -86,7 +81,7 @@ class CodewordErrorRateProbe(DNAErrorProbe):
         self._incorrect_key="{}::incorrect_strands".format(self.name)
         self._incorrect_not_none="{}::incorrect_strands_not_none".format(self.name)
         self._first_byte_error="{}::first_error".format(self.name)
-        self._initial_dna_attr = dna_hook
+        self.dna_attr = dna_hook
         CodewordErrorRateProbe.probe_id+=1
     def _encode(self,s):
         setattr(s,self._initial_codeword_attr,copy.copy(s.codewords)) #take a snapshot of the codewords under an attribute specific to this isntantiation
@@ -107,12 +102,20 @@ class CodewordErrorRateProbe(DNAErrorProbe):
                 stats.inc(self._incorrect_not_none,dflt=np.zeros((len(base_codewords),)),coords=i)
         if(fault_codewords==base_codewords):
             stats.inc(self._correct_key)
-            if self._initial_dna_attr: DNAErrorProbe._decode(self,s) #call to the dna error rate analysis
+            if self._initial_dna_attr:
+                DNAErrorProbe._decode(self,s) #call to the dna error rate analysis
         else:
             stats.inc(self._incorrect_key)
         stats.inc(self._strands_seen_key)
         
         return s
+
+    @property
+    def dna_attr(self):
+        return self._initial_dna_attr
+    @dna_attr.setter
+    def dna_attr(self,attr):
+        self._initial_dna_attr=attr
 
 
 class FilteredDNACounter(BaseCodec,Probe):
@@ -237,7 +240,7 @@ class HookProbe(BaseCodec,Probe):
         HookProbe.probe_id+=1
     def _encode(self,s):
         assert hasattr(s,self._strand_attr)
-        setattr(s,self.name,getattr(s,self._strand_attr)) #take a snapshot of an attribute in the dnastrand
+        setattr(s,self.name,copy.copy(getattr(s,self._strand_attr))) #take a snapshot of an attribute in the dnastrand
         return s
     def _decode(self,s):
         return s
