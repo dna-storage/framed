@@ -55,7 +55,6 @@ class BaseFI:
 class sequencing_experiment(BaseFI):
     def __init__(self,**args):
         BaseFI.__init__(self)
-        #TODO: Take a single directory and derive neccessary paths from that, should make combining parameters easier
         if "sequencing_data_path" in args and "mapping_path" in args:
             assert os.path.exists(args["sequencing_data_path"]) and os.path.exists(args["mapping_path"])
             self._sequencing_data_path = args["sequencing_data_path"]
@@ -119,30 +118,30 @@ class fixed_rate(BaseFI):
     def inject_faults(self,inject_sites):
         out_list=self._input_library[:]
         for strand_indexes in inject_sites:
+            library_strand=self._input_library[strand_indexes].dna_strand
+            new_strand = self._input_library[strand_indexes].dna_strand
             for fault_indexes in sorted(inject_sites[strand_indexes],reverse=True):
                 #substitution error
-                library_strand=self._input_library[strand_indexes].dna_strand
-                new_strand=""
                 if inject_sites[strand_indexes][fault_indexes] == '0':
                     #chose a random nucleotide that is different from the current one
-                    sub_nucleotide=random.choice(sub_dict[library_strand[fault_indexes]])
+                    sub_nucleotide=random.choice(sub_dict[new_strand[fault_indexes]])
                     #add on some extra information to the injection sites that indicates the nucleotide used for substitution
                     inject_sites[strand_indexes][fault_indexes]='0-'+sub_nucleotide
-                    new_strand=library_strand[0:fault_indexes]+sub_nucleotide+library_strand[fault_indexes+1:len(library_strand)]
+                    new_strand=new_strand[0:fault_indexes]+sub_nucleotide+new_strand[fault_indexes+1:len(new_strand)]
                 #deletion error
                 elif inject_sites[strand_indexes][fault_indexes] == '1':
                     #add on some extra information to the injection sites, append the nucleotide that was removed from the original strand 
-                    inject_sites[strand_indexes][fault_indexes]='1-'+library_strand[fault_indexes]
-                    new_strand=library_strand[0:fault_indexes]+library_strand[fault_indexes+1:len(library_strand)]
+                    inject_sites[strand_indexes][fault_indexes]='1-'+new_strand[fault_indexes]
+                    new_strand=new_strand[0:fault_indexes]+new_strand[fault_indexes+1:len(new_strand)]
                 #insertion error
                 elif inject_sites[strand_indexes][fault_indexes] == '2':
                     insert_nucleotide=random.choice(nuc_list)
                     inject_sites[strand_indexes][fault_indexes]='2-'+insert_nucleotide
-                    new_strand=library_strand[0:fault_indexes]+insert_nucleotide+library_strand[fault_indexes:len(library_strand)]
+                    new_strand=new_strand[0:fault_indexes]+insert_nucleotide+new_strand[fault_indexes:len(new_strand)]
                 else:
                     raise ValueError()
-                assert len(new_strand)>0
-                out_list[strand_indexes]=FaultDNA(self._input_library[strand_indexes],new_strand)
+            assert len(new_strand)>0
+            out_list[strand_indexes]=FaultDNA(self._input_library[strand_indexes],new_strand)
         return out_list
     
 #class that contains functionality for missing strands fault model

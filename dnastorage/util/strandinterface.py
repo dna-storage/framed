@@ -99,7 +99,7 @@ class Fast5Interface(BaseStrandInterface):
             tmp_strands.append(BaseDNA(dna_strand=DNA))
             tmp_strands[-1].record_id = root_group[key]["Raw"].attrs["read_id"].decode("utf-8")
             tmp_strands[-1].quality_scores=quality_scores
-            tmp_strands[-1].is_nanopore=True
+            tmp_strands[-1].is_RNA=True
             tmp_strands[-1].channel_id = int(root_group[key]["channel_id"].attrs["channel_number"])
         return tmp_strands
 

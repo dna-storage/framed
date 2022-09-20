@@ -6,6 +6,7 @@ logger.addHandler(logging.NullHandler())
 """
 Utils to help with sending information across processes in the DNA storage systems.
 """
+
 def communicate_strands(strands,mpi):
     logger.info("Rank {} has {} strands at beginning of communication".format(mpi.rank,len(strands)))
     chunked_strands=[]
@@ -23,7 +24,6 @@ def communicate_strands(strands,mpi):
     return_strands=mpi.scatter(chunked_strands,root=0)
     logger.info("Rank {} has {} strands after communicate_strands".format(mpi.rank,len(return_strands)))
     return return_strands
-
 
 def strand_scatter(strands,comm): #handle the scattering of a large set of strands to avoid overflow
     if comm.rank==0:logger.info("{} Total strands need to be communicated".format(len(strands)))

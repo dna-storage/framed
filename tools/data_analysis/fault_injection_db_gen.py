@@ -62,6 +62,7 @@ if __name__=="__main__":
 
     parser = argparse.ArgumentParser(description="Bring fault injection data together into a dataframe")                                                                                   
     parser.add_argument('--path',required=True,help="Path to generated data")
+    parser.add_argument('--name',required=True,help="name of dataframe")
 
     args = parser.parse_args()
 
@@ -90,6 +91,6 @@ if __name__=="__main__":
             continue
         
     out_df = pd.DataFrame(final_dicts,dtype=object).fillna('')
-    out_df.to_csv(os.path.join(args.path,"dataframe.csv"),index=False)
-    out_df.to_pickle(os.path.join(args.path,"dataframe.pickle"))
+    out_df.to_csv(os.path.join(args.path,"{}.csv".format(args.name)),index=False)
+    out_df.to_pickle(os.path.join(args.path,"{}.pickle".format(args.name)))
     

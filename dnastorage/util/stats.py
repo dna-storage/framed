@@ -134,10 +134,12 @@ class dnastats(object):
                     self.all_stats[x]=self.all_stats[x]+other_stats.all_stats[x]
 
     def _aggregate_dict(self,d1,d2):
-        merged_dict = {**d1,**d2}
-        for key,value in merged_dict.items():
-            if key in d1 and key in d2:
-                merged_dict[key]+=d1[key]
+        merged_dict = d1
+        for key,value in d2.items():
+            if key in d1:
+                merged_dict[key]+=d2[key]
+            else:
+                merged_dict[key]=d2[key]
         return merged_dict
     
             

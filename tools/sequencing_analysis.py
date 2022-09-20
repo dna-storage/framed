@@ -5,6 +5,7 @@ from dnastorage.system.pipeline_dnafile import *
 from dnastorage.system.formats import *
 from dnastorage.util.strandinterface import *
 from dnastorage.util.mpi_logger import *
+from dnastorage.util.mpi_utils import *
 from dnastorage.codec.base_conversion import convertIntToBytes,convertBytesToInt
 
 import logging
@@ -93,14 +94,16 @@ if __name__=="__main__":
                                         header_version=header_version,encoder_params=encoder_params,
                                         fsmd_header_filename=header_header_file,file_barcode=barcode,
                                         payload_header_filename = payload_header_file,mpi=world_comm,strand_interface=strand_interface)
+
         #recoordinate strands
-        gather_strands = world_comm.gather(read_dna.get_returned_strands(),root=0)
-        if is_master(world_comm):
-            strands =[]
-            for _ in gather_strands: strands+=_
-            strand_interface.strands = strands
+        gather_strands=strand_gather(read_dna.get_returned_strands(),world_comm)
+        strand_interface.strands=gather_strands
+        logger.info("Recoordinated strands")
+        
     #merge together stats that were collecting during decoding for all processes
+    logger.info("Gathering stats")
     all_stats = world_comm.gather(stats,root=0)
+    logger.info("Stats have been gathered")
     if is_master(world_comm):
         stats.clear()
         for s in all_stats: stats.aggregate(s)

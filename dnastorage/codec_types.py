@@ -31,4 +31,10 @@ class DNAConsolidate(BaseConversionType):
 class Probe(BaseConversionType):
     def __init__(self):
         pass
+    @property
+    def name(self):
+        return self._name
+    @name.setter
+    def name(self,n):
+        self._name=n
     
