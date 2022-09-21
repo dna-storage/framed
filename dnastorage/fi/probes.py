@@ -18,6 +18,26 @@ logger = logging.getLogger("dnastorage.fi.probes")
 logger.addHandler(logging.NullHandler())
 
 
+def calculate_forward_burst(editops,index,edit_type):
+    current_pos = index
+    next_pos = current_pos+1
+    total_burst=0
+    while next_pos<len(editops) and editops[next_pos][1]==(editops[current_pos][1]+1) and editops[next_pos][0]==edit_type:
+        total_burst+=1
+        current_pos=next_pos
+        next_pos+=1
+    return total_burst
+
+def calculate_reverse_burst(editops,index,edit_type):
+    total_burst=0
+    current_pos=index
+    next_pos=current_pos-1
+    while next_pos>0 and editops[next_pos][1]==(editops[current_pos][1]-1) and editops[next_pos][0]==edit_type:
+        total_burst+=1
+        current_pos=next_pos
+        next_pos-=1
+    return total_burst
+
 class DNAErrorProbe(BaseCodec,Probe):
     #This probe should be placed after a single strand codec so that analysis can be performed 
     probe_id=0
@@ -29,13 +49,15 @@ class DNAErrorProbe(BaseCodec,Probe):
             self.name = probe_name
         self._initial_dna_attr = "{}::init_dna".format(self.name)
         #keys for edit distance
-        self._total_ed_rate_key = "{}::total_edit_errors".format(self.name)
-        self._inser_ed_rate_key = "{}::insertion_edit_errors".format(self.name)
-        self._del_ed_rate_key = "{}::deletion_edit_errors".format(self.name)
-        self._sub_ed_rate_key = "{}::substitution_edit_errors".format(self.name)
-        self._DNA_strands_seen_key = "{}::ed_total_strands".format(self.name)
-        self._DNA_correct_key="{}::ed_correct_strands".format(self.name)
-        self._DNA_incorrect_key="{}::ed_incorrect_strands".format(self.name)
+        self._total_ed_rate_key = "{}::total_edit_errors".format(self.name) #number of edits at a position of all types
+        self._inser_ed_rate_key = "{}::insertion_edit_errors".format(self.name) #number of insertions at a position
+        self._del_ed_rate_key = "{}::deletion_edit_errors".format(self.name) #number of deletions at a position
+        self._sub_ed_rate_key = "{}::substitution_edit_errors".format(self.name)#number of substitution at a position
+        self._DNA_strands_seen_key = "{}::ed_total_strands".format(self.name)#total strands that pass through counter
+        self._DNA_correct_key="{}::ed_correct_strands".format(self.name)#number of strands with 0 base errors
+        self._DNA_incorrect_key="{}::ed_incorrect_strands".format(self.name)#number of strands with at least 1 base error
+        self._DNA_del_burst_len_key = "{}::del_burst_length".format(self.name)#length of error for deletions (considers forward and backward from a location)
+        self._DNA_del_burst_rate_key = "{}::del_burst_rate".format(self.name)#given a deletion error, the number of dels that are bursts
         DNAErrorProbe.probe_id+=1
     def _encode(self,s):
         setattr(s,self._initial_dna_attr,copy.copy(s.dna_strand)) #take a snapshot of the dna under an attribute specific to this isntantiation
@@ -53,11 +75,16 @@ class DNAErrorProbe(BaseCodec,Probe):
         stats.inc(self._DNA_strands_seen_key)
         #do edit distance analysis
         editops= ld.editops(base_dna,fault_dna)
-        for operation,base_index,fault_index in editops:
+        for edit_op_index,(operation,base_index,fault_index) in enumerate(editops):
             if base_index<len(base_dna):
                 stats.inc(self._total_ed_rate_key,dflt=np.zeros((len(base_dna),)),coords=base_index)
                 if operation=="delete":
                     stats.inc(self._del_ed_rate_key,dflt=np.zeros((len(base_dna),)),coords=base_index)
+                    forward_burst = calculate_forward_burst(editops,edit_op_index,"delete")
+                    reverse_burst = calculate_reverse_burst(editops,edit_op_index,"delete")
+                    total_burst=forward_burst+reverse_burst
+                    stats.inc(self._DNA_del_burst_len_key,i=total_burst,dflt=np.zeros((len(base_dna),)),coords=base_index)
+                    if total_burst>0: stats.inc(self._DNA_del_burst_rate_key,dflt=np.zeros((len(base_dna),)),coords=base_index)
                 elif operation=="insert":
                     stats.inc(self._sub_ed_rate_key,dflt=np.zeros((len(base_dna),)),coords=base_index)
                 elif operation=="replace":

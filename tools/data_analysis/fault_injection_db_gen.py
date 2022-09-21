@@ -46,6 +46,7 @@ def load_pickle_dict(path):
     #expand arrays to make pandas processing easier
     additional_entries={}
     name_deletions=[]
+    """
     for item in data_dict:
         if isinstance(data_dict[item],np.ndarray):
             base_name = item
@@ -53,7 +54,7 @@ def load_pickle_dict(path):
                 name = "{}::{}".format(base_name,index)
                 additional_entries[name]=i
             name_deletions.append(item)
-    #for _ in name_deletions: del data_dict[_]
+    """
     data_dict.update(additional_entries)
     return data_dict
 
