@@ -6,7 +6,7 @@
 - [System Requirements](#system-requirements)
 - [Installation Guide](#installation-guide)
 - [Quick Start](#quick-start)
-- [License](#license)
+- [License](#hardware-requirements)
 - [Issues](https://github.ncsu.com/dna-based-storage/dnastorage/issues)
 
 # Overview
