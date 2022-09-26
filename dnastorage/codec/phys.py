@@ -244,12 +244,9 @@ class ReversePipeline(BaseCodec,DNAtoDNA):
     def _decode(self,strand):
         if strand.dna_strand is None: return strand
         strand.dna_strand = strand.dna_strand[::-1]
-        #logger.info("Reverse {}".format(strand.record_id))
-        #logger.info("Reverse Result {}".format(strand.dna_strand))
         return strand
 
 
-    
 class AppendSequencePipeline(AppendSequence,DNAtoDNA):
     def __init__(self,seq,CodecObj=None,Policy=None,isPrimer=False,ignore=False,handler="ed",search_range=50):
         AppendSequence.__init__(self,seq,CodecObj=CodecObj,Policy=Policy,isPrimer=isPrimer,handler=handler,search_range=search_range)
@@ -267,15 +264,34 @@ class AppendSequencePipeline(AppendSequence,DNAtoDNA):
         if strand_before==strand.dna_strand:
             strand.dna_strand = None
         return strand
- 
+
+
+
+
+
+"""
+Simple length filter that throws out DNA strands that are either too long or too short
+
+filter_length_lower: if DNA strand is less than this, throw out the strand
+filter_length_upper: if DNA strand is more than this, throw out the strand
+"""
+class DNALengthFilterPipeline(BaseCodec,DNAtoDNA): 
+    def __init__(self,filter_length_lower,filter_length_upper,CodecObj=None,Policy=None):
+        DNAtoDNA.__init__(self)
+        BaseCodec.__init__(self,CodecObj=CodecObj,Policy=Policy)
+        self._filter_length_lower = filter_length_lower
+        self._filter_length_upper = filter_length_upper
+    def _encode(self,strand):
+        return strand
+    def _decode(self,strand):
+        if strand.dna_strand is None: return strand
+        if len(strand.dna_strand)<self._filter_length_lower or len(strand.dna_strand)>self._filter_length_upper:
+            strand.dna_strand = None
+        return strand
 
 if __name__ == "__main__":
     import random
     
-    #cut = InsertMidSequence('AGATATAGGG',Policy=NoTolerance())
-    #pre = PrependSequence('AAAAAAAAAAAG',CodecObj=cut,Policy=NoTolerance())
-    #app = AppendSequence('CAAAAAAAAAAA',CodecObj=pre,Policy=NoTolerance())
-
     cut = InsertMidSequence('AGATATAGGG')
     pre = PrependSequence('TAAAGGAAAAAG',CodecObj=cut)
     app = AppendSequence( 'CAAAATATAAAA',CodecObj=pre)

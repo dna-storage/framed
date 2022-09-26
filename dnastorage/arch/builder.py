@@ -187,19 +187,33 @@ def Basic_Hedges_Pipeline(pf,**kwargs):
     required = ["blockSizeInBytes","strandSizeInBytes","hedges_rate",\
                 "dna_length", "crc_type", "reverse_payload"]
     check_required(required,**kwargs) 
+
+    #set up some fault injection/sequencing options
     fault_injection= kwargs.get("fi",False)
     sequencing_run=kwargs.get("seq",False)
+
+    #set strand size and block size bytes
     blockSizeInBytes=kwargs.get("blockSizeInBytes",180*15)
     strandSizeInBytes=kwargs.get("strandSizeInBytes",15)
+
+    #primers to append/prepend to the strand
     primer5 = kwargs.get("primer5",'A'*20) #basic 5' primer region
     primer3 =kwargs.get("primer3",'A'*20) #basic 3' primer region
     crc_type = kwargs.get("crc_type","strand") #location where to put the CRC check
     reverse_payload = kwargs.get("reverse_payload",False) #should the payload be reversed
-    upper_strand_length = kwargs.get("dna_length",300) #if strands longer than this value, throw exceptions
+    
+    #set lengths for checking strands that are encoded/decoded
+    upper_strand_length = kwargs.get("dna_length",300) #if strands longer than this value, throw exceptions (encode)
+    filter_upper_length = kwargs.get("filter_upper_length",float('inf'))
+    filter_lower_length = kwargs.get("filter_lower_length",float('-inf'))
+
+    #set some pipeline characteristics
     pipeline_title=kwargs.get("title","") #name for the pipeline
     barcode = kwargs.get("barcode",tuple()) #specific barcode for the pipeline
+
+
+    #set hedges parameters
     hedges_rate = kwargs.get("hedges_rate",1/2.) #rate of hedges encode/decode
-    # pad_bits and prev_bits should match by default:
     hedges_pad_bits=kwargs.get("hedges_pad",8)
     hedges_previous = kwargs.get("hedge_prev_bits",8)
     hedges_guesses = kwargs.get("hedges_guesses",100000)
@@ -210,7 +224,6 @@ def Basic_Hedges_Pipeline(pf,**kwargs):
     else:
         outerECCStrands = kwargs.get("outerECCStrands",255-180)
   
-    
     #Error correction components
     if "outerECCdivisor" not in kwargs:
         rsOuter = ReedSolomonOuterPipeline(blockSizeInBytes//strandSizeInBytes,outerECCStrands)
@@ -228,7 +241,7 @@ def Basic_Hedges_Pipeline(pf,**kwargs):
     #components related to DNA functionality
     p5 = PrependSequencePipeline(primer5,ignore=False,handler="align",search_range=200)
     p3 = AppendSequencePipeline(primer3,ignore=False,handler="align",search_range=200)
-
+    length_filter = DNALengthFilterPipeline(filter_lower_length,filter_upper_length)
     consolidator = SimpleMajorityVote()
     out_pipeline = (rsOuter,)
     inner_pipeline = (crc,hedges)
@@ -239,7 +252,9 @@ def Basic_Hedges_Pipeline(pf,**kwargs):
         DNA_pipeline = (r,p3,p5)
     else:
         DNA_pipeline = (p3,p5)
-        
+    
+    DNA_pipeline = (length_filter,)+DNA_pipeline #add filter to end of DNAtoDNA decoding
+    
     if fault_injection: #some counters for data collection
         index_probe = IndexDistribution(probe_name=pipeline_title,prefix_to_match=barcode)
         hedges_probe = CodewordErrorRateProbe(probe_name="{}::hedges".format(pipeline_title))
