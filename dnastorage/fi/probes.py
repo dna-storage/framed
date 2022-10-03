@@ -58,6 +58,8 @@ class DNAErrorProbe(BaseCodec,Probe):
         self._DNA_incorrect_key="{}::ed_incorrect_strands".format(self.name)#number of strands with at least 1 base error
         self._DNA_del_burst_len_key = "{}::del_burst_length".format(self.name)#length of error for deletions (considers forward and backward from a location)
         self._DNA_del_burst_rate_key = "{}::del_burst_rate".format(self.name)#given a deletion error, the number of dels that are bursts
+        self._DNA_strand_length_key="{}::strand_length_hist".format(self.name) #histogram for strand lengths 
+        stats.register_hist(self._DNA_strand_length_key)
         DNAErrorProbe.probe_id+=1
     def _encode(self,s):
         setattr(s,self._initial_dna_attr,copy.copy(s.dna_strand)) #take a snapshot of the dna under an attribute specific to this isntantiation
@@ -65,7 +67,8 @@ class DNAErrorProbe(BaseCodec,Probe):
 
     def _decode(self,s):
         if not hasattr(s,self._initial_dna_attr) or s.dna_strand is None:
-            return s 
+            return s
+        stats.append(self._DNA_strand_length_key,len(s.dna_strand))
         base_dna = getattr(s,self._initial_dna_attr)
         fault_dna = s.dna_strand
         if(fault_dna==base_dna):

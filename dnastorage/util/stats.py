@@ -21,7 +21,7 @@ class dnastats(object):
         self.all_stats = {} #dictionary for holding all stats
         self.formats = {} #formatting for statistics
         self.file_register={} #registration dictionary for separating outputs into different files
-        
+        self.hist_register={} #registration dictionary for condensing data into histograms, we use numpy histograms
     def set_fd(self, fd):
         self.fd = fd
     def set_pickle_fd(self,fd):
@@ -29,12 +29,11 @@ class dnastats(object):
         
     def register_file(self,stats_name,filename):
         self.file_register[stats_name]=filename
+    def register_hist(self,stats_name):
+        self.hist_register[stats_name]=None
 
     # Use inc to track and dump a counter. example:
     #    stats.inc("block::errors")
-    # If called 5 times, this will produce a log entry like this:
-    #    block::errors=5
-    #
     def inc(self, name, i=1, dflt=0,coords=None):
         if coords is None:self.all_stats[name] = self.all_stats.get(name,dflt) + i
         else:
@@ -70,6 +69,7 @@ class dnastats(object):
     def persist(self):
         main_stats = {}
         for key in self.all_stats:
+            if key in self.hist_register: self.all_stats[key]=np.histogram(self.all_stats[key],bins="auto")
             if key not in self.file_register: main_stats[key]=self.all_stats[key]
         if not (self.fd is None):
             if len(self.msg) > 0:
@@ -114,6 +114,7 @@ class dnastats(object):
     def aggregate(self,other_stats,copy_list=[]): #aggregate other_stats into this stats
         assert isinstance(other_stats,dnastats)
         self.file_register={**self.file_register,**other_stats.file_register}
+        self.hist_register={**self.hist_register,**other_stats.hist_register}
         """
         copy_list is understood as a list of keys that should just be copied between two stat.
         In order to allow the most flexibility these keys are understood as sub-strings. That is,
