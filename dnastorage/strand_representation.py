@@ -13,10 +13,10 @@ class BaseDNA(object):
         self._codewords=codewords
         self._index_ints=index_ints
         self._index_bytes=index_bytes
+        
     @property
     def dna_strand(self):
         return self._dna_strand
-
     @dna_strand.setter
     def dna_strand(self,DNA):
         self._dna_strand=DNA
@@ -24,7 +24,6 @@ class BaseDNA(object):
     @property
     def codewords(self):
         return self._codewords
-
     @codewords.setter
     def codewords(self,c):
         self._codewords=c
@@ -32,7 +31,6 @@ class BaseDNA(object):
     @property
     def index_ints(self):
         return self._index_ints
-
     @index_ints.setter
     def index_ints(self,index_ints):
         self._index_ints=index_ints
@@ -40,7 +38,6 @@ class BaseDNA(object):
     @property
     def index_bytes(self):
         return self._index_bytes
-
     @index_bytes.setter
     def index_bytes(self,index_bytes):
         self._index_bytes=index_bytes

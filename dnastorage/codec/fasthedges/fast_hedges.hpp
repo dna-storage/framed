@@ -166,12 +166,15 @@ public:
 
   double getInsPenalty(const std::string &buff = "") {
     return 1.0;
+    //return 1.81;
   }
   double getDelPenalty(const std::string &buff = "") {
     return 1.0;
+    //return 1.88;
   }
   double getSubPenalty(const std::string &buff = "") {
     return 1.0;
+    //return 1.69;
   }
 
   Reward(hr r=hr::one_half):rate(r),_wild_card(0){}

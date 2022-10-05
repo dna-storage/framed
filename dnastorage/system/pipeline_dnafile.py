@@ -52,6 +52,7 @@ class DNAFilePipeline:
                     logger.info("Rank {} Broadcasting header".format(mpi.rank))
                     h = mpi.bcast(h,root=0)
                     header.set_header_dict(h)
+                if h!=None: logger.info("Able to decode header from DNA")
                 if h==None: raise ValueError("Header failed to decode, trying file")  
             except Exception as e:
                 try:

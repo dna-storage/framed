@@ -84,16 +84,6 @@ class BaseOuterCodec(BaseCodec):
         self._total_sub_packets  = 1 #determines how many sub-packets there are at this level, helps with determining indexing 
         self._index_bits=None
 
-    def _decode(self,packets):
-        total_packets=[]
-        for key,item in sorted(packets.items(),key=lambda x: x[0]):
-            total_packets.append(item)
-        return_packet=[]
-        for p in total_packets[:self._num_data_sub_packets]:
-            return_packet+=p
-        return return_packet
-
-
     def _encode_header(self): #serialization for outer codecs
         buf=[]
         buf+=convertIntToBytes(self._index_bits,1)
@@ -144,9 +134,21 @@ class BaseOuterCodec(BaseCodec):
         if self._Obj != None:
             for s in sub_packets:
                 sub_packets[s] = self._Obj.decode(sub_packets[s])
-        packet=self._decode(sub_packets)
+
+        #put sub-packets in array format
+        tmp_packets=[]
+        for key,item in sorted(sub_packets.items(),key=lambda x: x[0]): #just sort packets to make it easier
+            tmp_packets.append(item)
+        sub_packets=tmp_packets
+        #error correct sub_packets
+        sub_packets=self._decode(sub_packets)
+        #build final correct packet to return
+        corrected_packet=[]
+        for p in sub_packets[:self._num_data_sub_packets]:
+            corrected_packet+=p
+            
         final_packet=[]
-        for s in packet:
+        for s in corrected_packet:
             if not self._zero_range == tuple()  and tuple(s.index_ints)[self._level-1:]>=self._zero_range[0] and tuple(s.index_ints)[self._level-1:]<=self._zero_range[1]:
                 continue
             else:

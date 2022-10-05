@@ -327,15 +327,11 @@ class ReedSolomonOuterPipeline(BaseOuterCodec):
     def _decode(self,packets):
         #decode a set of packets 
         #Need to get packets into the right order to unroll the encoding, basically will get messages the same way as encoding
-        total_packets=[] 
-        for key,item in sorted(packets.items(),key=lambda x: x[0]):
-            total_packets.append(item)
-        total_packets=total_packets[:self._total_sub_packets]
-        assert len(total_packets)>0
-        for i in range(0,len(total_packets[0])):
+        assert len(packets)>0
+        for i in range(0,len(packets[0])):
             strands=[]
-            for j in range(0,len(total_packets)):
-                strands.append(total_packets[j][i])
+            for j in range(0,self._total_sub_packets):
+                strands.append(packets[j][i])
             #now get messages
             assert len(strands)>0
             for byte_index in range(0,len(strands[0].codewords)):
@@ -366,11 +362,7 @@ class ReedSolomonOuterPipeline(BaseOuterCodec):
                 #write the corrected message back into strand classes
                 for s,m in zip(strands,corrected_message):
                     s.codewords[byte_index] = m
-        #create the original packet
-        return_packet=[]
-        for p in total_packets[:self._num_data_sub_packets]:
-            return_packet+=p
-        return return_packet
+        return packets
     
 class ReedSolomonOuterCodec(BaseCodec):
     """ReedSolomonOuterCodec takes a block of data as input and produces a new

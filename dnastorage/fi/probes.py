@@ -41,6 +41,7 @@ def calculate_reverse_burst(editops,index,edit_type):
 class DNAErrorProbe(BaseCodec,Probe):
     #This probe should be placed after a single strand codec so that analysis can be performed 
     probe_id=0
+    count=0
     def __init__(self,probe_name="",CodecObj=None):
         BaseCodec.__init__(self,CodecObj)
         if probe_name=="":
@@ -70,6 +71,9 @@ class DNAErrorProbe(BaseCodec,Probe):
             return s
         stats.append(self._DNA_strand_length_key,len(s.dna_strand))
         base_dna = getattr(s,self._initial_dna_attr)
+        if DNAErrorProbe.count<1:
+            DNAErrorProbe.count+=1
+            print("Base DNA: {}".format(base_dna))
         fault_dna = s.dna_strand
         if(fault_dna==base_dna):
             stats.inc(self._DNA_correct_key)
