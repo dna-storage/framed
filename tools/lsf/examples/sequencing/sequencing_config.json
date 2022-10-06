@@ -1,0 +1,36 @@
+{
+    "file_list":[
+	{
+	    "arch": "BasicHedges",
+	    "header_version":"0.5",
+	    "encoder_params":{
+		"primer3": "TTTCCTAAAGGTCGGGGGCA", 
+		"primer5": "TCGAAGGCGACAGAAGAGTCAAGGTTC",
+		"hedges_rate":0.167,
+		"crc_type":"index",
+		"strandSizeInBytes": 86,
+		"blockSizeInBytes": 86,
+		"hedges_guesses":["value_list",200000],
+		"outerECCStrands":0,
+		"dna_length": 100000, 
+		"title": "payload",
+		"fi": true,
+		"try_reverse":false,
+		"reverse_payload":true
+	    },
+	     "header_params":{
+		 "primer3": "AAAAAAAAAAAAAAAAA", 
+		 "primer5": "AAAAAAAAAAAAAAAAA", 
+		 "hedges_rate": 0.25, 
+		 "strandSizeInBytes": 5, 
+		 "blockSizeInBytes": 100,
+		 "outerECCStrands":36,
+		 "dna_length": 400, 
+		 "title": "header", 
+		 "fi": true
+	     },
+	    "payload_header_path":"/path/to/payload/header",
+	    "header_header_path":"/path/to/header/header"
+	}
+    ]
+}
