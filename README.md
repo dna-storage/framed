@@ -15,7 +15,7 @@ Core encoding, decoding, and file manipulation support for modeling DNA-based in
 
 # Documentation
 
-As documentation for the software becomes available, it will be placed under the docs folder.
+In depth documentation can be found in the [wiki](https://github.ncsu.edu/dna-based-storage/dnastorage/wiki).
 
 # System Requirements
 
