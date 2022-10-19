@@ -26,7 +26,6 @@ class dnastats(object):
         self.fd = fd
     def set_pickle_fd(self,fd):
         self.pickle_fd=fd
-        
     def register_file(self,stats_name,filename):
         self.file_register[stats_name]=filename
     def register_hist(self,stats_name):
@@ -63,6 +62,9 @@ class dnastats(object):
     def __setitem__(self, name, value):
         self.all_stats[name] = value
 
+    def __contains__(self,name):
+        return name in self.all_stats
+        
     def format(self, name, f):
         self.formats[name] = f
 

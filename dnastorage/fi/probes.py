@@ -59,21 +59,24 @@ class DNAErrorProbe(BaseCodec,Probe):
         self._DNA_incorrect_key="{}::ed_incorrect_strands".format(self.name)#number of strands with at least 1 base error
         self._DNA_del_burst_len_key = "{}::del_burst_length".format(self.name)#length of error for deletions (considers forward and backward from a location)
         self._DNA_del_burst_rate_key = "{}::del_burst_rate".format(self.name)#given a deletion error, the number of dels that are bursts
-        self._DNA_strand_length_key="{}::strand_length_hist".format(self.name) #histogram for strand lengths 
+        self._DNA_strand_length_key="{}::strand_length_hist".format(self.name) #histogram for strand lengths
+        self._DNA_strand_error_key="{}::strand_error_hist".format(self.name) #histogram for strand error rates
+        self._DNA_max_kmer_error_key = "{}:::kmer_max_error_hist".format(self.name) #histogram for max kmer error window
+        self._DNA_error_pattern_key = "{}::error_pattern_hist".format(self.name) #histogram, but it will be a dictionary given we are mapping 
+        self._DNA_pattern_rate_key = "{}::pattern_rate_key".format(self.name) #tracks rate of error patterns in the strand, instead of individual errors
         stats.register_hist(self._DNA_strand_length_key)
+        stats.register_hist(self._DNA_strand_error_key)
+        stats.register_hist(self._DNA_max_kmer_error_key)
+        if not self._DNA_error_pattern_key in stats: stats[self._DNA_error_pattern_key]={}
         DNAErrorProbe.probe_id+=1
     def _encode(self,s):
         setattr(s,self._initial_dna_attr,copy.copy(s.dna_strand)) #take a snapshot of the dna under an attribute specific to this isntantiation
         return s
-
     def _decode(self,s):
         if not hasattr(s,self._initial_dna_attr) or s.dna_strand is None:
             return s
         stats.append(self._DNA_strand_length_key,len(s.dna_strand))
         base_dna = getattr(s,self._initial_dna_attr)
-        if DNAErrorProbe.count<1:
-            DNAErrorProbe.count+=1
-            print("Base DNA: {}".format(base_dna))
         fault_dna = s.dna_strand
         if(fault_dna==base_dna):
             stats.inc(self._DNA_correct_key)
@@ -82,6 +85,7 @@ class DNAErrorProbe(BaseCodec,Probe):
         stats.inc(self._DNA_strands_seen_key)
         #do edit distance analysis
         editops= ld.editops(base_dna,fault_dna)
+        edit_strand_vis,applied_edits,max_kmer_edits,pattern_dist,pattern_starts= calculate_edit_list(editops,len(base_dna),kmer_length=50,pattern=True)
         for edit_op_index,(operation,base_index,fault_index) in enumerate(editops):
             if base_index<len(base_dna):
                 stats.inc(self._total_ed_rate_key,dflt=np.zeros((len(base_dna),)),coords=base_index)
@@ -96,6 +100,11 @@ class DNAErrorProbe(BaseCodec,Probe):
                     stats.inc(self._sub_ed_rate_key,dflt=np.zeros((len(base_dna),)),coords=base_index)
                 elif operation=="replace":
                     stats.inc(self._inser_ed_rate_key,dflt=np.zeros((len(base_dna),)),coords=base_index)
+            else: break
+        stats.append(self._DNA_strand_error_key,applied_edits) #collect histogram of errors per strand
+        stats.append(self._DNA_max_kmer_error_key,max_kmer_edits) #collect histogram of max errors in kmer window
+        for pattern in pattern_dist: stats[self._DNA_error_pattern_key][pattern] = stats[self._DNA_error_pattern_key].get(pattern,0)+pattern_dist[pattern]
+        for start in pattern_starts: stats.inc(self._DNA_pattern_rate_key,dflt=np.zeros((len(base_dna),)),coords=start)
         return s
 
 
@@ -138,10 +147,28 @@ class CodewordErrorRateProbe(DNAErrorProbe):
             stats.inc(self._correct_key)
             if self._initial_dna_attr:
                 DNAErrorProbe._decode(self,s) #call to the dna error rate analysis
+                ''' 
+                #TODO: remove the following code, just temporary, print the strand edits for decoded strands
+                base_dna = getattr(s,self._initial_dna_attr)
+                fault_dna = s.dna_strand
+                editops= ld.editops(base_dna,fault_dna)
+                edit_strand_vis,applied_edits= calculate_edit_list(editops,len(base_dna))
+                if applied_edits>140 and applied_edits<160:
+                    logger.info("Decoded Strand Edits: {}".format("".join(edit_strand_vis)))
+                '''  
         else:
             stats.inc(self._incorrect_key)
+            #TODO: remove the following code block, temporary, print the strand  edits for non-decoded strands
+            '''
+            if self._initial_dna_attr:
+                base_dna = getattr(s,self._initial_dna_attr)
+                fault_dna = s.dna_strand
+                editops= ld.editops(base_dna,fault_dna)
+                edit_strand_vis,applied_edits= calculate_edit_list(editops,len(base_dna))
+                if applied_edits>140 and applied_edits<160:
+                    logger.info("Error Decoding Strand Edits: {}".format("".join(edit_strand_vis)))
+            '''
         stats.inc(self._strands_seen_key)
-        
         return s
 
     @property
@@ -162,7 +189,6 @@ class FilteredDNACounter(BaseCodec,Probe):
         else:
             self.name = probe_name
         self._strands_filtered_key = "{}::filtered_strand".format(self.name)
-        #stats[self._strands_filtered_key]=0
         FilteredDNACounter.probe_id+=1
     def _encode(self,s):
         return s
@@ -241,7 +267,6 @@ class StrandCheckProbe(BaseCodec,Probe):
             stats[forward_key]=(0xffffffffffffffff,None,None,None)
             stats[reverse_key]=(0xffffffffffffffff,None,None,None)
             for i in range(0,len(s.dna_strand)-len(check_strand)):
-                #print(s.dna_strand)
                 forward_distance = hamming_distance(check_strand,s.dna_strand[i:i+len(check_strand)])
                 reverse_distance = hamming_distance(reverse_complement(check_strand),s.dna_strand[i:i+len(check_strand)])
                 if forward_distance == 0 or reverse_distance ==0: #im assuming any match is due to a region that should be there...

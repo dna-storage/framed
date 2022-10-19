@@ -220,7 +220,7 @@ addIns2(SearchTree* s,char base, uint8_t nbits, uint32_t val, double penalty)
 		    s->c,
 		    // penalty + reward for matching			
 		    s->score+penalty,
-		    s->offset+2,   // deletion, so offset stays fixed
+		    s->offset+2,   // insertion, jump 2 indices
 		    s->observed,   // unchanged
 		    nbits,
 		    val,
@@ -295,6 +295,7 @@ void guessHelper(SearchTree* s, std::vector<SearchTree> &ret,
 
   if ( c == s->observedAt(s->offset+1) )
     {
+      //TODO: KV: Come here and see if there is something that should be changed for insertions
       // guess specific insertion and skip 2 ahead
       ret.push_back( addIns2<Reward>(s,c,nbits,val, r.getReward()+r.getInsPenalty()) );
     }

@@ -10,6 +10,12 @@ import time
 from dnastorage.strand_representation import *
 from dnastorage.fi.fault_strand_representation import *
 from Bio import SeqIO
+from scipy import stats
+
+import logging
+logger = logging.getLogger("dnastorage.fi.fault_injector")
+logger.addHandler(logging.NullHandler())
+
 
 #substitution dictionary used for substitution errors
 sub_dict={'A':['G','C','T'],'G':['C','A','T'], 'T':['G','C','A'], 'C':['G','T','A']}
@@ -24,6 +30,8 @@ class BaseFI:
     def open(self,fault_injector,**kwargs):
         if fault_injector=="fixed_rate":
             return fixed_rate(**kwargs)
+        elif fault_injector=="position_fixed_rate":
+            return position_fixed_rate(**kwargs)
         elif fault_injector=="missing_strands":
             return miss_strand(**kwargs)
         elif fault_injector=="strand_fault_compressed":
@@ -34,6 +42,8 @@ class BaseFI:
             return distribution_rate(**kwargs)
         elif fault_injector=="sequencing_experiment":
             return sequencing_experiment(**kwargs)
+        elif fault_injector=="pattern_fixed_rate":
+            return pattern_fixed_rate(**kwargs)
         elif fault_injector=="combo":
             return combo(**kwargs)
         else:
@@ -50,7 +60,6 @@ class BaseFI:
         csv_parsed=csv.reader(_file,delimiter=',')
         return csv_parsed
  
-
 #use sequencing data to perform fault injection
 class sequencing_experiment(BaseFI):
     def __init__(self,**args):
@@ -94,7 +103,7 @@ class sequencing_experiment(BaseFI):
 class fixed_rate(BaseFI):
     def __init__(self,**args):
         BaseFI.__init__(self)
-        self.fault_rate=args["fault_rate"]
+        self.fault_rate=args.get("fault_rate",0)
         
     def Run(self):
         self._injection={}
@@ -106,12 +115,12 @@ class fixed_rate(BaseFI):
         injection_sites={}
         #go through the strands and pick faults
         for strand_index,strand in enumerate(self._input_library):
-            injection_sites[strand_index]={}
+            injection_sites[strand_index]=[]
             for nuc_index,nuc in enumerate(strand.dna_strand):
                 inject_fault=generate.rand()
                 if inject_fault<=self.fault_rate:
                     #need to inject a fault at this nucleotide, fault types are equally probable
-                    injection_sites[strand_index][nuc_index]= str(generate.rand_in_range(0,2))
+                    injection_sites[strand_index].append((nuc_index,str(generate.rand_in_range(0,2))))
         return injection_sites
                     
     #inject errors in the list of strands, each 
@@ -120,30 +129,98 @@ class fixed_rate(BaseFI):
         for strand_indexes in inject_sites:
             library_strand=self._input_library[strand_indexes].dna_strand
             new_strand = self._input_library[strand_indexes].dna_strand
-            for fault_indexes in sorted(inject_sites[strand_indexes],reverse=True):
+            for (fault_indexes,error) in sorted(inject_sites[strand_indexes],reverse=True,key=lambda x: x[0]):
                 #substitution error
-                if inject_sites[strand_indexes][fault_indexes] == '0':
+                if error == '0':
                     #chose a random nucleotide that is different from the current one
                     sub_nucleotide=random.choice(sub_dict[new_strand[fault_indexes]])
                     #add on some extra information to the injection sites that indicates the nucleotide used for substitution
-                    inject_sites[strand_indexes][fault_indexes]='0-'+sub_nucleotide
                     new_strand=new_strand[0:fault_indexes]+sub_nucleotide+new_strand[fault_indexes+1:len(new_strand)]
                 #deletion error
-                elif inject_sites[strand_indexes][fault_indexes] == '1':
+                elif error == '1':
                     #add on some extra information to the injection sites, append the nucleotide that was removed from the original strand 
-                    inject_sites[strand_indexes][fault_indexes]='1-'+new_strand[fault_indexes]
                     new_strand=new_strand[0:fault_indexes]+new_strand[fault_indexes+1:len(new_strand)]
                 #insertion error
-                elif inject_sites[strand_indexes][fault_indexes] == '2':
+                elif error == '2':
                     insert_nucleotide=random.choice(nuc_list)
-                    inject_sites[strand_indexes][fault_indexes]='2-'+insert_nucleotide
                     new_strand=new_strand[0:fault_indexes]+insert_nucleotide+new_strand[fault_indexes:len(new_strand)]
                 else:
                     raise ValueError()
             assert len(new_strand)>0
             out_list[strand_indexes]=FaultDNA(self._input_library[strand_indexes],new_strand)
         return out_list
-    
+
+
+class position_fixed_rate(fixed_rate): #does fixed rate error rates, except on a per-base basis based on experimental data
+    def __init__(self,**args):
+        fixed_rate.__init__(self,**args)
+        path = args.get("error_rate_path",None)
+        try:
+            self._rate_data = pickle.load(open(path,"rb"))
+            logger.info(self._rate_data)
+        except Exception as e:
+            logger.warning(e)
+            exit()
+    #go through each nucleotide in each strand and apply a flat fault rate
+    def injection_sites(self):
+        injection_sites={}
+        #go through the strands and pick faults
+        for strand_index,strand in enumerate(self._input_library):
+            injection_sites[strand_index]=[]
+            for nuc_index,nuc in enumerate(strand.dna_strand):
+                inject_fault=generate.rand()
+                if inject_fault<=self._rate_data[nuc_index]:
+                    #need to inject a fault at this nucleotide, fault types are equally probable
+                    injection_sites[strand_index].append((nuc_index,str(generate.rand_in_range(0,2))))
+        return injection_sites
+
+
+
+class pattern_fixed_rate(fixed_rate): #allows the injection of patterns rather than single errors
+    def __init__(self,**args):
+        fixed_rate.__init__(self,**args)
+        strand_rate_path = args.get("error_rate_path",None) #path to rates for each base indicating probability of pattern occuring
+        pattern_dist_path = args.get("pattern_dist_path",None) #distribution of error patterns, given an error ocurred
+        try:
+            self._rate_data = pickle.load(open(strand_rate_path,"rb"))
+            pattern_data = pickle.load(open(pattern_dist_path,"rb"))
+        except Exception as e:
+            logger.warning(e)
+            exit(1)
+        items = sorted(pattern_data.items(),key=lambda x: x[1],reverse=True)
+        indexed_probs = [(i,_[1]) for i,_ in enumerate(items)] #distribution will generate indices to patterns
+        self._pattern_map = [_[0] for _ in items] #map indices back to patterns
+        self._pattern_gen = stats.rv_discrete(name="pattern",values=(list(zip(*indexed_probs))[0],list(zip(*indexed_probs))[1]))
+            
+    #go through each nucleotide in each strand and apply a flat fault rate
+    def injection_sites(self):
+        injection_sites={}
+        #go through the strands and pick faults
+        for strand_index,strand in enumerate(self._input_library):
+            injection_sites[strand_index]=[]
+            skip_to_index=-1
+            for nuc_index,nuc in enumerate(strand.dna_strand):
+                if nuc_index<skip_to_index: continue #allow skipping to get burst errors
+                inject_fault=generate.rand()
+                if inject_fault<=self._rate_data[nuc_index]:
+                    pattern_index = self._pattern_gen.rvs(size=1)
+                    pattern = self._pattern_map[int(pattern_index)]
+                    inject_index=nuc_index
+                    for e in pattern:
+                        if e=="I":
+                            injection_sites[strand_index].append((inject_index,"2"))
+                        elif e=="D":
+                            if inject_index>=len(strand.dna_strand): break
+                            injection_sites[strand_index].append((inject_index,"1"))
+                            inject_index+=1
+                        elif e=="R":
+                            if inject_index>=len(strand.dna_strand): break
+                            injection_sites[strand_index].append((inject_index,"0"))
+                            inject_index+=1
+                    skip_to_index=inject_index+1 #if we replaced or deleted in this burst error, skip to next position that can take an error
+        return injection_sites
+
+   
 #class that contains functionality for missing strands fault model
 class miss_strand(BaseFI):
     def __init__(self,**args):

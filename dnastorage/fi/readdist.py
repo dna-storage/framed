@@ -6,6 +6,11 @@ import math
 import random
 import dnastorage.util.generate as generate
 
+import logging
+logger = logging.getLogger("dnastorage.fi.readdist")
+logger.addHandler(logging.NullHandler())
+
+
 '''
 Top level class for distribution classes that generate copies of DNA strands based on some distribution
 '''
@@ -38,7 +43,7 @@ class ReadDistribution(object):
     '''
     gen samples a value from a distribution
     '''
-    def gen(self):
+    def gen(self,strand):
         raise NotImplementedError()
 
 
@@ -93,7 +98,7 @@ class DNANegativeBinomial(ReadDistribution):
         return prob
 
     #function for generating negative binomial random value from a uniform random variable
-    def gen(self):
+    def gen(self,strand):
         #Use this uniform random variable to 
         U=random.uniform(0,1)
         cumulative_index=self._cutoff_array[int(math.floor(U*self._m))]
@@ -116,7 +121,7 @@ class DNAPoisson(ReadDistribution):
     def pmf(self,X):
         return scipy.stats.poisson.pmf(X,self._mean)
 
-    def gen(self):
+    def gen(self,strand):
         return np.random.poisson(self._mean)
 
 
@@ -129,6 +134,12 @@ class DNABernoulli(ReadDistribution):
         assert "mean" in kwargs and "n_success" in kwargs
         self._n_success=kwargs["n_success"]
         self._success_prob=kwargs["mean"]
+        self._dist_indexes=set()
+        for index in kwargs.get("dist_indexes",tuple()):
+            logger.info(index)
+            self._dist_indexes.add(tuple(index)) #everything outside this set will automatically be given 0 reads
+        logger.info("dist_indexes {}".format(self._dist_indexes))
+
         ReadDistribution.__init__(self,kwargs["mean"]*kwargs["n_success"],(1-kwargs["mean"])*(kwargs["mean"])*kwargs["n_success"]**2)
 
     def pmf(self,X):
@@ -139,8 +150,9 @@ class DNABernoulli(ReadDistribution):
         else:
             return self._success_prob
 
-    def gen(self):
+    def gen(self,strand):
         rand = generate.rand()
+        if len(self._dist_indexes)>0 and strand.index_ints not in self._dist_indexes: return 0 #toss out strands we dont want
         if rand <=self._success_prob:    
             return self._n_success
         else:

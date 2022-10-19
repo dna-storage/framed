@@ -89,13 +89,13 @@ if __name__=="__main__":
                 final_run_path = os.path.join(fault_run_path,"encoder___{}".format(md_hash.hexdigest()[0:8]))
                 os.makedirs(final_run_path,exist_ok=True)                
                 #Create the paramater string
-                complete_param_string= " --enc_params {} ".format(os.path.join(final_run_path,"encoder_params.json"))
-                complete_param_string+=" --header_params {} ".format(os.path.join(final_run_path,"header_params.json"))
-                complete_param_string+=" --fi_env_params {} ".format(os.path.join(final_run_path,"fi_env_params.json"))
-                complete_param_string+=" --distribution_params {} ".format(os.path.join(final_run_path,"distribution_params.json"))
-                complete_param_string+=" --fault_params {} ".format(os.path.join(final_run_path,"fault_params.json"))
-                complete_param_string+=" --out_dir {} ".format(final_run_path) + " --cores {} ".format(args.cores)
-                if dna_proc_dict is not None: complete_param_string+=" --dna_process {}".format(os.path.join(final_run_path,"dna_process.json"))
+                complete_param_string= " --enc_params \"{}\" ".format(os.path.join(final_run_path,"encoder_params.json"))
+                complete_param_string+=" --header_params \"{}\" ".format(os.path.join(final_run_path,"header_params.json"))
+                complete_param_string+=" --fi_env_params \"{}\" ".format(os.path.join(final_run_path,"fi_env_params.json"))
+                complete_param_string+=" --distribution_params \"{}\" ".format(os.path.join(final_run_path,"distribution_params.json"))
+                complete_param_string+=" --fault_params \"{}\" ".format(os.path.join(final_run_path,"fault_params.json"))
+                complete_param_string+=" --out_dir \"{}\" ".format(final_run_path) + " --cores {} ".format(args.cores)
+                if dna_proc_dict is not None: complete_param_string+=" --dna_process \"{}\"".format(os.path.join(final_run_path,"dna_process.json"))
                 
                 sim_param_dict = {} #parameters related to the overall simulater
                 #round out the param string with stuff from the params dictionary

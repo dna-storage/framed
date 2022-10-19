@@ -12,6 +12,7 @@ Changes to Note made by Kevin Volkel:
 import logging
 from mpi4py import MPI
 import structlog
+import os
 
 class MPIIOStream(object):
 
@@ -55,6 +56,8 @@ class MPIFileHandler(logging.StreamHandler):
     def __init__(self, filename,
                  mode=MPI.MODE_WRONLY|MPI.MODE_CREATE, comm=MPI.COMM_WORLD):
         self.filename = filename
+        if os.path.exists(self.filename) and os.path.isfile(self.filename):
+            os.remove(self.filename)
         self.mode = mode
         self.comm = comm
 

@@ -9,6 +9,7 @@ import editdistance as ed
 from dnastorage.primer.nextera import *
 from nupack.complexes import *
 from nupack.mfe import *
+from collections import deque
 
 def getTm(seq):
     return mt.Tm_NN(seq)
@@ -394,6 +395,71 @@ def nupack_check_nextera_bindings(s):
             #print "*****Nextera Complement False binding: {} vs {} -- {}".format(l,s, c[0]['pattern'])
             return False
     return True
+
+
+
+def calculate_edit_list(edit_ops,max_index,kmer_length=None,pattern=False):
+    edit_strand_index=0
+    edit_strand_vis=[]
+    applied_edits=0
+    max_kmer_edits=0
+    current_kmer_edits=0
+    kmer_error_array=deque()
+    pattern_dist = {}
+    current_pattern=[]
+    start_indexes=[]
+    for e in edit_ops:
+        edit_index = e[1]
+        while edit_strand_index<edit_index:
+            #keep track of matches being shifted into the kmer error window
+            if kmer_length:
+                if len(kmer_error_array)<kmer_length: kmer_error_array.append(0)
+                else:
+                    assert len(kmer_error_array)==kmer_length
+                    #shifting in match should not lead to a new max_index
+                    if kmer_error_array.popleft()==1: current_kmer_edits-=1
+                    kmer_error_array.append(0)
+            edit_strand_vis.append("M")
+            edit_strand_index+=1
+            if len(current_pattern)>0:
+                pattern_dist["".join(current_pattern)]=pattern_dist.get("".join(current_pattern),0)+1
+                current_pattern=[]
+            if edit_strand_index>=max_index: break
+        if edit_index>=max_index: break
+        if len(current_pattern)==0: start_indexes.append(edit_strand_index)
+        if e[0]=="delete":
+            edit_strand_vis.append("D")
+            edit_strand_index+=1
+        elif e[0]=="insert":
+            edit_strand_vis.append("I")
+        elif e[0]=="replace":
+            edit_strand_vis.append("R")
+            edit_strand_index+=1
+        #keep track of edits being shifted into the window
+        if kmer_length:
+            if len(kmer_error_array)<kmer_length:
+                kmer_error_array.append(1)
+                current_kmer_edits+=1
+            else:
+                assert len(kmer_error_array)==kmer_length
+                # take the max, then add an edit on the end of the queue
+                max_kmer_edits = max(max_kmer_edits,current_kmer_edits)
+                if kmer_error_array.popleft()==0: current_kmer_edits+=1
+                kmer_error_array.append(1)
+        applied_edits+=1
+        current_pattern.append(edit_strand_vis[-1])
+    max_kmer_edits = max(max_kmer_edits,current_kmer_edits)
+
+    return_list = [edit_strand_vis,applied_edits]
+    if kmer_length:
+        return_list.append(max_kmer_edits)
+    if pattern:
+        return_list.append(pattern_dist)
+        return_list.append(start_indexes)
+    return tuple(return_list)
+    
+
+
 
 def nextera_strand_comparison(seq,distance):
     for i in illumina_primers:

@@ -263,6 +263,7 @@ def Basic_Hedges_Pipeline(pf,**kwargs):
         DNA_pipeline=(dna_counter_probe,)+DNA_pipeline
         if sequencing_run:
             dna_hook_probe = HookProbe("dna_strand",hedges_probe.name)
+            length_filter.alignment_name=dna_hook_probe.name
             hedges_probe.dna_attr=dna_hook_probe.name
             DNA_error_probe = DNAErrorProbe(probe_name=pipeline_title)
             DNA_pipeline =(DNA_error_probe,dna_hook_probe)+DNA_pipeline
