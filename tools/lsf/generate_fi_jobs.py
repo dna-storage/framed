@@ -18,6 +18,7 @@ if __name__=="__main__":
     parser.add_argument('--queue',default="tuck",type=str,action="store",help="Queue to use for jobs")
     parser.add_argument('--dump_dir',required=True,help="path to store results")
     parser.add_argument('--core_depth',default=1,type=int,action="store",help="the number of additional cores to request per core. Example use case is if you want multiple mpi cores per mpi task")
+    parser.add_argument('--experiment_prefix',default="",type=str,action="store",help="custom prefix to combine with top level directory name")
     parser.add_argument('--no',action='store_true', help="don't run bsub command, just test everything.")
     args = parser.parse_args()
 
@@ -62,7 +63,7 @@ if __name__=="__main__":
 
     base_file = os.path.basename(file_path).split(".")[0]
     #need to make up parts of directories where things are going to exist
-    top_experiment_portion="{}___{}___{}".format(base_file,fi_env_params["fault_model"],fi_env_params["distribution"])
+    top_experiment_portion="{}___{}___{}___{}".format(args.experiment_prefix,base_file,fi_env_params["fault_model"],fi_env_params["distribution"])
 
     run_path = os.path.join(args.dump_dir,top_experiment_portion)
     run_path = os.path.join(run_path,encoding_architecture)

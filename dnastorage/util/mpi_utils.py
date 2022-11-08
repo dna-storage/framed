@@ -48,6 +48,7 @@ def strand_gather(strands,comm):
     strands_per_rank = strand_amount_per_transaction//comm.size
     total_transactions = len(strands)//strands_per_rank
     if len(strands)%strands_per_rank>0: total_transactions+=1
+    logger.info("Rank {} total_transactions {} ".format(comm.rank,total_transactions))        
     number_of_transactions=comm.allreduce(total_transactions,MPI.MAX)
     return_strands=[]
     assert number_of_transactions>0
