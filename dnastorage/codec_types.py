@@ -7,7 +7,6 @@ class BaseConversionType(object):
     def __init__(self):
         pass
 
-
 class DNAtoDNA(BaseConversionType):
     def __init__(self):
         pass
@@ -26,8 +25,14 @@ class CWConsolidate(BaseConversionType):
 
 class DNAConsolidate(BaseConversionType):
     def __init__(self):
-        pass
-
+        self.mpi=None
+    @property
+    def mpi(self):
+        return self._mpi
+    @mpi.setter
+    def mpi(self,x):
+        self._mpi=x
+    
 class Probe(BaseConversionType):
     def __init__(self):
         pass

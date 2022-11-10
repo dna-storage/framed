@@ -5,6 +5,7 @@ from dnastorage.util.stats import stats
 from dnastorage.util.strandinterface import *
 from dnastorage.util.mpi_utils import *
 import io
+import os
 import sys
 import copy
 
@@ -20,7 +21,6 @@ def check_mpi(comm): #check that required modules are loaded for mpi communicati
         if not ("mpi4py" in sys.modules or "mpi4py.MPI" in sys.modules):
             raise SystemError("mpi4py is not loaded, needed for pipeline mpi support")
 
-
 class DNAFilePipeline:
     def __init__(self):
         return
@@ -35,7 +35,7 @@ class DNAFilePipeline:
             check_mpi(mpi)
             strands = strand_interface.strands
             if mpi: #communicate out strands to different processes
-                strands = strand_scatter(strands,mpi)
+                strands = object_scatter(strands,mpi)
             assert (strands is not None) and len(strands)>0
             header = Header(header_version,header_params,barcode_suffix=file_barcode,mpi=mpi)
             #initialize header pipeline
@@ -53,7 +53,9 @@ class DNAFilePipeline:
                     h = mpi.bcast(h,root=0)
                     header.set_header_dict(h)
                 if h!=None: logger.info("Able to decode header from DNA")
-                if h==None: raise ValueError("Header failed to decode, trying file")  
+                if h==None:
+                    stats.inc("dead_header",1)
+                    raise ValueError("Header failed to decode, trying file")  
             except Exception as e:
                 try:
                     logger.warning("{}".format(e))
@@ -218,7 +220,7 @@ class WriteDNAFilePipeline(DNAFilePipeline):
         header = Header(self._header_version,self._header_params,barcode_suffix=self._file_barcode)
 
         header_dict={}
-        header_dict["filename"]=self.output_filename
+        header_dict["filename"]=os.path.basename(self.output_filename)
         header_dict["main_pipeline_formatid"]=self.formatid
         header_dict["size"]=self.size
         logger.info("Right before encoding the header block")

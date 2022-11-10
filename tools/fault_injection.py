@@ -110,7 +110,6 @@ def _monte_kernel(monte_start,monte_end,args,comm=None): #function that will run
         stats.inc("total_strands_analyzed",len(fault_environment.get_strands()))
         if read_dna is None:
             #dead header
-            stats.inc("dead_header",1)
             stats.inc("error",1)
             stats.inc("total_mismatch_bytes",stats["file_size_bytes"])
             continue

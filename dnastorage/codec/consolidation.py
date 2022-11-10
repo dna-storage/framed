@@ -6,7 +6,6 @@ from collections import Counter
 import copy
 '''
 Consolidation is the process of clustering, e.g. taking multiple copies of the same strand and providing a representative
-
 '''
 
 class SimpleMajorityVote(BaseCodec,CWConsolidate):

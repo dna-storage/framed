@@ -2,6 +2,7 @@ from dnastorage.codec.base import *
 from dnastorage.exceptions import *
 from dnastorage.codec.reedsolomon.rs import ReedSolomon,get_reed_solomon,ReedSolomonError
 from random import randint
+import numpy as np
 from dnastorage.util.stats import stats
 from dnastorage.codec_types import *
 from dnastorage.strand_representation import *
@@ -22,7 +23,6 @@ class RandomizeCodec(BaseCodec):
 
     def _decode(self, array):
         return array[:self._numRandBytes]
-
 
 class ReedSolomonInnerCodec(BaseCodec):
     """
@@ -100,11 +100,32 @@ class ReedSolomonInnerCodec(BaseCodec):
             else:
                 #print (str(e))
                 raise DNACodingError("RSInnerCodec failed to correct message.")
-
         return value
 
+class RandomizePayloadPipeline(BaseCodec,CWtoCW):
+    def __init__(self,CodecObj=None,Policy=None):
+        CWtoCW.__init__(self)
+        BaseCodec.__init__(self,CodecObj=CodecObj,Policy=Policy)
+    def _encode(self,strand):
+        rng = np.random.RandomState(strand.codewords[0:strand.index_bytes])
+        strand.codewords = strand.codewords[0:strand.index_bytes]+[c ^ int(r) for zip(strand.codewords[strand.index_bytes:],rng.random_bytes(len(strand.codewords[strand.index_bytes::])))]
+        return strand
+    def _decode(self,strand):
+        rng = np.random.RandomState(strand.codewords[0:strand.index_bytes])
+        strand.codewords = strand.codewords[0:strand.index_bytes]+[c ^ int(r) for zip(strand.codewords[strand.index_bytes:],rng.random_bytes(len(strand.codewords[strand.index_bytes::])))]
+        return strand
 
-
+class Base4TranscodePipeline(BaseCodec,CWtoDNA):
+    def __init__(self,CodecObj=None,Policy=None):
+        CWtoCW.__init__(self)
+        BaseCodec.__init__(self,CodecObj=CodecObj,Policy=Policy)
+    def _encode(self,strand):
+        strand.dna_strand = "".join([convertQuarnary(c,0) for x in strand.codewords])
+        return strand
+    def _decode(self,strand):
+        strand.codewords = [ convertFromBase(4,strand.dna_strand[i:i+4]) for i in range(0,len(strand.dna_strand)-4+1,4)]
+        return strand.codewords
+    
 #Wrapper class so that the reedsolomon inner codec can be used with the pipeline infrastructure
 class ReedSolomonInnerCodecPipeline(ReedSolomonInnerCodec,CWtoCW):
     def __init__(self,numberECCBytes,c_exp=8,CodecObj=None,Policy=None):

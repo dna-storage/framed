@@ -40,7 +40,7 @@ def version_0_2():
     version_dict["header_barcode"]=(0xEE,1,int)
     version_dict["pipeline_barcode_ID"]=(None,"v",bytes)
     version_dict["decoding_format"]=('CustomSDC',"v",str)
-    version_dict["dnastorage_module_version"]=(version("dnastorage"),"v",str)
+    version_dict["dnastorage_module_version"]=("1.1.0","v",str)  #this is a hack for now, we need to figure out how to deal with infrastructure versions, should be fine for SDC experiment
     return version_dict
 
 

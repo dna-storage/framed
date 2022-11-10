@@ -6,7 +6,7 @@ class FaultDNA(BaseDNA):
     def __init__(self, basedna: BaseDNA,fault_strand):
         BaseDNA.__init__(self,dna_strand=fault_strand)
         #copy over apriori information from the base strand while leaving a clean slate for decoding evaluation
-        self.encoded_index_ints=basedna.index_ints
+        self.encoded_index_ints=tuple(basedna.index_ints)
         default_base_dna = BaseDNA()
         #copy over attributes embedded by probes
         for attribute in basedna.__dict__:

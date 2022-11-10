@@ -159,6 +159,7 @@ class PipeLine(EncodePacketizedFile,DecodePacketizedFile):
         #performs the final decode on the streamed in strands 
         self._final_decode_run=True
         if isinstance(self._consolidator,DNAConsolidate):
+            self._consolidator.mpi = self.mpi #hand off mpi to consolidator
             self._decode_strands = self._consolidator.decode(self._decode_strands)
         after_inner=[]
         for strand in self._decode_strands:
@@ -176,7 +177,7 @@ class PipeLine(EncodePacketizedFile,DecodePacketizedFile):
 
         #IF MPI: should get strands back to master
         if self.mpi:
-            self._decode_strands=strand_gather(self._decode_strands,self.mpi)
+            self._decode_strands=object_gather(self._decode_strands,self.mpi)
             if self.mpi.Get_rank()!=0:
                 logger.info("Rank {} leaving pipeline".format(self.mpi.Get_rank()))
                 return #mpi support only up to the outer code
