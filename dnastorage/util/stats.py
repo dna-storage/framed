@@ -22,6 +22,8 @@ class dnastats(object):
         self.formats = {} #formatting for statistics
         self.file_register={} #registration dictionary for separating outputs into different files
         self.hist_register={} #registration dictionary for condensing data into histograms, we use numpy histograms
+        self.experiment_counter=0 #counter that is used to separate results 
+        self._name_to_counter={}
     def set_fd(self, fd):
         self.fd = fd
     def set_pickle_fd(self,fd):
@@ -30,6 +32,12 @@ class dnastats(object):
         self.file_register[stats_name]=filename
     def register_hist(self,stats_name):
         self.hist_register[stats_name]=None
+    def get_next_name(self,name):
+        if name not in self._name_to_counter:
+            self._name_to_counter[name]=self._experiment_counter+1
+        else:
+            self._name_to_counter[name]+=1
+        return "{}::{}".format(name,self._name_to_counter[name]-1)
 
     # Use inc to track and dump a counter. example:
     #    stats.inc("block::errors")
@@ -46,6 +54,14 @@ class dnastats(object):
     def clear(self):
         self.all_stats={}
         self.formats={}
+
+    @property
+    def experiment_counter(self):
+        return self._experiment_counter
+    @experiment_counter.setter
+    def experiment_counter(self,x):
+        self._name_to_counter={}
+        self._experiment_counter=x
     
     # Use append to record a list of data
     def append(self, name, s, dflt=[]):

@@ -49,7 +49,7 @@ def object_gather(objects,comm,objs_per_transaction=100000):
     logger.info("Rank {} total_transactions {} ".format(comm.rank,total_transactions))        
     number_of_transactions=comm.allreduce(total_transactions,MPI.MAX)
     return_objects=[]
-    assert number_of_transactions>0
+    if  number_of_transactions==0: return [] #nothing to actually send 
     for i in range(number_of_transactions):
         objects_to_send = objects[i*objects_per_rank:i*objects_per_rank+objects_per_rank]
         logger.info("Rank {} sending {} objects on iteration {}".format(comm.rank,len(objects_to_send),i))

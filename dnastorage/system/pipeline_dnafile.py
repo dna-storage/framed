@@ -8,7 +8,7 @@ import io
 import os
 import sys
 import copy
-
+import traceback
 import logging
 logger = logging.getLogger('dna.storage.system.dnafile')
 logger.addHandler(logging.NullHandler())
@@ -27,7 +27,7 @@ class DNAFilePipeline:
     @classmethod
     def open(self,op, format_name="", write_incomplete_file=False, header_version="0.1",fsmd_header_filename=None,
              payload_header_filename = None,encoder_params={},header_params={},do_write = True, file_barcode=tuple(),
-             mpi=None,strand_interface=None,dna_file_name = None):
+             mpi=None,strand_interface=None,dna_file_name = None,store_header=True):
         # check if we are reading or writing
         if op=="r":
             assert strand_interface!=None
@@ -58,7 +58,8 @@ class DNAFilePipeline:
                     raise ValueError("Header failed to decode, trying file")  
             except Exception as e:
                 try:
-                    logger.warning("{}".format(e))
+                    traceback.print_exc()
+                    logger.fatal("{}".format(e))
                     #now try to decode with bytes
                     with open(payload_header_filename,"rb") as serialized_payload_pipeline_data:
                         logger.info("using binary file for payload header instead of DNA")
@@ -79,7 +80,7 @@ class DNAFilePipeline:
             return WriteDNAFilePipeline(output=dna_file_name,
                                         format_name=format_name,encoder_params=encoder_params,
                                         header_version=header_version,header_params=header_params,fsmd_header_filename=fsmd_header_filename,
-                                        payload_header_filename=payload_header_filename,file_barcode=file_barcode,do_write=do_write)
+                                        payload_header_filename=payload_header_filename,file_barcode=file_barcode,do_write=do_write,store_header=store_header)
         else:
             return None
     def flush(self):
@@ -152,6 +153,7 @@ class WriteDNAFilePipeline(DNAFilePipeline):
         self._header_fd=None
         self._payload_header_fd = None
         self.output_filename="none.dna"
+        self._store_header=kwargs.get("store_header",True)
         
         if "fsmd_header_filename" in kwargs and kwargs["fsmd_header_filename"]!=None:
             self._header_fd=open(kwargs["fsmd_header_filename"],"wb+")
@@ -230,8 +232,9 @@ class WriteDNAFilePipeline(DNAFilePipeline):
             self._payload_header_fd.write(header.encoded_header_bytes) #write down the bytes for the header, useful for debugging purposes 
             self._payload_header_fd.close()
             
-        for i,h in enumerate(hdr_strands):
-            self.strands.insert(i,h)
+        if not self._store_header: #allow headers to be skipped from being stored
+            for i,h in enumerate(hdr_strands):
+                self.strands.insert(i,h)
 
         #write out meta data for header to digital data for recovery later
         if self._header_fd!=None:

@@ -290,7 +290,7 @@ class DNALengthFilterPipeline(BaseCodec,DNAtoDNA):
             if self.alignment_name!=None and hasattr(strand,self.alignment_name):
                 edit_ops=ld.editops(getattr(strand,self.alignment_name),strand.dna_strand)
                 edit_strand_vis,applied_edits = calculate_edit_list(edit_ops,len(getattr(strand,self.alignment_name)))
-                logger.info("PASS {}\n".format("".join(edit_strand_vis))) 
+                #logger.info("PASS {}\n".format("".join(edit_strand_vis))) 
         return strand
     @property
     def alignment_name(self):

@@ -22,8 +22,10 @@ class SimpleMajorityVote(BaseCodec,CWConsolidate):
             #print "get key,value for strand {}".format(s)
             key =tuple(s.index_ints)
             #print value
-            key_value[key]=key_value.get(key,[]) + [s]
-                
+            if hasattr(s,"alignment_weight"): #allow alignment weights to be 
+                key_value[key]=key_value.get(key,[]) + [s]*s.alignment_weight
+            else: 
+                key_value[key]=key_value.get(key,[]) + [s]
         for key in key_value:
             data=[]
             if len(key_value[key])==1:

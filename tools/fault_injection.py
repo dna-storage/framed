@@ -90,7 +90,7 @@ def _monte_kernel(monte_start,monte_end,args,comm=None): #function that will run
 
     #Encode file we are fault injecting on
     if is_master(comm): fault_environment =  Fi_Env(write_dna.strands,dist_args,fault_args,**fi_env_args)
-    
+    stats.experiment_counter=monte_start
     for sim_number in range(monte_start,monte_end):
         logger.info("Monte Carlo Sim: {}".format(sim_number))
         strands=None
@@ -102,17 +102,13 @@ def _monte_kernel(monte_start,monte_end,args,comm=None): #function that will run
         read_dna = DNAFilePipeline.open("r",header_params=header_params,
                                         header_version=args.header_version,format_name=args.arch,encoder_params=encoding_params,
                                         fsmd_header_filename=header_data_path,file_barcode=tuple(args.file_barcode),
-                                        payload_header_filename = payload_header_data_path,mpi=comm,strand_interface=strand_interface)
+                                        payload_header_filename = payload_header_data_path,mpi=comm,strand_interface=strand_interface,
+                                        store_header=args.store_header)
 
         if not is_master(comm): continue
         
         stats.inc("total_file_data_bytes",stats["file_size_bytes"])
         stats.inc("total_strands_analyzed",len(fault_environment.get_strands()))
-        if read_dna is None:
-            #dead header
-            stats.inc("error",1)
-            stats.inc("total_mismatch_bytes",stats["file_size_bytes"])
-            continue
         #calculate missing bytes
         file_to_fault_inject.seek(0,0)
         total_mismatch_data=0
@@ -131,7 +127,7 @@ def _monte_kernel(monte_start,monte_end,args,comm=None): #function that will run
                 total_mismatch_data+=1
         stats.inc("total_mismatch_bytes",total_mismatch_data)
         stats.inc("file_size_difference_bytes",abs(file_to_inject_size-length_fi_data))
-        if stats["total_mismatch_bytes"]>0:
+        if total_mismatch_data>0 or file_to_inject_size!=length_fi_data:
             stats.inc("error",1)
         else:
             stats.inc("error",0)
@@ -193,7 +189,7 @@ def run_monte(pool,args):
     #need to aggregate data across all results
     for s in total_results:
         stats.aggregate(s,["total_encoded_strands","header_strand_length","payload_strand_length",
-                           "file_size_bytes","index_dist_encode","index_dist_decode"]) #just want to copy information about total strands/strand_length
+                           "file_size_bytes","index_dist_encode"]) #just want to copy information about total strands/strand_length
     stats["total_runs"]=args.num_sims
     stats.persist()
     stats_fd.close()
@@ -219,6 +215,7 @@ if __name__ == "__main__":
     parser.add_argument('--dna_process',required=False,default=None,help="set of processing steps to do on dna strands before fault injection")
     parser.add_argument('--out_dir',type=str,required=True,action="store",help="Directory where data will be dumped")
     parser.add_argument('--file_barcode',required=False,default=tuple(),nargs="+",type=int,help="Barcode for the file")
+    parser.add_argument('--store_header',required=False,default=True,help="Whether to store header data")
     
     args = parser.parse_args()
     formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')                                                                                           

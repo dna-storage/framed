@@ -42,13 +42,21 @@ class DNAErrorProbe(BaseCodec,Probe):
     #This probe should be placed after a single strand codec so that analysis can be performed 
     probe_id=0
     count=0
+    
+    @property
+    def dna_attr(self):
+        return self._initial_dna_attr
+    @dna_attr.setter
+    def dna_attr(self,attr:str):
+        self._initial_dna_attr=attr
+
     def __init__(self,probe_name="",CodecObj=None):
         BaseCodec.__init__(self,CodecObj)
         if probe_name=="":
             self.name = "dna_probe_{}".format(DNAErrorProbe.probe_id)
         else:
             self.name = probe_name
-        self._initial_dna_attr = "{}::init_dna".format(self.name)
+        self.dna_attr = "{}::init_dna".format(self.name)
         #keys for edit distance
         self._total_ed_rate_key = "{}::total_edit_errors".format(self.name) #number of edits at a position of all types
         self._inser_ed_rate_key = "{}::insertion_edit_errors".format(self.name) #number of insertions at a position
@@ -70,13 +78,13 @@ class DNAErrorProbe(BaseCodec,Probe):
         if not self._DNA_error_pattern_key in stats: stats[self._DNA_error_pattern_key]={}
         DNAErrorProbe.probe_id+=1
     def _encode(self,s):
-        setattr(s,self._initial_dna_attr,copy.copy(s.dna_strand)) #take a snapshot of the dna under an attribute specific to this isntantiation
+        setattr(s,self.dna_attr,copy.copy(s.dna_strand)) #take a snapshot of the dna under an attribute specific to this isntantiation
         return s
     def _decode(self,s):
-        if not hasattr(s,self._initial_dna_attr) or s.dna_strand is None:
+        if not hasattr(s,self.dna_attr) or s.dna_strand is None:
             return s
         stats.append(self._DNA_strand_length_key,len(s.dna_strand))
-        base_dna = getattr(s,self._initial_dna_attr)
+        base_dna = getattr(s,self.dna_attr)
         fault_dna = s.dna_strand
         if(fault_dna==base_dna):
             stats.inc(self._DNA_correct_key)
@@ -111,13 +119,21 @@ class DNAErrorProbe(BaseCodec,Probe):
 class CodewordErrorRateProbe(DNAErrorProbe):
     #This probe should be placed after a single strand codec so that analysis can be performed 
     probe_id=0
+       
+    @property
+    def cw_attr(self):
+        return self._initial_codeword_attr
+    @cw_attr.setter
+    def cw_attr(self,attr: str):
+        self._initial_codeword_attr=attr
+
     def __init__(self,probe_name="",dna_hook=None,CodecObj=None):
         if probe_name=="":
             self.name = "codeword_probe_{}".format(CodewordErrorRateProbe.probe_id)
         else:
             self.name = probe_name
         DNAErrorProbe.__init__(self,self.name,CodecObj)
-        self._initial_codeword_attr = "{}::init_codewords".format(self.name)
+        self.cw_attr = "{}::init_codewords".format(self.name)
         self._total_error_rate_key = "{}::total_errors".format(self.name)
         self._strands_seen_key = "{}::total_strands".format(self.name)
         self._correct_key="{}::correct_strands".format(self.name)
@@ -127,11 +143,11 @@ class CodewordErrorRateProbe(DNAErrorProbe):
         self.dna_attr = dna_hook
         CodewordErrorRateProbe.probe_id+=1
     def _encode(self,s):
-        setattr(s,self._initial_codeword_attr,copy.copy(s.codewords)) #take a snapshot of the codewords under an attribute specific to this isntantiation
+        setattr(s,self.cw_attr,copy.copy(s.codewords)) #take a snapshot of the codewords under an attribute specific to this isntantiation
         return s
     def _decode(self,s):
-        if not hasattr(s,self._initial_codeword_attr): return s #might have a leak over from some other encoding/decoding pipeline, cannot rely on this being true always, best compromise is to return
-        base_codewords = getattr(s,self._initial_codeword_attr)
+        if not hasattr(s,self.cw_attr): return s #might have a leak over from some other encoding/decoding pipeline, cannot rely on this being true always, best compromise is to return
+        base_codewords = getattr(s,self.cw_attr)
         fault_codewords = s.codewords
         #now analyze error rates b/w the base and fault
         first=True
@@ -145,11 +161,11 @@ class CodewordErrorRateProbe(DNAErrorProbe):
                 stats.inc(self._incorrect_not_none,dflt=np.zeros((len(base_codewords),)),coords=i)
         if(fault_codewords==base_codewords):
             stats.inc(self._correct_key)
-            if self._initial_dna_attr:
+            if self.dna_attr:
                 DNAErrorProbe._decode(self,s) #call to the dna error rate analysis
                 ''' 
                 #TODO: remove the following code, just temporary, print the strand edits for decoded strands
-                base_dna = getattr(s,self._initial_dna_attr)
+                base_dna = getattr(s,self.dna_attr)
                 fault_dna = s.dna_strand
                 editops= ld.editops(base_dna,fault_dna)
                 edit_strand_vis,applied_edits= calculate_edit_list(editops,len(base_dna))
@@ -160,8 +176,8 @@ class CodewordErrorRateProbe(DNAErrorProbe):
             stats.inc(self._incorrect_key)
             #TODO: remove the following code block, temporary, print the strand  edits for non-decoded strands
             '''
-            if self._initial_dna_attr:
-                base_dna = getattr(s,self._initial_dna_attr)
+            if self.dna_attr:
+                base_dna = getattr(s,self.dna_attr)
                 fault_dna = s.dna_strand
                 editops= ld.editops(base_dna,fault_dna)
                 edit_strand_vis,applied_edits= calculate_edit_list(editops,len(base_dna))
@@ -170,13 +186,6 @@ class CodewordErrorRateProbe(DNAErrorProbe):
             '''
         stats.inc(self._strands_seen_key)
         return s
-
-    @property
-    def dna_attr(self):
-        return self._initial_dna_attr
-    @dna_attr.setter
-    def dna_attr(self,attr):
-        self._initial_dna_attr=attr
 
 
 class FilteredDNACounter(BaseCodec,Probe):
@@ -204,7 +213,6 @@ class IndexDistribution(BaseCodec,Probe):
     probe_id=0
     def __init__(self,probe_name="",CodecObj=None,prefix_to_match=tuple()):
         BaseCodec.__init__(self,CodecObj)
-
         if probe_name=="":
             self.name = "index_dist_probe_{}".format(IndexDistribution.probe_id)
         else:
@@ -223,6 +231,7 @@ class IndexDistribution(BaseCodec,Probe):
         self._incorrect_key="{}::incorrect_indexes".format(self.name)
         self._initial_index_ints_attr = "{}::initial_index_attribute".format(self.name)
         #register sequencing mappings
+        self._ideal_index_dist_attr = stats.get_next_name("{}::ideal_decode_dist".format(self.name))
         stats.register_file(self._seq_map,"sequencing.map")
         IndexDistribution.probe_id+=1
 
@@ -233,6 +242,8 @@ class IndexDistribution(BaseCodec,Probe):
         return s
 
     def _decode(self,s):
+        #if hasattr(s,self._initial_index_ints_attr):
+        #    stats.inc(self._ideal_index_dist_attr,dflt=dict(),coords=getattr(s,self._initial_index_ints_attr))
         #pipeline doesn't make index_ints until AFTER the whole inner CW to CW cascade runs, do our own translation for now
         try:
             index_ints = tuple(unpack_bytes_to_indexes(s.codewords[0:s.index_bytes],s.index_bit_set))
@@ -257,9 +268,12 @@ class IndexDistribution(BaseCodec,Probe):
 class StrandCheckProbe(BaseCodec,Probe):
     #This probe should be placed after a single strand codec so that analysis can be performed 
     probe_id=0
-    def __init__(self,strands,CodecObj=None):
+    def __init__(self,strand_path,CodecObj=None):
         BaseCodec.__init__(self,CodecObj)
-        self._strands = strands
+        self._strands = []
+        with open(strand_path,'r') as strands:
+            for s in strands:
+                self._strands.append(s.strip())
     def _encode(self,s):
         for check_strand in self._strands:
             forward_key = "{}:forward_min".format(check_strand)

@@ -7,7 +7,7 @@ from dnastorage.codec import huffman
 from dnastorage.codec import fountain
 from dnastorage.arch.strand import *
 from dnastorage.arch.builder import customize_RS_CFC8, customize_RS_CFC8_pipeline, RS_Codeword_hedges_pipeline
-from dnastorage.arch.builder import build_overhang_bitstring_strand, SDC_pipeline, Basic_Hedges_Pipeline
+from dnastorage.arch.builder import build_overhang_bitstring_strand, SDC_pipeline, Basic_Hedges_Pipeline, ReedSolomon_Base4_Pipeline
 from dnastorage.exceptions import *
 
 
@@ -298,6 +298,8 @@ FileSystemFormats = {
               CUSTOM_RS_CODEWORD_HEDGES_PIPE,CUSTOM_RS_CODEWORD_HEDGES_PIPE],
     0x0703 : [0x0703,208,15,"BasicHedges","Basic Hedges implementation with just primers",
               CUSTOM_BASIC_HEDGES,CUSTOM_BASIC_HEDGES],
+    0x0704 : [0x0704,0,0,"ReedSolomon_Base4_Pipeline","Reed solomon with base encoding and clustering algorithms",
+              ReedSolomon_Base4_Pipeline,ReedSolomon_Base4_Pipeline],
     #------ Segmented
     0x1000 : [0x1000, 200, 20, "Segmented", "Segmented file format to support Preview", None, None],
     0x2021 : [0x2021, 160, 9, "RS+CFC8+RE1", "Reed-Solomon coded with Comma-free codewords",

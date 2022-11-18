@@ -6,7 +6,7 @@ import numpy as np
 from dnastorage.util.stats import stats
 from dnastorage.codec_types import *
 from dnastorage.strand_representation import *
-
+from dnastorage.codec.base_conversion import *
 
 import logging
 logger = logging.getLogger('dna.storage.codec.strand')
@@ -84,7 +84,7 @@ class ReedSolomonInnerCodec(BaseCodec):
         except ReedSolomonError as e:
             if self._Policy.allow(e):
                 # leave erasures, may be helpful for outer decoder
-                value = message[0:-(self._numberECCBytes)]
+                value = [None]*len(message[0:-(self._numberECCBytes)])
                 pass # nothing to do
             else:
                 #print (str(e))
@@ -108,23 +108,34 @@ class RandomizePayloadPipeline(BaseCodec,CWtoCW):
         BaseCodec.__init__(self,CodecObj=CodecObj,Policy=Policy)
     def _encode(self,strand):
         rng = np.random.RandomState(strand.codewords[0:strand.index_bytes])
-        strand.codewords = strand.codewords[0:strand.index_bytes]+[c ^ int(r) for zip(strand.codewords[strand.index_bytes:],rng.random_bytes(len(strand.codewords[strand.index_bytes::])))]
+        strand.codewords = strand.codewords[0:strand.index_bytes]+[c ^ int(r) for c,r in zip(strand.codewords[strand.index_bytes:],rng.bytes(len(strand.codewords[strand.index_bytes::])))]
         return strand
     def _decode(self,strand):
+        if None in strand.codewords: return strand
         rng = np.random.RandomState(strand.codewords[0:strand.index_bytes])
-        strand.codewords = strand.codewords[0:strand.index_bytes]+[c ^ int(r) for zip(strand.codewords[strand.index_bytes:],rng.random_bytes(len(strand.codewords[strand.index_bytes::])))]
+        strand.codewords = strand.codewords[0:strand.index_bytes]+[c ^ int(r) for c,r in zip(strand.codewords[strand.index_bytes:],rng.bytes(len(strand.codewords[strand.index_bytes::])))]
         return strand
-
+    
 class Base4TranscodePipeline(BaseCodec,CWtoDNA):
     def __init__(self,CodecObj=None,Policy=None):
         CWtoCW.__init__(self)
         BaseCodec.__init__(self,CodecObj=CodecObj,Policy=Policy)
+        self.num_codewords=0
     def _encode(self,strand):
-        strand.dna_strand = "".join([convertQuarnary(c,0) for x in strand.codewords])
+        strand.dna_strand = "".join([convertQuarnary(c,4) for c in strand.codewords])
+        self.num_codewords=len(strand.codewords)
         return strand
     def _decode(self,strand):
         strand.codewords = [ convertFromBase(4,strand.dna_strand[i:i+4]) for i in range(0,len(strand.dna_strand)-4+1,4)]
-        return strand.codewords
+        return strand
+    def _encode_header(self):
+        buf = []
+        buf+=convertIntToBytes(self.num_codewords,2)
+        return buf
+    def _decode_header(self,buff):
+        pos=0
+        self.num_codewords = convertBytesToInt(buff[pos:pos+2])
+        return buff[pos+2:]
     
 #Wrapper class so that the reedsolomon inner codec can be used with the pipeline infrastructure
 class ReedSolomonInnerCodecPipeline(ReedSolomonInnerCodec,CWtoCW):
@@ -226,4 +237,18 @@ if __name__=="__main__":
 
     assert(s.codewords==original_codewords)
     
+
+    print("Testing Randomizer")
+    s = BaseDNA(codewords=[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18])
+    s.index_bytes = 3
+    randomize_payload = RandomizePayloadPipeline()
+    randomize_payload.encode(s)
+    print("After Randomization {}".format(s.codewords))
+    randomize_payload.decode(s)
+    print("After Randomization decode {}".format(s.codewords))
+    base4 = Base4TranscodePipeline()
+    base4.encode(s)
+    print("strand after base4 encode {}".format(s.dna_strand))
+    base4.decode(s)
+    print("strand after base4 decode {}".format(s.codewords))
     
