@@ -36,9 +36,9 @@ def cascade_build(component_list):
     return component_list[0]
 
 class PipeLine(EncodePacketizedFile,DecodePacketizedFile):
-    def __init__(self,components,consolidator,packetsize_bytes,
-                 basestrand_bytes, DNA_upper_bound, final_decode_iterations,packetizedfile=None,
-                 barcode=tuple()):
+    def __init__(self,components,packetsize_bytes,
+                 basestrand_bytes, DNA_upper_bound, final_decode_iterations,dna_consolidator=None,cw_consolidator=None,packetizedfile=None,
+                 barcode=tuple(),constant_index_bytes=None):
         
         EncodePacketizedFile.__init__(self,None)
         DecodePacketizedFile.__init__(self,None)
@@ -55,7 +55,14 @@ class PipeLine(EncodePacketizedFile,DecodePacketizedFile):
         self._DNA_upper_bound=DNA_upper_bound #upper bound DNA length
         self._decode_strands=[] #strands that will be decoded
         self._final_decode_iterations=final_decode_iterations #how many complete final decoding processes should be done
-        self._consolidator=consolidator #component that consolidates multiple reads with the same index
+        self._index_bytes = constant_index_bytes #allow constant index_bytes to be used, useful for controlling for DNA strand size
+        
+        #support the ability for 2 consolidators, dna consolidators may actually need a cw_consolidator to filter repeat indexes
+        self._dna_consolidator = dna_consolidator 
+        self._cw_consolidator = cw_consolidator 
+
+        assert dna_consolidator!=None or cw_consolidator!=None #should have at least 1
+        
         self._final_decode_run=False #flag that tracks the final decode run_hedges
         self._filtered_strands=[] #strands that have been filtered out due to physical pipeline or incoherence during the decode process
         self.mpi=None #mpi not used on default
@@ -130,7 +137,8 @@ class PipeLine(EncodePacketizedFile,DecodePacketizedFile):
         total_bits= sum(self._index_bit_set) 
         index_bytes = total_bits//8
         if not total_bits%8==0: index_bytes+=1
-        self._index_bytes=index_bytes
+        if self._index_bytes!=None: assert self._index_bytes>=index_bytes
+        else: self._index_bytes=index_bytes
         final_DNA_strands=[]
         index_pad_array=[0]*(self._index_bytes-index_bytes) #pad array just in case someone uses a larger index bytes than inferred
         for packet_strand in total_packet_strands:
@@ -158,9 +166,9 @@ class PipeLine(EncodePacketizedFile,DecodePacketizedFile):
     def final_decode(self):
         #performs the final decode on the streamed in strands 
         self._final_decode_run=True
-        if isinstance(self._consolidator,DNAConsolidate):
-            self._consolidator.mpi = self.mpi #hand off mpi to consolidator
-            self._decode_strands = self._consolidator.decode(self._decode_strands)
+        if isinstance(self._dna_consolidator,DNAConsolidate):
+            self._dna_consolidator.mpi = self.mpi #hand off mpi to consolidator
+            self._decode_strands = self._dna_consolidator.decode(self._decode_strands)
         after_inner=[]
         for strand in self._decode_strands:
             self._inner_pipeline(strand)
@@ -174,94 +182,47 @@ class PipeLine(EncodePacketizedFile,DecodePacketizedFile):
             strand.index_ints=strand.index_ints[len(self._barcode):]
             after_inner.append(strand)
         self._decode_strands=after_inner
-
         #IF MPI: should get strands back to master
         if self.mpi:
             self._decode_strands=object_gather(self._decode_strands,self.mpi)
+
+        packets={}
+        #let rank 0 cut up packets
+        if not self.mpi or self.mpi and self.mpi.Get_rank()==0:
+            if isinstance(self._cw_consolidator,CWConsolidate):
+                self._decode_strands=self._cw_consolidator.decode(self._decode_strands)
+            #Now we need to collect packets together and get the packet indexes before unrolling the outer encoding
+            for s in self._decode_strands:
+                s.codewords=s.codewords[self._index_bytes:] #strip off indexing before outer decoding
+                if self._outer_cascade.is_zero(s.index_ints) or not self._outer_cascade.valid(s.index_ints) or len(s.codewords)<self._basestrand_bytes:
+                    continue
+                packets[s.index_ints[0]]=packets.get(s.index_ints[0],[])+[s]
+
+        #parallleize packet computation
+        if self.mpi:
+            logger.info("Scatter packets")
+            packets=object_scatter([_ for  _ in packets.items()],self.mpi)
+            packets={x:y for x,y in packets}
+        
+        #at this point we have our main packets, so lets run through outer decoding
+        total_out_datas=[]
+        for p in packets:
+            output_packet=[]
+            for i in range(0,self._final_decode_iterations):
+                output_packet=self._outer_cascade.decode(packets[p])
+            #data should be ordered correctly inherently coming out of decoding,filters Nones that may come from dropouts
+            out_data = [ c if c!=None else 0 for x in output_packet for c in x.codewords]
+            total_out_datas.append((p,out_data))
+
+        if self.mpi:
+            total_out_datas = object_gather(total_out_datas,self.mpi)
             if self.mpi.Get_rank()!=0:
                 logger.info("Rank {} leaving pipeline".format(self.mpi.Get_rank()))
                 return #mpi support only up to the outer code
 
-        if isinstance(self._consolidator,CWConsolidate):
-            self._decode_strands=self._consolidator.decode(self._decode_strands)
-            
-        #Now we need to collect packets together and get the packet indexes before unrolling the outer encoding
-        packets={}
-        for s in self._decode_strands:
-            s.codewords=s.codewords[self._index_bytes:] #strip off indexing before outer decoding
-            if self._outer_cascade.is_zero(s.index_ints) or not self._outer_cascade.valid(s.index_ints) or len(s.codewords)<self._basestrand_bytes:
-                continue
-            packets[s.index_ints[0]]=packets.get(s.index_ints[0],[])+[s]
-
-
-        #at this point we have our main packets, so lets run through outer decoding
-        for p in packets:
-            packets[p]=sorted(packets[p],key=lambda x: x.index_ints)
-            packets[p]=self._fill_gaps(packets[p]) #fill in gaps with missing/zero strands
-
-            output_packet=[]
-            for i in range(0,self._final_decode_iterations):
-                output_packet=self._outer_cascade.decode(packets[p])
-
-            #data should be ordered correctly inherently coming out of decoding,filters Nones that may come from dropouts
-            out_data = [ c if c!=None else 0 for x in output_packet for c in x.codewords]
+        for p,out_data in total_out_datas:
             self.writeToFile(p,out_data) #write out packet
         self.write()
-
-
-    def _fill_gaps(self,packet):
-        #takes in a packet of already ordered strands, and fills in missing strands between indices for decdoing
-        '''
-        Process of filling strands is 3 steps:
-        1) fill in strands before the first strand in the packet, keep decreasing from the first index until the packet index decreases
-        2) fill in gaps in between strands, start from 1 strand increment to the next, repeat
-        3) fill in gaps at the end of the packet, like 1) but go until packet index increases
-        '''
-        #step 1
-        index = packet[0].index_ints
-        packet_number=packet[0].index_ints[0]
-        insert_strands=[]
-        while True:
-            index,is_zero= self._outer_cascade.get_previous_index(index)
-            if index[0]!=packet_number:break
-            new_DNA=None
-            if is_zero:
-                new_DNA = BaseDNA(codewords=[0]*self._basestrand_bytes,index_ints=index)
-            else:
-                #unknown strand
-                new_DNA=BaseDNA(codewords=[None]*self._basestrand_bytes,index_ints=index)
-            insert_strands.append(new_DNA)
-
-        #step 2
-        for strand_index, s in enumerate(packet):
-            if strand_index == len(packet)-1: break #done
-            index=s.index_ints
-            end_index = packet[strand_index+1].index_ints
-            while True:
-                index,is_zero= self._outer_cascade.get_next_index(index)
-                if index==end_index: break
-                new_DNA=None
-                if is_zero:
-                    new_DNA = BaseDNA(codewords=[0]*self._basestrand_bytes,index_ints=index)
-                else:
-                    #unknown strand
-                    new_DNA=BaseDNA(codewords=[None]*self._basestrand_bytes,index_ints=index)
-                insert_strands.append(new_DNA)
-            
-        #step 3
-        index= packet[-1].index_ints
-        while True:
-            index,is_zero= self._outer_cascade.get_next_index(index)
-            if not index[0]==packet_number: break
-            new_DNA=None
-            if is_zero:
-                new_DNA = BaseDNA(codewords=[0]*self._basestrand_bytes,index_ints=index)
-            else:
-                #unknown strand
-                new_DNA=BaseDNA(codewords=[None]*self._basestrand_bytes,index_ints=index)
-            insert_strands.append(new_DNA)
-        return sorted(packet+insert_strands,key=lambda x: x.index_ints)
-        
 
     def decode(self,strand):
         if self._final_decode_run is True:

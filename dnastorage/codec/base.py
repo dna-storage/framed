@@ -3,6 +3,10 @@ from dnastorage.exceptions import *
 from dnastorage.strand_representation import *
 import math
 
+import logging
+logger = logging.getLogger('dna.codec.base')
+logger.addHandler(logging.NullHandler())
+
 #This is the base codec that allows for nesting of codecs, should be used for basic codecs that pass along a single strand
 class BaseCodec(object):
     def __init__(self,CodecObj=None,Policy=None):
@@ -83,7 +87,7 @@ class BaseOuterCodec(BaseCodec):
         self._num_data_sub_packets = 1 #determines the length of data packets before ECC is applied
         self._total_sub_packets  = 1 #determines how many sub-packets there are at this level, helps with determining indexing 
         self._index_bits=None
-
+        self._modify_index=False #set this true in your decoder to allow for index modification to be handled properly
     def _encode_header(self): #serialization for outer codecs
         buf=[]
         buf+=convertIntToBytes(self._index_bits,1)
@@ -134,19 +138,29 @@ class BaseOuterCodec(BaseCodec):
         if self._Obj != None:
             for s in sub_packets:
                 sub_packets[s] = self._Obj.decode(sub_packets[s])
-
+        for s in sub_packets:
+            sub_packets[s]=sorted(sub_packets[s],key=lambda x: tuple(x.index_ints))
+            sub_packets[s]=self._fill_gaps(sub_packets[s]) #fill in gaps with missing/zero strands
+        #fill in missing sub-packets
         #put sub-packets in array format
         tmp_packets=[]
         for key,item in sorted(sub_packets.items(),key=lambda x: x[0]): #just sort packets to make it easier
             tmp_packets.append(item)
         sub_packets=tmp_packets
+        if not self._modify_index:
+            sub_packets = self._fill_missing_packets(sub_packets,self._total_sub_packets)
+            assert len(sub_packets)==self._total_sub_packets
+            
         #error correct sub_packets
         sub_packets=self._decode(sub_packets)
+
+        #make sure to fill in missing packets AFTER error correction applied, this should follow the systematic view at this point
+        sub_packets=self._fill_missing_packets(sub_packets,self._num_data_sub_packets) 
+
         #build final correct packet to return
         corrected_packet=[]
         for p in sub_packets[:self._num_data_sub_packets]:
             corrected_packet+=p
-            
         final_packet=[]
         for s in corrected_packet:
             if not self._zero_range == tuple()  and tuple(s.index_ints)[self._level-1:]>=self._zero_range[0] and tuple(s.index_ints)[self._level-1:]<=self._zero_range[1]:
@@ -215,7 +229,7 @@ class BaseOuterCodec(BaseCodec):
 
         else:
             protected_sub_packets=divided_packets
-
+            
         #gets rid of 0 strands and notes their positions
         out_packet=[]
         for i, dp in enumerate(protected_sub_packets):
@@ -238,7 +252,6 @@ class BaseOuterCodec(BaseCodec):
         else:
             return (self._index_bits,)
 
-
     def get_zero_pad(self):
         #return location of zero pad strands so it can be possibly noted by the file system for decoding.
         if self._Obj !=None:
@@ -246,12 +259,10 @@ class BaseOuterCodec(BaseCodec):
         else:
             return (self.zero_range,)
 
-
     def set_zero_pad(self,pad_list):
         self._zero_range=pad_list[0]
         if self._Obj !=None:
             return self._Obj.set_zero_pad(pad_list[1::])
-
 
     def filter_data(self, strands):
         #filters strands that fall in this levels data range
@@ -268,6 +279,7 @@ class BaseOuterCodec(BaseCodec):
     def get_next_index(self,index):
         listed_index=list(index)
         is_zero=False
+        is_parity=False
         #given an index try to determine the next index, and tell whether if its a zero strand or not
         if self._Obj!=None:
             after_index,is_zero = self._Obj.get_next_index(index)
@@ -322,7 +334,87 @@ class BaseOuterCodec(BaseCodec):
             return (tuple(index)[self._level-1:]>=self._zero_range[0] and tuple(index)[self._level-1:]<=self._zero_range[1])
         else:
             return (tuple(index)[self._level-1:]>=self._zero_range[0] and tuple(index)[self._level-1:]<=self._zero_range[1]) or self._Obj.is_zero(index)
-    
+    def is_parity(self,index):
+        if self._Obj==None:
+            return index[self._level-1]> self._num_data_sub_packets
+        else:
+            return index[self._level-1]> self._num_data_sub_packets or self._Obj.is_parity(index)    
+    def _fill_missing_packets(self,packets,packet_max):
+        #fills in missing sub-packets
+        sub_packet_indexes = set( _[0].index_ints[self._level-1] for _ in packets) #should already be sorted
+        if len(sub_packet_indexes)==self._total_sub_packets: return packets
+        new_packets = []
+        p_counter=0
+        for i in range(0,packet_max):
+            if not i in sub_packet_indexes:
+                new_packet = []
+                for j in range(len(packets[0])):
+                    new_strand_index = tuple(packets[0][j].index_ints[0:self._level-1])+(i,)+tuple(packets[0][j].index_ints[self._level::])
+                    if self.is_zero(new_strand_index):
+                        new_DNA=BaseDNA(codewords=[0]*len(packets[0][j].codewords),index_ints=new_strand_index)
+                    else:
+                        new_DNA=BaseDNA(codewords=[None]*len(packets[0][j].codewords),index_ints=new_strand_index)
+                    new_packet.append(new_DNA)
+                new_packets.append(new_packet)
+            else:
+                new_packets.append(packets[p_counter])
+                p_counter+=1
+        return new_packets
+
+    def _fill_gaps(self,packet):
+        #takes in a sub packet of ordered strands and fills in gaps that may occur due to decode failures
+        '''
+        Process of filling strands is 3 steps:
+        1) fill in strands before the first strand in the packet, keep decreasing from the first index until the packet index decreases
+        2) fill in gaps in between strands, start from 1 strand increment to the next, repeat
+        3) fill in gaps at the end of the packet, like 1) but go until packet index increases
+        '''
+        #step 1
+        index = packet[0].index_ints
+        packet_number=packet[0].index_ints[self._level-1]
+        insert_strands=[]
+        while True:
+            index,is_zero= self.get_previous_index(index)
+            if index[self._level-1]!=packet_number:break
+            new_DNA=None
+            if is_zero:
+                new_DNA = BaseDNA(codewords=[0]*len(packet[0].codewords),index_ints=index)
+            else:
+                #unknown strand
+                new_DNA=BaseDNA(codewords=[None]*len(packet[0].codewords),index_ints=index)
+            insert_strands.append(new_DNA)
+        #step 2
+        for strand_index, s in enumerate(packet):
+            if strand_index == len(packet)-1: break #done
+            index=tuple(s.index_ints)
+            end_index = tuple(packet[strand_index+1].index_ints)
+            while True:
+                index,is_zero= self.get_next_index(index)
+                if tuple(index)==end_index: break
+                new_DNA=None
+                if is_zero:
+                    new_DNA = BaseDNA(codewords=[0]*len(packet[0].codewords),index_ints=index)
+                else:
+                    #unknown strand
+                    new_DNA=BaseDNA(codewords=[None]*len(packet[0].codewords),index_ints=index)
+                insert_strands.append(new_DNA)
+        #step 3
+        index= packet[-1].index_ints
+        while True:
+            index,is_zero= self.get_next_index(index)
+            is_parity=False
+            if self._Obj!=None: is_parity = self._Obj.is_parity(index) #actually want to know if this a parity strand in the levels below this 
+            if is_parity or index[self._level-1]!=packet_number: break
+            new_DNA=None
+            if is_zero:
+                new_DNA = BaseDNA(codewords=[0]*len(packet[0].codewords),index_ints=index)
+            else:
+                #unknown strand
+                new_DNA=BaseDNA(codewords=[None]*len(packet[0].codewords),index_ints=index)
+            insert_strands.append(new_DNA)
+        return sorted(packet+insert_strands,key=lambda x: tuple(x.index_ints))
+        
+        
 class TableCodec(BaseCodec):
     def __init__(self,CodecObj=None,keyEncWidth=20,keyDecWidth=4,cwEncWidth=5,cwDecWidth=1,Policy=None):
         BaseCodec.__init__(self,CodecObj=CodecObj,Policy=Policy)
