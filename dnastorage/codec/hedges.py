@@ -4,10 +4,14 @@ from dnastorage.codec.base_conversion import *
 from dnastorage.codec.base import *
 import heapq
 from dnastorage.codec_types import*
-from math import log10, log2, ceil, sqrt
+from math import log10, log2, ceil, sqrt, isclose
 import dnastorage.codec.fasthedges as fasthedges
 from random import randint
 from dnastorage.primer.primer_util import reverse_complement
+import logging
+logger = logging.getLogger('dna.codec.hedges')
+logger.addHandler(logging.NullHandler())
+
 
 
 try:
@@ -901,10 +905,16 @@ class hedges_state:
             self.salt_bits = 32
     
 class FastHedgesPipeline(BaseCodec,CWtoDNA):
-    def __init__(self,rate,pad_bits=8,prev_bits=8,guess_limit=100000,CodecObj=None,Policy=None,try_reverse = False):
+    def __init__(self,rate,pad_bits=8,prev_bits=8,guess_limit=100000,CodecObj=None,Policy=None,try_reverse = False,
+                 test_rates=False,rates_to_check=None):
         self._hedges_state = hedges_state(rate=rate,pad_bits=pad_bits,prev_bits=prev_bits)
         self._guess_limit=guess_limit
-        self._try_reverse=try_reverse #option to try reverse complement, should do this if DNA not guarenteed to be in right position
+        self._check_rates=test_rates
+        self._try_reverse=try_reverse #option to try reverse complement, should do this if DNA not guarenteed to be in right position'
+        if rates_to_check is None:
+            self._rates_to_check =[3.0/4.0, 6.0/10.0, 1.0/2.0, 1.0/3.0, 1.0/4.0, 1.0/5.0, 1.0/6.0, 1.0/8.0]
+        else:
+            self._rates_to_check=rates_to_check #allow the user to bring down 
         CWtoDNA.__init__(self)
         BaseCodec.__init__(self,CodecObj=CodecObj,Policy=Policy)
 
@@ -913,19 +923,48 @@ class FastHedgesPipeline(BaseCodec,CWtoDNA):
         self._hedges_state.set_seqnum_bytes(strand.index_bytes)
         strand.dna_strand = fasthedges.encode(bytes(strand.codewords),self._hedges_state)
         return strand
-        
+
+
+    def _test_reverse(self,strand):
+        reverse_ret_dict = fasthedges.decode(reverse_complement(strand.dna_strand), self._hedges_state, 5000)
+        reverse_codewords = reverse_ret_dict["return_bytes"]
+        forward_ret_dict = fasthedges.decode(strand.dna_strand, self._hedges_state, 1000)
+        forward_codewords =forward_ret_dict["return_bytes"]
+        reverse_none = sum([1 if _==None else 0 for _ in reverse_codewords])
+        forward_none = sum([1 if _==None else 0 for _ in forward_codewords])
+        if reverse_none<forward_none: #utilize reverse complement
+            return True
+        else:
+            return False
+
+    def _test_rates(self,strand): #test rates to pick best rate
+        min_None = float('inf')
+        min_rate = None
+        original_rate=self._hedges_state.rate
+        for r in self._rates_to_check:
+            self._hedges_state.rate=r
+            ret_dict = fasthedges.decode(strand.dna_strand, self._hedges_state, 5000)
+            codewords = ret_dict["return_bytes"]
+            none_cnt = sum([1 if _==None else 0 for _ in codewords])
+            if none_cnt<min_None:
+                min_None=none_cnt
+                min_rate = r
+        assert min_rate!=None
+        self._hedges_state.rate=original_rate
+        return min_rate
+    
     def _decode(self,strand):
         reverse = False
         if self._try_reverse: #if we need to check reverse, try a small number of guesses
-            reverse_ret_dict = fasthedges.decode(reverse_complement(strand.dna_strand), self._hedges_state, 1000)
-            reverse_codewords = reverse_ret_dict["return_bytes"]
-            forward_ret_dict = fasthedges.decode(strand.dna_strand, self._hedges_state, 1000)
-            forward_codewords =forward_ret_dict["return_bytes"]
-            reverse_none = sum([1 if _==None else 0 for _ in reverse_codewords])
-            forward_none = sum([1 if _==None else 0 for _ in forward_codewords])
-            if reverse_none<forward_none: #utilize reverse complement
-                reverse=True
-        if not reverse:
+            reverse=self._test_reverse(strand)
+        if self._check_rates:
+            #TODO: may need to merge this logic with test reverse, but that would be pretty inefficient
+            rate = self._test_rates(strand)
+            if not isclose(rate,self._hedges_state.rate,rel_tol=1e-5): #must not be for this decoder
+                strand.codewords=[None]*(self._hedges_state.seq_bytes+self._hedges_state.message_bytes)
+                #logger.info("Strand None rate mismatch")
+                return strand
+        if not reverse: 
             strand_return = fasthedges.decode(strand.dna_strand, self._hedges_state, self._guess_limit)
             strand.codewords = strand_return["return_bytes"]
         else:

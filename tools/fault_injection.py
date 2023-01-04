@@ -215,9 +215,11 @@ if __name__ == "__main__":
     parser.add_argument('--dna_process',required=False,default=None,help="set of processing steps to do on dna strands before fault injection")
     parser.add_argument('--out_dir',type=str,required=True,action="store",help="Directory where data will be dumped")
     parser.add_argument('--file_barcode',required=False,default=tuple(),nargs="+",type=int,help="Barcode for the file")
-    parser.add_argument('--store_header',required=False,default=True,help="Whether to store header data")
-    
+    parser.add_argument('--store_header',required=False,default=1,help="Whether to store header data")
+
     args = parser.parse_args()
+    if args.store_header==1: args.store_header=True
+    else: args.store_header=False
     formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')                                                                                           
     mpi_handler = MPIFileHandler(os.path.join(args.out_dir,"fi_info_{}.log".format(comm.rank)))
     mpi_handler.setFormatter(formatter)                                                                                                                                             

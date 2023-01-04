@@ -143,7 +143,10 @@ def SDC_pipeline(pf,**kwargs):
     hedges_pad_bits=kwargs.get("hedges_pad",8)
     hedges_previous = kwargs.get("hedge_prev_bits",8)
     hedges_guesses = kwargs.get("hedges_guesses",100000)
+    hedges_check_rates = kwargs.get("check_rates",None)
+    hedges_do_rate_check = kwargs.get("do_rate_check",False)
 
+    
     if "outerECCStrands" not in kwargs and "blockSizeInBytes" in kwargs:
         outerECCStrands = 255 - blockSizeInBytes//strandSizeInBytes
     else:
@@ -159,7 +162,8 @@ def SDC_pipeline(pf,**kwargs):
     elif "outerECCdivisor" in kwargs:
         rsOuter = ReedSolomonOuterPipeline(kwargs["outerECCdivisor"],outerECCStrands)
   
-    hedges = FastHedgesPipeline(rate=hedges_rate,pad_bits=hedges_pad_bits,prev_bits=hedges_previous,guess_limit=hedges_guesses)
+    hedges = FastHedgesPipeline(rate=hedges_rate,pad_bits=hedges_pad_bits,prev_bits=hedges_previous,guess_limit=hedges_guesses,
+                                rates_to_check = hedges_check_rates,test_rates=hedges_do_rate_check)
     crc = CRC8()
     
     #components related to DNA functionality
@@ -175,11 +179,12 @@ def SDC_pipeline(pf,**kwargs):
     DNA_pipeline = (p3,rt_pcr,t7,p5)
 
     if fault_injection: #some counters for data collection
+        DNA_error_probe = DNAErrorProbe(probe_name=pipeline_title)
         index_probe = IndexDistribution(probe_name=pipeline_title,prefix_to_match=barcode)
         hedges_probe = CodewordErrorRateProbe(probe_name="{}::hedges".format(pipeline_title))
         inner_pipeline = (index_probe,crc,hedges_probe,hedges)
         dna_counter_probe = FilteredDNACounter(probe_name=pipeline_title)
-        DNA_pipeline=(dna_counter_probe,)+DNA_pipeline
+        DNA_pipeline=(dna_counter_probe,DNA_error_probe)+DNA_pipeline
 
     if check_primers: #checks data strands for matches in
         assert strand_path!=None
@@ -194,12 +199,12 @@ def ReedSolomon_Base4_Pipeline(pf,**kwargs):
     required = ["blockSizeInBytes","strandSizeInBytes","hedges_rate",\
                 "dna_length", "crc_type", "reverse_payload"]
     check_required(required,**kwargs)
-
+    index_bytes = kwargs.get("index_bytes",None) #optional, sets index bytes to be constant, if the constant number is less than the actual, encoder will fail
     primer5 = kwargs.get("primer5",'A'*20) #basic 5' primer region
     primer3 =kwargs.get("primer3",'A'*20) #basic 3' primer region
     #components related to DNA functionality
-    p5 = PrependSequencePipeline(primer5,ignore=False,handler="align",search_range=200)
-    p3 = AppendSequencePipeline(primer3,ignore=False,handler="align",search_range=200)
+    p5 = PrependSequencePipeline(primer5,ignore=False,handler="align",search_range=100)
+    p3 = AppendSequencePipeline(primer3,ignore=False,handler="align",search_range=100)
     #set up some fault injection/sequencing options
     fault_injection= kwargs.get("fi",False)
     #set strand size and block size bytes
@@ -266,7 +271,7 @@ def ReedSolomon_Base4_Pipeline(pf,**kwargs):
         DNA_pipeline =(DNA_error_probe,dna_hook_probe,p5,p3)
     upper_strand_length=400
     return pipeline.PipeLine(out_pipeline+inner_pipeline+DNA_pipeline,blockSizeInBytes,strandSizeInBytes,upper_strand_length,1,packetizedfile=pf,
-                             barcode=barcode,dna_consolidator=dna_consolidator,cw_consolidator=cw_consolidator)
+                             barcode=barcode,dna_consolidator=dna_consolidator,cw_consolidator=cw_consolidator,constant_index_bytes=index_bytes)
 
 def Basic_Hedges_Pipeline(pf,**kwargs):
     required = ["blockSizeInBytes","strandSizeInBytes","hedges_rate",\
@@ -317,7 +322,7 @@ def Basic_Hedges_Pipeline(pf,**kwargs):
 
 
     if "packeted_inner_strand_size" in kwargs: #allow for packeting to reduce parameter waste 
-        inner_ECC,strandSizeInBytes=kwargs["packeted_inner_strand_size"]
+        hedges_rate,strandSizeInBytes=kwargs["packeted_inner_strand_size"]
     
     if using_DNA_consolidator:
         if using_DNA_consolidator=="lsh":
@@ -354,8 +359,8 @@ def Basic_Hedges_Pipeline(pf,**kwargs):
     else: assert 0 and "Invalid CRC selection"
         
     #components related to DNA functionality
-    p5 = PrependSequencePipeline(primer5,ignore=False,handler="align",search_range=200)
-    p3 = AppendSequencePipeline(primer3,ignore=False,handler="align",search_range=200)
+    p5 = PrependSequencePipeline(primer5,ignore=False,handler="align",search_range=100)
+    p3 = AppendSequencePipeline(primer3,ignore=False,handler="align",search_range=100)
     length_filter = DNALengthFilterPipeline(filter_lower_length,filter_upper_length)
     
 

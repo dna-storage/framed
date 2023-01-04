@@ -42,7 +42,9 @@ class PipeLine(EncodePacketizedFile,DecodePacketizedFile):
         
         EncodePacketizedFile.__init__(self,None)
         DecodePacketizedFile.__init__(self,None)
- 
+
+        self._strand_count=0
+        
         self._packetsize_bytes=packetsize_bytes
         self._packetizedFile=packetizedfile
         if packetizedfile !=None:
@@ -185,7 +187,6 @@ class PipeLine(EncodePacketizedFile,DecodePacketizedFile):
         #IF MPI: should get strands back to master
         if self.mpi:
             self._decode_strands=object_gather(self._decode_strands,self.mpi)
-
         packets={}
         #let rank 0 cut up packets
         if not self.mpi or self.mpi and self.mpi.Get_rank()==0:
@@ -230,26 +231,30 @@ class PipeLine(EncodePacketizedFile,DecodePacketizedFile):
             self._decode_strands=[]
             self._filtered_strands=[]
         strand.before_decode=strand.dna_strand
+        self._strand_count+=1
         strand.is_reversed=False
         #perform the stream portion of the encoding pipeline, which processes the physical cascade. This should include stuff like removing physical portions
         self._dna_to_dna_cascade.decode(strand)
-        if strand.dna_strand == None:
+        if strand.dna_strand == None or len(strand.dna_strand.strip())==0:
             strand.dna_strand=strand.before_decode
-            try:
-                is_rna = strand.is_RNA
-            except: #if it is not RNA it should throw exception
+            if not hasattr(strand,"is_RNA") or strand.is_RNA==False:
                 strand.is_reversed=True
-                #try reverse_complement
-                strand.dna_strand=reverse_complement(strand.dna_strand)
+                try:
+                    strand.dna_strand=reverse_complement(strand.dna_strand)
+                except:
+                    logger.info(strand.dna_strand)
+                    exit(1)
+                #logger.info("Trying Reverse")
                 self._dna_to_dna_cascade.decode(strand)
-                if strand.dna_strand ==None:
+                if strand.dna_strand ==None or len(strand.dna_strand.strip())==0:
+                    #logger.info("Filtering Strand")
+                    #logger.info("Filtered Strands {}".format(strand.before_decode))
                     self.filter_strand(strand)
                     return
             else:#no sense in doing reverse complements for RNA 
-                assert is_rna
                 self.filter_strand(strand)
                 return
-
+        #logger.info("Strand Kept {}".format(strand.is_reversed))
         strand.index_bytes = self._index_bytes
         strand.index_bit_set =  self._index_bit_set
         self._decode_strands.append(strand)

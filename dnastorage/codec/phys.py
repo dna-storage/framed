@@ -6,6 +6,7 @@ from dnastorage.strand_representation import *
 from Bio import pairwise2
 from Bio.pairwise2 import format_alignment
 import Levenshtein as ld
+from dnastorage.util.stats import *
 
 import logging
 logger = logging.getLogger('dnastorage.codec.phys')
@@ -150,9 +151,12 @@ class PrependSequence(BaseCodec):
             align=align[0]
             score= align[2]
             score = sum([1 if _==_2 else 0 for _,_2 in zip(align[1],align[0])])
-            if score<(len(self._seq) - (len(self._seq)*0.3)): #KV made change for score to count total matches after realigning 
+            if score<(len(self._seq) - (len(self._seq)*0.3)): #KV made change for score to count total matches after realigning
                 return strand #finding alignment unsuccessful
             else:
+                start=align[3]
+                end=align[4]
+                #logger.info("Prepend Good Alignment \n{} \n{} \n {} \n {} {}".format(align[0][start-5:end+5],align[1][start-5:end+5],score,start,end))
                 return strand[align[4]:]
 
 
@@ -206,12 +210,19 @@ class AppendSequence(BaseCodec):
             if score<(len(self._seq) - (len(self._seq)*0.3)):
                 return strand
             else:
+                start=align[3]
+                end=align[4]
+                #logger.info("Append Good Alignment \n{} \n{} \n {} \n {} {}".format(align[0][start-5:end+5],align[1][start-5:end+5],score,start,end))
                 return strand[0:align[3]+len(strand)-len(self._seq)-self._search_range]
 
 class PrependSequencePipeline(PrependSequence,DNAtoDNA):
+    prepend_filter_ID=0
     def __init__(self,seq,CodecObj=None,Policy=None,isPrimer=False,ignore=False,handler="ed",search_range=50):
         PrependSequence.__init__(self,seq,CodecObj=CodecObj,Policy=Policy,isPrimer=isPrimer,handler=handler,search_range=search_range)
         DNAtoDNA.__init__(self)
+        self._prepend_counter_attr="prepend_filter_{}".format(PrependSequencePipeline.prepend_filter_ID)
+        
+        PrependSequencePipeline.prepend_filter_ID+=1
         self._ignore=ignore
     def _encode(self,strand):
         #this is a wrapper around the basic PrependSequence _encode so that the strand interface
@@ -219,10 +230,12 @@ class PrependSequencePipeline(PrependSequence,DNAtoDNA):
         return strand
     def _decode(self,strand):
         if strand.dna_strand is None or self._ignore or self._seq=="": return strand
+        #logger.info("Entering Prepend")
         strand_before =strand.dna_strand
         strand.dna_strand=PrependSequence._decode(self,strand.dna_strand)
         if strand_before==strand.dna_strand and self._seq != "":
             strand.dna_strand = None
+            if strand.is_reversed:stats.inc(self._prepend_counter_attr)
         return strand
 
 
@@ -241,9 +254,12 @@ class ReversePipeline(BaseCodec,DNAtoDNA):
 
 
 class AppendSequencePipeline(AppendSequence,DNAtoDNA):
+    append_filter_ID = 0
     def __init__(self,seq,CodecObj=None,Policy=None,isPrimer=False,ignore=False,handler="ed",search_range=50):
         AppendSequence.__init__(self,seq,CodecObj=CodecObj,Policy=Policy,isPrimer=isPrimer,handler=handler,search_range=search_range)
         DNAtoDNA.__init__(self)
+        self._filter_counter_attr="append_filter_{}".format(AppendSequencePipeline.append_filter_ID)
+        AppendSequencePipeline.append_filter_ID+=1
         self._ignore=ignore
     def _encode(self,strand):
         #this is a wrapper around the basic AppendSequence _encode so that the strand interface
@@ -251,9 +267,11 @@ class AppendSequencePipeline(AppendSequence,DNAtoDNA):
         return strand
     def _decode(self,strand):
         if strand.dna_strand is None or self._ignore or self._seq=="": return strand
+        #logger.info("Entering append")
         strand_before =strand.dna_strand
         strand.dna_strand=AppendSequence._decode(self,strand.dna_strand)
         if strand_before==strand.dna_strand:
+            if strand.is_reversed: stats.inc(self._filter_counter_attr)
             strand.dna_strand = None
         return strand
 
@@ -267,13 +285,16 @@ Simple length filter that throws out DNA strands that are either too long or too
 filter_length_lower: if DNA strand is less than this, throw out the strand
 filter_length_upper: if DNA strand is more than this, throw out the strand
 """
-class DNALengthFilterPipeline(BaseCodec,DNAtoDNA): 
+class DNALengthFilterPipeline(BaseCodec,DNAtoDNA):
+    filter_ID=0
     def __init__(self,filter_length_lower,filter_length_upper,CodecObj=None,Policy=None):
         DNAtoDNA.__init__(self)
         BaseCodec.__init__(self,CodecObj=CodecObj,Policy=Policy)
         self._filter_length_lower = filter_length_lower
         self._filter_length_upper = filter_length_upper
         self.alignment_name=None
+        self._length_stat_name="filter_stat_{}".format(DNALengthFilterPipeline.filter_ID)
+        DNALengthFilterPipeline.filter_ID+=1
     def _encode(self,strand):
         return strand
     def _decode(self,strand):
@@ -284,8 +305,9 @@ class DNALengthFilterPipeline(BaseCodec,DNAtoDNA):
                 #use edit operations to print out errors surrounding matches
                 edit_ops=ld.editops(getattr(strand,self.alignment_name),strand.dna_strand)
                 edit_strand_vis,applied_edits=calculate_edit_list(edit_ops,len(getattr(strand,self.alignment_name)))
-                logger.info("FAIL {}\n".format("".join(edit_strand_vis)))
+                #logger.info("FAIL {}\n".format("".join(edit_strand_vis)))
             strand.dna_strand = None
+            if strand.is_reversed:stats.inc(self._length_stat_name)
         else:
             if self.alignment_name!=None and hasattr(strand,self.alignment_name):
                 edit_ops=ld.editops(getattr(strand,self.alignment_name),strand.dna_strand)

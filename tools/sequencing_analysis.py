@@ -76,7 +76,7 @@ if __name__=="__main__":
             header_params = file_params["header_params"]
             payload_header_file = file_params.get("payload_header_path",None) #if this does not exist, need to be able to decode it in DNAFileInterface
             header_header_file = file_params["header_header_path"] #this needs to exist
-            barcode = file_params.get("barcode",tuple())
+            barcode = tuple(file_params.get("barcode",tuple()))
             if not isinstance(encoder_params,dict): raise ValueError("encoder_params not a dictionary")
             if not isinstance(header_params,dict): raise ValueError("header_params not a dictionary")
             if "barcode" in file_params: #if barcoded, make sure to suffix the pipeline titles just so that data is kept separate
@@ -96,7 +96,7 @@ if __name__=="__main__":
                                         payload_header_filename = payload_header_file,mpi=world_comm,strand_interface=strand_interface)
 
         #recoordinate strands
-        gather_strands=strand_gather(read_dna.get_returned_strands(),world_comm)
+        gather_strands=object_gather(read_dna.get_returned_strands(),world_comm)
         strand_interface.strands=gather_strands
         logger.info("Recoordinated strands")
         

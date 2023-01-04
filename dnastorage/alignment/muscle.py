@@ -42,7 +42,12 @@ class MuscleAlign(BaseAlignment):
             env=None
         )
         stdout_str, stderr_str = child_process.communicate(stdin)
-        msa =  AlignIO.read(out_path,"fasta")
+        try:
+            msa =  AlignIO.read(out_path,"fasta")
+        except Exception as e:
+            print(e)
+            print("Length of Cluster: {}".format(len(cluster)))
+            exit(1)
         aligned_cluster = []
         for aligned_strand,strand in zip(msa,cluster_to_align):
             strand.dna_strand=str(aligned_strand.seq)

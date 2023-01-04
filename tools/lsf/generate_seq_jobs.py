@@ -9,11 +9,14 @@ from lsf_utils.lsf_submit import *
 from lsf_utils.param_util import *
 import hashlib
 import itertools
+import re
+
 
 if __name__=="__main__":
     import argparse
     parser = argparse.ArgumentParser(description="Script to generate fault injection jobs")
     parser.add_argument('--sequencing_path',required=True,action="store",help="Top path to sequencing data to analyze, can be a directory or a single file")
+    parser.add_argument('--sequencing_regex',required=False,default=".+",action="store",help = "regular expression used to identify sequencing files to run")
     parser.add_argument('--params',type=str,required=True,action="store",help="Path to json file with parameters to perform sequencing analysis with")
     parser.add_argument('--memory',default=8,type=int,action="store",help="Memory for each job")
     parser.add_argument('--cores',default=4,type=int,action="store",help="Cores for each job, this is the active number of working processes during fi execution")
@@ -74,9 +77,12 @@ if __name__=="__main__":
 
     #get sequencing files
     sequencing_paths = []
+    seq_regex=re.compile(args.sequencing_regex)
     assert os.path.exists(args.sequencing_path)
     if os.path.isdir(args.sequencing_path):
         for p in os.listdir(args.sequencing_path):
+            match = seq_regex.search(p)
+            if match is None: continue
             sequencing_paths.append(os.path.join(args.sequencing_path,p))
     elif os.path.isfile(args.sequencing_path):
         sequencing_paths.append(args.sequencing_path) 

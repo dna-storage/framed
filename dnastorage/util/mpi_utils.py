@@ -1,5 +1,8 @@
+import mpi4py
+mpi4py.rc.recv_mprobe = False
 from mpi4py import MPI
 import logging
+import pickle
 logger = logging.getLogger('dna.util.mpi_utils')
 logger.addHandler(logging.NullHandler())
 
@@ -21,12 +24,15 @@ def communicate_objects(objects,mpi):
             if index==mpi.size-1: break
         while len(chunked_objects)<mpi.size: chunked_objects+=[[]]
     logger.info("Rank {} at scatter".format(mpi.rank))
+    
     return_objects=mpi.scatter(chunked_objects,root=0)
     logger.info("Rank {} has {} objects after communicate_objects".format(mpi.rank,len(return_objects)))
     return return_objects
 
-def object_scatter(objects,comm,objs_per_transaction=100000): #handle the scattering of a large set of objects to avoid overflow
-    if comm.rank==0:logger.info("{} Total objects need to be communicated".format(len(objects)))
+def object_scatter(objects,comm,objs_per_transaction=10000): #handle the scattering of a large set of objects to avoid overflow
+    if comm.rank==0:
+        logger.info("{} Total objects need to be communicated".format(len(objects)))
+        if len(objects)>0: logger.info("Example pickle size of object is {}".format(len(pickle.dumps(objects[0]))))
     number_of_scatters = len(objects)//objs_per_transaction
     if len(objects)%objs_per_transaction>0: number_of_scatters+=1
     number_of_scatters=comm.bcast(number_of_scatters,root=0)
@@ -41,8 +47,9 @@ def object_scatter(objects,comm,objs_per_transaction=100000): #handle the scatte
         
 
 #handle the gathering of large sets of objects to avoid overflow
-def object_gather(objects,comm,objs_per_transaction=100000):
+def object_gather(objects,comm,objs_per_transaction=10000):
     logger.info("Rank {} communicating {} objects back to rank 0".format(comm.Get_rank(),len(objects)))
+    if len(objects)>0: logger.info("Example pickle size of object is {}".format(len(pickle.dumps(objects[0]))))
     objects_per_rank = objs_per_transaction//comm.size
     total_transactions = len(objects)//objects_per_rank
     if len(objects)%objects_per_rank>0: total_transactions+=1

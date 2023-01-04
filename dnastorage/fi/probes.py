@@ -224,6 +224,7 @@ class IndexDistribution(BaseCodec,Probe):
         self._index_dist_probe_key_decode = "{}::index_dist_decode".format(self.name)
         self._total_indexes_decode = "{}::total_indexes_decode".format(self.name)
         self._total_indexes_lost = "{}::total_indexes_lost".format(self.name)
+        self._total_indexes_lost_barcode_mismatch = "{}::total_indexes_lost_barcode_mismatch".format(self.name)
         self._seq_map = "{}::seq_map".format(self.name)
         stats[self._seq_map]={}
         self._prefix_to_match = prefix_to_match
@@ -251,7 +252,7 @@ class IndexDistribution(BaseCodec,Probe):
             stats.inc(self._total_indexes_lost)
             return s
         if self._prefix_to_match != index_ints[:len(self._prefix_to_match)]:
-            stats.inc(self._total_indexes_lost)
+            stats.inc(self._total_indexes_lost_barcode_mismatch)
         else:
             stats.inc(self._total_indexes_decode)
             stats.inc(self._index_dist_probe_key_decode,dflt=dict(),coords=index_ints)

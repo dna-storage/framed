@@ -15,8 +15,10 @@ class LSFJob(object):
         self.queue="tuck"
         self.command=None
         self.using_ncsu_mpi=False
+        self.avoid_hosts=[]
         self.stdout="lsfjob.stdout"
         self.stderr="lsfjob.stderr"
+        self._using_conda_env=None
         self.load_modules = modules
         if 'PYTHON_ENV' in os.environ:
             self.python_env = os.environ['PYTHON_ENV']
@@ -37,6 +39,10 @@ class LSFJob(object):
             if self.one_host: f.write("\n#BSUB -R \"span[hosts=1]\"") #this is to make sure all processes/thread sit at one host
             #f.write("\n#BSUB -R span[hosts=1]")
             f.write("\n#BSUB -R \"rusage[mem={}GB]\"".format(self.memory))
+            if len(self.avoid_hosts)>0:
+                #avoid problematic hosts
+                for h in self.avoid_hosts:
+                    f.write("\n#BSUB -R \"hname != {} \"".format(h))
             #f.write("\n#BSUB -M {}GB!".format(str(self.memory)))
             f.write("\n#BSUB -q "+self.queue)
             f.write("\n#BSUB -J " + self.job)
@@ -46,6 +52,8 @@ class LSFJob(object):
                 f.write('\n \n module load {}'.format(" ".join(self.load_modules)))
             if len(self.python_env) > 0:
                 f.write('\n source {}'.format(self.python_env))                
+            if self.using_conda_env:
+                f.write('\n conda activate {}'.format(self.using_conda_env))               
             f.write("\n \n {}".format(self.command))
                 
         return generate_name
@@ -158,3 +166,23 @@ class LSFJob(object):
         assert type(p)==str and "python_env should be a string."
         #assert os.path.exists(p) and "python_env should exist."
         self._python_env=p
+    
+    @property
+    def avoid_hosts(self):
+        return self._avoid_hosts
+    @avoid_hosts.setter
+    def avoid_hosts(self,hosts):
+        print("hosts {}".format(hosts))
+        if not type(hosts) is list:
+            h=[hosts]
+        else:
+            h=hosts
+        self._avoid_hosts=h
+
+
+    @property 
+    def using_conda_env(self):
+        return self._using_conda_env
+    @using_conda_env.setter
+    def using_conda_env(self,env_path):
+        self._using_conda_env=env_path

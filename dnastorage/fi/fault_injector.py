@@ -64,6 +64,7 @@ class BaseFI:
 class sequencing_experiment(BaseFI):
     def __init__(self,**args):
         BaseFI.__init__(self)
+        self._max_reads=args.get("max_reads",float('inf')) #allow for subsetting of the whole indexed set
         if "sequencing_data_path" in args and "mapping_path" in args:
             assert os.path.exists(args["sequencing_data_path"]) and os.path.exists(args["mapping_path"])
             self._sequencing_data_path = args["sequencing_data_path"]
@@ -87,12 +88,17 @@ class sequencing_experiment(BaseFI):
         for strand in self._input_library:
             input_library_map[strand.index_ints] = strand
         #assume fastq file for now
+        record_counter=0
         for record in SeqIO.parse(self._sequencing_data_path,"fastq"):
             seq_strand,subs = re.subn("U","T",str(record.seq))
+            seq_strand,n_subs = re.subn("N","A",seq_strand)
+            seq_strand=seq_strand.rstrip('\x00')
             index_ints = self._map.get(record.id,None)
             if index_ints is None: continue #dead strands
             lib_strand=input_library_map[index_ints]
             out_list.append(FaultDNA(lib_strand,seq_strand))
+            record_counter+=1
+            if record_counter>=self._max_reads: break 
         assert len(out_list)>0
         return out_list
     def Run(self):
@@ -173,7 +179,6 @@ class position_fixed_rate(fixed_rate): #does fixed rate error rates, except on a
                     #need to inject a fault at this nucleotide, fault types are equally probable
                     injection_sites[strand_index].append((nuc_index,str(generate.rand_in_range(0,2))))
         return injection_sites
-
 
 
 class pattern_fixed_rate(fixed_rate): #allows the injection of patterns rather than single errors

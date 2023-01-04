@@ -46,15 +46,6 @@ def load_pickle_dict(path):
     #expand arrays to make pandas processing easier
     additional_entries={}
     name_deletions=[]
-    """
-    for item in data_dict:
-        if isinstance(data_dict[item],np.ndarray):
-            base_name = item
-            for index, i in enumerate(data_dict[item]):
-                name = "{}::{}".format(base_name,index)
-                additional_entries[name]=i
-            name_deletions.append(item)
-    """
     data_dict.update(additional_entries)
     return data_dict
 
@@ -89,6 +80,7 @@ if __name__=="__main__":
             for x in all_dicts: complete_dict.update(x)
             final_dicts.append(complete_dict)
         except:
+            print("Error on path {}, data will not be loaded from here".format(p))
             continue
         
     out_df = pd.DataFrame(final_dicts,dtype=object).fillna('')

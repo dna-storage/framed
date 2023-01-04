@@ -369,10 +369,12 @@ class BaseOuterCodec(BaseCodec):
         2) fill in gaps in between strands, start from 1 strand increment to the next, repeat
         3) fill in gaps at the end of the packet, like 1) but go until packet index increases
         '''
+        
         #step 1
         index = packet[0].index_ints
         packet_number=packet[0].index_ints[self._level-1]
         insert_strands=[]
+        if self._total_sub_packets==1 and self._level==len(index): return packet#nothing really to do here, these are individual strands at the bottom 
         while True:
             index,is_zero= self.get_previous_index(index)
             if index[self._level-1]!=packet_number:break

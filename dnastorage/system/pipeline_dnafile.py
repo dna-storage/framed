@@ -232,7 +232,7 @@ class WriteDNAFilePipeline(DNAFilePipeline):
             self._payload_header_fd.write(header.encoded_header_bytes) #write down the bytes for the header, useful for debugging purposes 
             self._payload_header_fd.close()
             
-        if not self._store_header: #allow headers to be skipped from being stored
+        if self._store_header: #allow headers to be skipped from being stored
             for i,h in enumerate(hdr_strands):
                 self.strands.insert(i,h)
 
@@ -249,7 +249,7 @@ class WriteDNAFilePipeline(DNAFilePipeline):
         
         if self._do_write:
             for s in self.strands:
-                self.out_fd.write("{}\n".format(s.dna_strand))
+                self.out_fd.write("{}:{}\n".format(s.index_ints,s.dna_strand))
             
         if self.out_fd != sys.stdout and self.out_fd != sys.stderr:
             self.out_fd.close()

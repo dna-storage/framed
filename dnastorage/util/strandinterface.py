@@ -46,8 +46,11 @@ class FastqInterface(BaseStrandInterface):
         for record in SeqIO.parse(path,"fastq"):
             tmp_strands.append(BaseDNA(dna_strand=str(record.seq)))
             (tmp_strands[-1].dna_strand,cnt) = re.subn("U","T",tmp_strands[-1].dna_strand) #replace all U with T, should work even if strand is DNA
+            (tmp_strands[-1].dna_strand,_) = re.subn("N","A",tmp_strands[-1].dna_strand) #replace all U with T, should work even if strand is DNA
+            tmp_strands[-1].dna_strand=tmp_strands[-1].dna_strand.rstrip('\x00')
             tmp_strands[-1].record_id=record.id
             if cnt>0: tmp_strands[-1].is_RNA=True
+            else: tmp_strands[-1].is_RNA=False
         self.strands=tmp_strands
 
 class DNAFileInterface(BaseStrandInterface):
