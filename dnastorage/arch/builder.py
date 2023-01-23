@@ -137,6 +137,7 @@ def SDC_pipeline(pf,**kwargs):
     rt_pcr_seq =kwargs.get("RT-PCR","CGCTAGCTCTAGAGATCTAG")
     check_primers = kwargs.get("check_primers",False)
     strand_path=kwargs.get("strand_path",None)
+    index_after_crc = kwargs.get("index_after_crc",True)
     
     hedges_rate = kwargs.get("hedges_rate",1/2.)
     # pad_bits and prev_bits should match by default:
@@ -170,7 +171,7 @@ def SDC_pipeline(pf,**kwargs):
     p5 = PrependSequencePipeline(primer5,ignore=True)
     t7 = PrependSequencePipeline(t7_seq,ignore=True)
     rt_pcr = PrependSequencePipeline(rt_pcr_seq,handler="align",search_range=70)
-    p3 = AppendSequencePipeline(reverse_complement(primer3),handler="align",search_range=20)
+    p3 = AppendSequencePipeline(reverse_complement(primer3),handler="align",search_range=70)
 
     consolidator = SimpleMajorityVote()
 
@@ -182,7 +183,10 @@ def SDC_pipeline(pf,**kwargs):
         DNA_error_probe = DNAErrorProbe(probe_name=pipeline_title)
         index_probe = IndexDistribution(probe_name=pipeline_title,prefix_to_match=barcode)
         hedges_probe = CodewordErrorRateProbe(probe_name="{}::hedges".format(pipeline_title))
-        inner_pipeline = (index_probe,crc,hedges_probe,hedges)
+        if index_after_crc:
+            inner_pipeline = (index_probe,crc,hedges_probe,hedges)
+        else:
+            inner_pipeline = (crc,index_probe,hedges_probe,hedges)
         dna_counter_probe = FilteredDNACounter(probe_name=pipeline_title)
         DNA_pipeline=(dna_counter_probe,DNA_error_probe)+DNA_pipeline
 

@@ -1,6 +1,10 @@
 """
 Main script for analysis on real sequencing data through the use of encode/decode pipelines.
 """
+import mpi4py
+mpi4py.rc.recv_mprobe = False
+from mpi4py import MPI
+
 from dnastorage.system.pipeline_dnafile import *
 from dnastorage.system.formats import *
 from dnastorage.util.strandinterface import *
@@ -16,7 +20,6 @@ import time
 import copy
 import json
 import numpy as np
-from mpi4py import MPI
 
 logger = logging.getLogger()                                                                                                                                     
 
@@ -37,7 +40,7 @@ if __name__=="__main__":
     mpi_handler = MPIFileHandler(os.path.join(args.out_dir,"sequencing_info_{}.log".format(world_comm.rank)))
     mpi_handler.setFormatter(formatter)                                                                                                                                             
     logger.addHandler(mpi_handler)                                                                                                                                                  
-    logger.setLevel(logging.DEBUG)
+    logger.setLevel(logging.INFO)
     assert os.path.isdir(args.out_dir)                                                                                                                                             
 
     strand_interface = BaseStrandInterface()

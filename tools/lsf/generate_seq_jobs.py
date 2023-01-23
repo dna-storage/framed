@@ -18,6 +18,7 @@ if __name__=="__main__":
     parser.add_argument('--sequencing_path',required=True,action="store",help="Top path to sequencing data to analyze, can be a directory or a single file")
     parser.add_argument('--sequencing_regex',required=False,default=".+",action="store",help = "regular expression used to identify sequencing files to run")
     parser.add_argument('--params',type=str,required=True,action="store",help="Path to json file with parameters to perform sequencing analysis with")
+    parser.add_argument('--job_name',default="dnastorage_fi",action="store",help="name for jobs that will be spawned")
     parser.add_argument('--memory',default=8,type=int,action="store",help="Memory for each job")
     parser.add_argument('--cores',default=4,type=int,action="store",help="Cores for each job, this is the active number of working processes during fi execution")
     parser.add_argument('--time',default=10,type=int,action="store",help="Time allowed for each job,in hours")
@@ -30,6 +31,7 @@ if __name__=="__main__":
     job.queue=args.queue
     job.time=args.time
     job.cores=args.cores 
+    job.job_name = args.job_name
     job.memory=args.memory
     job.one_host=False
     job.using_ncsu_mpi = True #want to use ncsu's MPI enviroment

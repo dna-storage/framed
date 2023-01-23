@@ -32,20 +32,14 @@ class BaseFI:
             return fixed_rate(**kwargs)
         elif fault_injector=="position_fixed_rate":
             return position_fixed_rate(**kwargs)
-        elif fault_injector=="missing_strands":
-            return miss_strand(**kwargs)
         elif fault_injector=="strand_fault_compressed":
             return strand_fault_compressed(**kwargs)
-        elif fault_injector=="strand_fault":
-            return strand_fault(**kwargs)
-        elif fault_injector=="distribution_rate":
-            return distribution_rate(**kwargs)
         elif fault_injector=="sequencing_experiment":
             return sequencing_experiment(**kwargs)
         elif fault_injector=="pattern_fixed_rate":
             return pattern_fixed_rate(**kwargs)
-        elif fault_injector=="combo":
-            return combo(**kwargs)
+        elif fault_injector=="DNArSim":
+            return DNArSim(**kwargs)
         else:
             raise ValueError()
     #These two setting functions allow easier altertion of the input library to fault injection, and parameters around fault injection
@@ -225,33 +219,6 @@ class pattern_fixed_rate(fixed_rate): #allows the injection of patterns rather t
                     skip_to_index=inject_index+1 #if we replaced or deleted in this burst error, skip to next position that can take an error
         return injection_sites
 
-   
-#class that contains functionality for missing strands fault model
-class miss_strand(BaseFI):
-    def __init__(self,**args):
-        BaseFI.__init__(self)
-        self._missing=args["missing"]
-        
-    def Run(self):
-        removal_sites=[]
-        self._faulty_strands=[]
-        removal_sites=self.remove_sites(self._input_library)
-        self._faulty_strands=self.remove_strands(self._removal_sites,self._input_library)
-        return self._faulty_strands
-      
-    #gets a collection of indexes to remove from the input file, all indexes are relative to the original file e.g removal_index=1 means we will remove the second strand (indexing starting at 0)
-    def remove_sites(self,input_library):
-        return random.sample(range(len(input_library)),self.missing)
-
- #remove the strands indicated by the sites list from the input library
-    def remove_strands(self,sites,input_library):
-        out_list=input_library[:]
-        #remove in reversye order so that we do not have to change the index of some sites after deleting
-        for strand_index in sorted(sites,reverse=True):
-            del out_list[strand_index]
-        return out_list
-            
-
 
 
 class strand_fault_compressed(BaseFI):
@@ -343,217 +310,46 @@ class strand_fault_compressed(BaseFI):
             out_list.append((error_strand,1))
         return out_list        
 
-    
-    
 
-class distribution_rate(BaseFI):
+
+
+from julia.api import Julia
+jl = Julia(compiled_modules=False)    
+from julia import Main    
+
+#Python interface to DNArSim that is implemented in Julia, the injection module directly calls the DNArSim fault injector to generate nanopore-based error profiles
+class DNArSim(BaseFI):
     def __init__(self,**args):
+        assert os.environ['DNArSimPath']
+        self.DNArSimPath=os.environ['DNArSimPath']
         BaseFI.__init__(self)
-        self.fault_file=args["fault_file"]
-        self._csv_data=self.read_csv(self.fault_file)
-
-    def Run(self,write_out=False):
-        self._injection={}
-        self._error_strands=[]
-        self._error_strands=self.inject_distribution(self._input_library,self._csv_data)
-        return self._error_strands
+        self.kmer_length = args.get("kmer_length",6)
+        if "probability_path" not in args:
+            raise ValueError("Path to probability path for DNArSim does not exist, please specify")
+        #set up julia environment, this should really need to be done once each entire batch run
+        Main.eval("""using DelimitedFiles""")
+        Main.include(os.path.join(self.DNArSimPath,"functions.jl"))
+        Main.include(os.path.join(self.DNArSimPath,"channel.jl"))
+        Main.include(os.path.join(self.DNArSimPath,"interface.jl"))
+        Main.load_parameters(self.kmer_length,args["probability_path"])
+        Main.include(os.path.join(self.DNArSimPath,"loadProb.jl"))
+    def julia_run_injection(self):
+        """
+        out_list=[]
+        for strand_index,strand in enumerate(self._input_library):
+            logger.info("Running fi on strand {} {}".format(strand_index,strand.dna_strand))
+            injected_strand = Main.channel(1,self.kmer_length,strand.dna_strand)
+            logger.info("Done with fi on strand")
+            out_list.append(FaultDNA(strand,injected_strand))
+            Main.GC.gc()
+        logger.info("Finished DNArSim")
+        """
         
-    #These functions are used for testing code
-    def get_fault_spread(self):
-        return self._fault_spread
-    def get_del_spread(self):
-        return self._del_spread
-    def get_ins_spread(self):
-        return self._ins_spread
-    def get_sub_spread(self):
-        return self._sub_spread
-    def get_fault_rate(self):
-        return self._fault_rate
-    def get_del_rate(self):
-        return self._del_rate
-    def get_ins_rate(self):
-        return self._ins_rate
-    def get_sub_rate(self):
-        return self._sub_rate
-
-    #function to insert errors based on the distribution data in the csv files 
-    def inject_distribution(self,input_strands,prob_data):
-        #variables for collecting data for testing 
-        self._fault_spread={}
-        self._del_spread={}
-        self._ins_spread={}
-        self._sub_spread={}
-        self._fault_rate=[]
-        self._del_rate=[]
-        self._ins_rate=[]
-        self._sub_rate=[]
-        time0=time.time()
-        out_list=input_strands[:]
-        #inject faults throughout the input strands, no subset is chosen, unlike the other fault model, maybe add that in later if wanted?
-        overall_error=[]
-        del_giv_error=[]
-        inser_giv_error=[]
-        sub_giv_error=[]
-        #go through the prob_data data structure and grab relevant data and scale to make it easier for random number generate
-        for row_of_data in prob_data:
-            #each row is a row from the input spreadsheet
-            if row_of_data[0] == "Overall Error":
-                overall_error=[int(float(prob)*10000) for prob in row_of_data[1:len(row_of_data[1:])+1]]
-                self._fault_rate=overall_error
-                
-            elif row_of_data[0] == "Del/Error":
-                del_giv_error=[int(float(prob)*1000) for prob in row_of_data[1:len(row_of_data[1:])+1]]
-                self._del_rate=del_giv_error
-            elif row_of_data[0] == "Ins/Error":
-                inser_giv_error=[int(float(prob)*1000) for prob in row_of_data[1:len(row_of_data[1:])+1]]
-                self._ins_rate = inser_giv_error
-            elif row_of_data[0] == "Sub/Error":
-                sub_giv_error=[int(float(prob)*1000) for prob in row_of_data[1:len(row_of_data[1:])+1]]
-                self._sub_rate = sub_giv_error
-                
-        assert(len(overall_error)>0 and len(del_giv_error)>0 and len(inser_giv_error)>0 and len(sub_giv_error)>0)
-        #go through each strand and nucleotide and inject errors
-        for strand_index, strand in enumerate(out_list):
-            for nuc_index, nucleotide in enumerate(strand[0:len(strand)]):
-                #generate random numbers and apply a appropriate error if error has occured
-                inject_error=random.randint(1,10000)
-                #should inject error 
-                if inject_error <= overall_error[nuc_index]:
-                    #collect the amount of errors injected 
-                    if nuc_index not in self._fault_spread:
-                        self._fault_spread[nuc_index]=0
-                    else:
-                         self._fault_spread[nuc_index]=self._fault_spread[nuc_index]+1
-                    del_boundary_lower=1
-                    del_boundary_upper=del_giv_error[nuc_index]
-                    inser_boundary_lower=del_boundary_upper+1
-                    inser_boundary_upper=del_boundary_upper+inser_giv_error[nuc_index]
-                    sub_boundary_lower=inser_boundary_upper+1
-                    sub_boundary_upper=inser_boundary_upper+sub_giv_error[nuc_index]
-                    
-                    #random value to select amongst the error type
-                    error_type=random.randint(1,sub_boundary_upper)
-                    
-                    #inject deletion error
-                    if error_type >= del_boundary_lower and error_type <= del_boundary_upper:
-                        #collect the amount of deletion errors injected 
-                        if nuc_index not in self._del_spread:
-                            self._del_spread[nuc_index]=0
-                        else:
-                            self._del_spread[nuc_index]=self._del_spread[nuc_index]+1
-                        out_list[strand_index]=out_list[strand_index][0:nuc_index]+out_list[strand_index][nuc_index+1:len(out_list[strand_index])]
-                        
-                    #inject insertion error
-                    elif error_type >= inser_boundary_lower and error_type <= inser_boundary_upper:
-                        #collect the amount of insertion errors injected 
-                        if nuc_index not in self._ins_spread:
-                            self._ins_spread[nuc_index]=0
-                        else:
-                            self._ins_spread[nuc_index]=self._ins_spread[nuc_index]+1           
-                        insert_nucleotide=random.choice(nuc_list)
-                        out_list[strand_index]=out_list[strand_index][0:nuc_index]+insert_nucleotide+out_list[strand_index][nuc_index:len(out_list[strand_index])]
-                    #substitution error
-                    elif error_type >= sub_boundary_lower and error_type <= sub_boundary_upper:
-                        #collect the amount of substitution errors injected 
-                        if nuc_index not in self._sub_spread:
-                            self._sub_spread[nuc_index]=0
-                        else:
-                            self._sub_spread[nuc_index]=self._sub_spread[nuc_index]+1
-                        sub_nucleotide=random.choice(sub_dict[out_list[strand_index][nuc_index]])
-                        out_list[strand_index]= out_list[strand_index][0:nuc_index]+sub_nucleotide+out_list[strand_index][nuc_index+1:len(out_list[strand_index])]
-                    else:
-                        assert(0)
+        inject_set=[x.dna_strand for x in self._input_library]
+        out_list=Main.channel(self.kmer_length,inject_set)
+        assert len(inject_set)==len(out_list)
+        out_list=[FaultDNA(x,y) for x,y in zip(self._input_library,out_list)]
+        Main.GC.gc()
         return out_list
-
-    
-
-class strand_fault(BaseFI):
-    def __init__(self,**args):
-        BaseFI.__init__(self)
-        self.faulty=args["faulty"]
-        self.fails=args["fails"]
-        self.error_run=args["error_run"]
-        
-    def Run(self,write_out=False):
-        self._injection={}
-        self._error_strands=[]
-        #if there is no csv file, chose random spots and errors
-        self._injection=self.injection_sites(self._input_library)
-        self._error_strands=self.inject_errors(self._injection,self._input_library)
-        return self._error_strands
-       
-    #get strands to inject faults at and nucleotides within the strand
-    def injection_sites(self,input_library):
-        #list of strand indexes to chose from 
-        strand_indexes=range(len(input_library))
-        fault_list={} 
-
-        print ("injection sites:",len(input_library))
-        
-        strand_locations=random.sample(range(len(input_library)),self.faulty)
-        for strand_index in strand_locations:
-            fault_list[strand_index]={}
-            if self.run is True:
-                start_point=random.randint(0,len(input_library[strand_index])-self.fails)
-                nucleotide_indexes=range(start_point,start_point+self.fails)
-            else:
-                nucleotide_indexes=random.sample(range(0,len(input_library[strand_index])),self.fails)
-            for nuc_ind in nucleotide_indexes:
-                fault_type=generate.rand_in_range(0,2)
-                fault_list[strand_index][nuc_ind]=str(fault_type)
-                
-        return fault_list
- 
-    #inject the errors into the selected strands and nucleotides
-    def inject_errors(self,inject_sites,input_library):
-        #time0=time.time()
-        out_list=input_library[:]
-        #time1=time.time()
-        #print "copy time {}".format(time1-time0)
-        for strand_indexes in inject_sites:
-            for fault_indexes in sorted(inject_sites[strand_indexes],reverse=True):
-                #substitution error
-                library_strand=self._input_library[strand_indexes].dna_strand
-                new_strand=""
-                if inject_sites[strand_indexes][fault_indexes] == '0':
-                    #chose a random nucleotide that is different from the current one
-                    sub_nucleotide=random.choice(sub_dict[out_list[strand_indexes][fault_indexes]])
-                    #add on some extra information to the injection sites that indicates the nucleotide used for substitution
-                    inject_sites[strand_indexes][fault_indexes]='0-'+sub_nucleotide
-                    new_strand=library_strand[0:fault_indexes]+sub_nucleotide+library_strand[fault_indexes+1:len(library_strand)]
-
-                #deletion error
-                elif inject_sites[strand_indexes][fault_indexes] == '1':
-                     #add on some extra information to the injection sites, append the nucleotide that was removed from the original strand 
-                    inject_sites[strand_indexes][fault_indexes]='1-'+out_list[strand_indexes][fault_indexes]
-                    new_strand=library_strand[0:fault_indexes]+library_strand[fault_indexes+1:len(library_strand)]
-                #insertion error
-                elif inject_sites[strand_indexes][fault_indexes] == '2':
-                    insert_nucleotide=random.choice(nuc_list)
-                    inject_sites[strand_indexes][fault_indexes]='2-'+insert_nucleotide
-                    new_strand=library_strand[0:fault_indexes]+insert_nucleotide+library_strand[fault_indexes:len(library_strand)]
-
-                else:
-                    raise ValueError()
-                out_list[strand_indexes]=FaultDNA(self._input_library[strand_indexes],new_strand)
-        return out_list
-
-
-#This class implements a combination of missing strands and error strands 
-class combo(BaseFI):
-    def __init__(self,**args):
-        BaseFI.__init__(self)
-        self.strand_faults=strand_fault(**args)
-        self.missing_strands=miss_strand(**args)
-        
-    def Run(self,write_out=False):
-        strands_after_missing=[]
-        missing_sites=[]
-        missing_strands_with_errors=[]
-        error_sites={}
-        self.missing_strands.remove_sites(missing_sites,self._input_library)
-        strands_after_missing=self.missing_strands.remove_strands(missing_sites,self._input_library)
-        missing_strands_with_errors=self.strand_faults.inject_distribution(strands_after_missing,self._csv_data)
-        return missing_strands_with_errors
-
-
+    def Run(self):
+        return self.julia_run_injection()

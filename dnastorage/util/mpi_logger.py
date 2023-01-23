@@ -8,9 +8,8 @@ Changes to Note made by Kevin Volkel:
    the documented issues here - https://groups.google.com/g/mpi4py/c/SaNzc8bdj6U.
 """
 
-
-import logging
 from mpi4py import MPI
+import logging
 import structlog
 import os
 

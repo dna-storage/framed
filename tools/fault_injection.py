@@ -1,7 +1,9 @@
 """
 Main script for running fault injection analysis on different encoding architectures and fault environments.
 """
-
+import mpi4py
+mpi4py.rc.recv_mprobe = False
+from mpi4py import MPI
 from dnastorage.fi.fi_env import *
 import dnastorage.fi.dna_processes as dna_process
 from dnastorage.system.pipeline_dnafile import *
@@ -16,7 +18,6 @@ import os
 import time
 import copy
 import json
-from mpi4py import MPI
 
 logger = logging.getLogger()                                                                                                                                     
 
@@ -224,7 +225,7 @@ if __name__ == "__main__":
     mpi_handler = MPIFileHandler(os.path.join(args.out_dir,"fi_info_{}.log".format(comm.rank)))
     mpi_handler.setFormatter(formatter)                                                                                                                                             
     logger.addHandler(mpi_handler)                                                                                                                                                  
-    logger.setLevel(logging.DEBUG)
+    logger.setLevel(logging.INFO)
     assert os.path.isdir(args.out_dir)                                                                                                                                             
 
     #TODO: Have some support for recreating results from a set of seeds. For now, just spit out the seeds
@@ -236,7 +237,8 @@ if __name__ == "__main__":
         seed=0 #0 out seed of helper cores
         
     logger.info("SEED {} for RANK {}".format(seed,comm.rank))
-    
+    logger.info("Processor name {}".format(MPI.Get_processor_name()))
+    logger.info("PID of Rank {}".format(os.getpid()))
     #gather all seeds for the main process to print
     seeds = comm.gather(seed,root=0)
     if comm.rank ==0:

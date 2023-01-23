@@ -24,7 +24,7 @@ class LSFJob(object):
             self.python_env = os.environ['PYTHON_ENV']
         else:
             self.python_env = ''
-        self.job="job"
+        self.job_name="job"
         self.exclusive=False
 
     def generate(self):
@@ -45,7 +45,7 @@ class LSFJob(object):
                     f.write("\n#BSUB -R \"hname != {} \"".format(h))
             #f.write("\n#BSUB -M {}GB!".format(str(self.memory)))
             f.write("\n#BSUB -q "+self.queue)
-            f.write("\n#BSUB -J " + self.job)
+            f.write("\n#BSUB -J " + self.job_name)
             f.write("\n#BSUB -o {}.%J".format(self.stdout))
             f.write("\n#BSUB -e {}.%J".format(self.stderr))
             if len(self.load_modules) > 0:

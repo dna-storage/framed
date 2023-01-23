@@ -33,7 +33,7 @@ class MuscleAlign(BaseAlignment):
         stderr_arg = subprocess.PIPE
         stdin = None
         child_process = subprocess.Popen(
-            [self._muscle_exe, "-align",in_path,"-output",out_path],
+            [self._muscle_exe, "-align",in_path,"-output",out_path,"-threads","1"],
             stdin=subprocess.PIPE,
             stdout=stdout_arg,
             stderr=stderr_arg,
@@ -62,7 +62,7 @@ if __name__=="__main__":
     import copy
     import random
     from dnastorage.strand_representation import *
-    from dnastorage.codec.DNAConsolidatemodels import *
+    #from dnastorage.codec.DNAConsolidatemodels import *
     import Levenshtein as ld
     base_sub = {"A":["G","C","T"],"G":["A","C","T"],"C":["A","G","T"],"T":["G","A","C"]}
     bases = ["A","G","C","T"]
@@ -97,8 +97,10 @@ if __name__=="__main__":
     for s in alignment:
         print(s.dna_strand)
     print("Consensus vs original")
+    """
     x = BasicDNAClusterModel(None,None)
     s = x._consensus_from_alignment(alignment)
     print(s)
     print(strand1)
     print(ld.distance(s,strand1))
+    """

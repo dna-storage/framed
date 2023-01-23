@@ -164,14 +164,12 @@ class CRC8(BaseCodec,CWtoCW):
                 if(0x80 & crc): crc = ((crc<<1)&0xff) ^ (self._polynomial&0xff)
                 else:  crc = (crc<<1)&0xff
             self._memo_array[i]=crc
-
     def _crc(self,byte_array):
         crc = 0
         for b in byte_array:
             crc=crc^b
             crc = self._memo_array[crc]
         return crc
-            
     def _encode(self,strand):
         crc = self._crc(strand.codewords)
         strand.codewords.append(crc)
@@ -189,22 +187,18 @@ class CRC8(BaseCodec,CWtoCW):
         return strand
 
 class CRC8_Index(CRC8,CWtoCW): #Instead of CRCing the whole strand, we just CRC the index to make sure we don't miss-place indices, useful for matching strands correctly from sequencing experiments
-    def __init__(self,CodecObj=None,Policy=None):
+    def __init__(self,check_CRC=True,CodecObj=None,Policy=None):
         CWtoCW.__init__(self)
         CRC8.__init__(self)
-
     def _encode(self,strand): #insert CRC close to index as possible
         crc = self._crc(strand.codewords[0:strand.index_bytes])
         strand.codewords = strand.codewords[0:strand.index_bytes] + [crc] + strand.codewords[strand.index_bytes::]
         return strand
-
     def _decode(self,strand):
         if None in strand.codewords[0:strand.index_bytes+1]:
             strand.codewords=[None]*(len(strand.codewords)-1) #remove strand from consideration
             return strand
         crc = self._crc(strand.codewords[0:strand.index_bytes+1])
-        #logger.info("CRC {} index+crc {}".format(crc,strand.codewords[0:strand.index_bytes+1]))
-        #logger.info("Entire strand {}".format(strand.codewords))
         if crc!=self._checksum:
             strand.codewords=[None]*(len(strand.codewords)-1) #remove strand from consideration
         else:

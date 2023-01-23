@@ -18,18 +18,20 @@ if __name__=="__main__":
     parser.add_argument('--queue',default="tuck",type=str,action="store",help="Queue to use for jobs")
     parser.add_argument('--dump_dir',required=True,help="path to store results")
     parser.add_argument('--core_depth',default=1,type=int,action="store",help="the number of additional cores to request per core. Example use case is if you want multiple mpi cores per mpi task")
+    parser.add_argument('--job_name',default="dnastorage_fi",action="store",help="name for jobs that will be spawned")
     parser.add_argument('--avoid_hosts',default=None,nargs='+',help="hosts to avoid when running jobs")
     parser.add_argument('--experiment_prefix',default="",type=str,action="store",help="custom prefix to combine with top level directory name")
     parser.add_argument('--no',action='store_true', help="don't run bsub command, just test everything.")
     parser.add_argument('--conda_env_path',action="store",default=None,help="conda env to load")
     args = parser.parse_args()
 
-    job = LSFJob(modules=['PrgEnv-intel'])
+    job = LSFJob(modules=['PrgEnv-intel','julia'])
     job.queue=args.queue
     job.time=args.time
     job.cores=args.cores*args.core_depth+1 #plus one just to make sure we have enough cores
     job.memory=args.memory
     job.one_host=False
+    job.job_name = args.job_name
     job.using_ncsu_mpi = True #want to use ncsu's MPI enviroment
     if args.avoid_hosts!=None:
         job.avoid_hosts=args.avoid_hosts
