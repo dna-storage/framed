@@ -25,9 +25,14 @@ if __name__=="__main__":
     parser.add_argument('--queue',default="tuck",type=str,action="store",help="Queue to use for jobs")
     parser.add_argument('--dump_dir',required=True,help="path to store results")
     parser.add_argument('--no',action='store_true', help="don't run bsub command, just test everything.")
+    parser.add_argument('--conda_env_path',action="store",default=None,help="conda env to load")
+    parser.add_argument('--modules',default=['PrgEnv-intel'], nargs='+',help="modules to load")
     args = parser.parse_args()
+        
+    job = LSFJob(modules=args.modules)
+    job.using_conda_env=args.conda_env_path
 
-    job = LSFJob(modules=['PrgEnv-intel'])
+    
     job.queue=args.queue
     job.time=args.time
     job.cores=args.cores 
@@ -36,7 +41,6 @@ if __name__=="__main__":
     job.one_host=False
     job.using_ncsu_mpi = True #want to use ncsu's MPI enviroment
 
-    job.load_module = ['conda']
     assert os.path.exists(args.params)
 
     try:
@@ -103,21 +107,23 @@ if __name__=="__main__":
             for decoder in decoder_dicts: md_hash.update(json.dumps(decoder,cls=NpEncoder).encode())
             final_run_path = os.path.join(sequencing_run_path,"decoder___{}".format(md_hash.hexdigest()))
             os.makedirs(final_run_path,exist_ok=True)
-
             complete_param_string+=" --dna_file_params {} ".format(os.path.join(final_run_path,"file_params.json"))
             complete_param_string+=" --out_dir {} ".format(final_run_path)
-
             analysis_dict={}
             analysis_dict["file_list"]=[]
             for decoder_index, decoder in enumerate(decoder_dicts): #dump some dictionaries for documentation purposes
                 json.dump(decoder,open(os.path.join(final_run_path,"decoder_{}.json".format(decoder_index)),"w+"),cls=NpEncoder)
                 file_dict=decoders[decoder_index]
                 file_dict["encoder_params"]=decoder
+                json.dump(file_dict["header_params"],open(os.path.join(final_run_path,"header_{}.json".format(decoder_index)),"w+"),cls=NpEncoder)
+                other_params={}
+                for items in file_dict.items():
+                    if items[0]=="encoder_params" or items[0]=="header_params": continue
+                    other_params[items[0]]=items[1]
                 analysis_dict["file_list"].append(file_dict)
-                
+                json.dump(other_params,open(os.path.join(final_run_path,"other_params_{}.json".format(decoder_index)),"w+"),cls=NpEncoder)
             json.dump(analysis_dict,open(os.path.join(final_run_path,"file_params.json"),"w+"),cls=NpEncoder)
             json.dump({"sequencing_data_path":path},open(os.path.join(final_run_path,"sequencing_params.json"),"w+"))
-
             try:
                 os.symlink(path,os.path.join(final_run_path,"sequencing_data_link")) 
             except OSError as e: #force symlink

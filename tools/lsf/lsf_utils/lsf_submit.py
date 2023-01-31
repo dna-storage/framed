@@ -1,6 +1,15 @@
 import os
 import shutil
 
+ENV_VARIABLES={
+    "PrgEnv-intel":{"I_MPI_FABRICS_LIST":"tcp", 
+                    "I_MPI_HYDRA_BOOTSTRAP":"lsf",
+                    "I_MPI_HYDRA_BRANCH_COUNT":"-1",
+                    "I_MPI_LSF_USE_COLLECTIVE_LAUNCH":"1"
+                    }
+}
+
+
 '''
 Class that helps with submitting jobs in python, can set mostly any option you want
 once ready call submit() and the job will be run with the corresponding parameters
@@ -18,8 +27,10 @@ class LSFJob(object):
         self.avoid_hosts=[]
         self.stdout="lsfjob.stdout"
         self.stderr="lsfjob.stderr"
-        self._using_conda_env=None
+
+        #environment setup
         self.load_modules = modules
+        self._using_conda_env=None
         if 'PYTHON_ENV' in os.environ:
             self.python_env = os.environ['PYTHON_ENV']
         else:
@@ -50,6 +61,7 @@ class LSFJob(object):
             f.write("\n#BSUB -e {}.%J".format(self.stderr))
             if len(self.load_modules) > 0:
                 f.write('\n \n module load {}'.format(" ".join(self.load_modules)))
+                for m in self.load_modules: self.set_env(f,m) #set additional env variables for certain modules
             if len(self.python_env) > 0:
                 f.write('\n source {}'.format(self.python_env))                
             if self.using_conda_env:
@@ -67,6 +79,11 @@ class LSFJob(object):
             os.system('bsub <' +generate_name)
         os.chdir(current_path)
 
+    def set_env(self,f,m):#handle setting environment variables for certain modules
+        if m not in ENV_VARIABLES: return
+        for variable in ENV_VARIABLES[m]:
+            f.write('\n setenv {} {}'.format(variable,ENV_VARIABLES[m][variable]))
+   
     @property
     def job(self):
         return self._job
@@ -172,13 +189,11 @@ class LSFJob(object):
         return self._avoid_hosts
     @avoid_hosts.setter
     def avoid_hosts(self,hosts):
-        print("hosts {}".format(hosts))
         if not type(hosts) is list:
             h=[hosts]
         else:
             h=hosts
         self._avoid_hosts=h
-
 
     @property 
     def using_conda_env(self):

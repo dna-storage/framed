@@ -11,7 +11,6 @@ if __name__=="__main__":
     import argparse
     parser = argparse.ArgumentParser(description="Script to generate fault injection jobs")
     parser.add_argument('--params',type=str,required=True,action="store",help="Path to json file with parameters to perform fault injection with")
-    parser.add_argument('--python_env',type=str,default='',action="store",help="Script path to setup python environment.")
     parser.add_argument('--memory',default=8,type=int,action="store",help="Memory for each job")
     parser.add_argument('--cores',default=4,type=int,action="store",help="Cores for each job, this is the active number of working processes during fi execution")
     parser.add_argument('--time',default=10,type=int,action="store",help="Time allowed for each job,in hours")
@@ -23,9 +22,12 @@ if __name__=="__main__":
     parser.add_argument('--experiment_prefix',default="",type=str,action="store",help="custom prefix to combine with top level directory name")
     parser.add_argument('--no',action='store_true', help="don't run bsub command, just test everything.")
     parser.add_argument('--conda_env_path',action="store",default=None,help="conda env to load")
+    parser.add_argument('--modules',default=['PrgEnv-intel','julia'], nargs='+',help="modules to load")
     args = parser.parse_args()
 
-    job = LSFJob(modules=['PrgEnv-intel','julia'])
+    job = LSFJob(modules=args.modules)
+    job.using_conda_env=args.conda_env_path
+
     job.queue=args.queue
     job.time=args.time
     job.cores=args.cores*args.core_depth+1 #plus one just to make sure we have enough cores
@@ -35,11 +37,9 @@ if __name__=="__main__":
     job.using_ncsu_mpi = True #want to use ncsu's MPI enviroment
     if args.avoid_hosts!=None:
         job.avoid_hosts=args.avoid_hosts
-    job.using_conda_env=args.conda_env_path
 
     if args.python_env != "":
         job.python_env=args.python_env
-    job.load_module = ['conda']
     assert os.path.exists(args.params)
 
     with open(args.params,"r") as json_fd:

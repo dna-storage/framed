@@ -8,6 +8,7 @@ import pandas as pd
 import numpy as np
 import json
 import pickle
+import re
 
 class NpEncoder(json.JSONEncoder): #this class should help with encoding numpy data types that will arise in the different ranges
     def default(self, obj):
@@ -19,13 +20,13 @@ class NpEncoder(json.JSONEncoder): #this class should help with encoding numpy d
             return obj.tolist()
         return super(NpEncoder, self).default(obj)
 
-def find_data_paths(path,out_list):
+def find_data_paths(path,out_list,match_file):
     pickle_path = False
     for p in os.listdir(path):
         total_path = os.path.join(path,p)
         if os.path.isdir(total_path):
-            find_data_paths(total_path,out_list)
-        if "fi.pickle" in total_path:
+            find_data_paths(total_path,out_list,match_file)
+        if match_file in total_path:
             pickle_path=True
     if pickle_path: out_list.append(path)
 
@@ -49,33 +50,69 @@ def load_pickle_dict(path):
     data_dict.update(additional_entries)
     return data_dict
 
+
+def load_fi_json(path,all_dicts):
+    all_dicts.append(load_json_dict(os.path.join(path,"encoder_params.json"),prefix="encoder"))
+    all_dicts.append(load_json_dict(os.path.join(path,"distribution_params.json")))
+    all_dicts.append(load_json_dict(os.path.join(path,"dna_process.json")))
+    all_dicts.append(load_json_dict(os.path.join(path,"fault_params.json")))
+    all_dicts.append(load_json_dict(os.path.join(path,"header_params.json"),prefix="header"))
+    all_dicts.append(load_json_dict(os.path.join(path,"sim_params.json")))
+    all_dicts.append(load_pickle_dict(os.path.join(path,"fi.pickle")))
+
+def load_seq_json(path,all_dicts):
+    decoder_paths=[]
+    header_paths=[]
+    other_paths=[]
+    for p in os.listdir(path):
+        find_decoder_path=re.search("(decoder\_[0-9]+)(\.json)",p)
+        find_header_path=re.search("(header\_[0-9]+)(\.json)",p)
+        find_other_path=re.search("(other_params\_[0-9]+)(\.json)",p)
+        if find_decoder_path:
+            decoder_name = find_decoder_path.group(1)
+            decoder_paths.append((p,decoder_name))
+        if find_header_path:
+            header_name=find_header_path.group(1)
+            header_paths.append((p,header_name))
+        if find_other_path:
+            other_name=find_other_path.group(1)
+            other_paths.append((p,other_name))
+    for (dp,decoder_name) in decoder_paths: all_dicts.append(load_json_dict(os.path.join(path,dp),prefix="{}".format(decoder_name)))
+    for (hp,header_name) in header_paths: all_dicts.append(load_json_dict(os.path.join(path,hp),prefix="{}".format(header_name)))
+    for (op,other_name) in decoder_paths: all_dicts.append(load_json_dict(os.path.join(path,op),prefix="{}".format(other_name)))
+    all_dicts.append(load_json_dict(os.path.join(path,"sequencing_params.json")))
+    all_dicts.append(load_pickle_dict(os.path.join(path,"sequencing.pickle")))
+
 if __name__=="__main__":
     import argparse
 
     parser = argparse.ArgumentParser(description="Bring fault injection data together into a dataframe")                                                                                   
     parser.add_argument('--path',required=True,help="Path to generated data")
     parser.add_argument('--name',required=True,help="name of dataframe")
-
+    parser.add_argument('--type',default="fi",choices=["fi","sequencing"],help="fi: data is from fault injection runs, sequencing: data is from sequencing runs")
     args = parser.parse_args()
-
     out_list =[]
     assert(os.path.exists(args.path))
 
-    find_data_paths(args.path,out_list)
+    load_function=None
+    if args.type=="fi":
+        match_file = "fi.pickle"
+        load_function=load_fi_json
+    elif args.type=="sequencing":
+        match_file="sequencing.pickle"
+        load_function=load_seq_json
+    else:
+        assert 0
+    assert load_function and match_file
+
+    find_data_paths(args.path,out_list,match_file)
 
     print("Directories with data {}".format(out_list))
-
     final_dicts=[]
     for p in out_list:
         try:
             all_dicts=[]
-            all_dicts.append(load_json_dict(os.path.join(p,"encoder_params.json"),prefix="encoder"))
-            all_dicts.append(load_json_dict(os.path.join(p,"distribution_params.json")))
-            all_dicts.append(load_json_dict(os.path.join(p,"dna_process.json")))
-            all_dicts.append(load_json_dict(os.path.join(p,"fault_params.json")))
-            all_dicts.append(load_pickle_dict(os.path.join(p,"fi.pickle")))
-            all_dicts.append(load_json_dict(os.path.join(p,"header_params.json"),prefix="header"))
-            all_dicts.append(load_json_dict(os.path.join(p,"sim_params.json")))
+            load_function(p,all_dicts)
             complete_dict = {}
             for x in all_dicts: complete_dict.update(x)
             final_dicts.append(complete_dict)

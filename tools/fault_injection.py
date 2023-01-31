@@ -2,7 +2,6 @@
 Main script for running fault injection analysis on different encoding architectures and fault environments.
 """
 import mpi4py
-mpi4py.rc.recv_mprobe = False
 from mpi4py import MPI
 from dnastorage.fi.fi_env import *
 import dnastorage.fi.dna_processes as dna_process

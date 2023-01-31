@@ -15,7 +15,6 @@ logger.addHandler(logging.NullHandler())
 
 DATA_BARCODE=0xCC
 
-
 def check_mpi(comm): #check that required modules are loaded for mpi communication
     if comm:
         if not ("mpi4py" in sys.modules or "mpi4py.MPI" in sys.modules):
@@ -54,7 +53,7 @@ class DNAFilePipeline:
                     header.set_header_dict(h)
                 if h!=None: logger.info("Able to decode header from DNA")
                 if h==None:
-                    stats.inc("dead_header",1)
+                    if not mpi or mpi.rank==0: stats.inc("dead_header",1) #only increment this in one rank, all other rank counts of this are redundant
                     raise ValueError("Header failed to decode, trying file")  
             except Exception as e:
                 try:
