@@ -1,4 +1,4 @@
-name: /gpfs_backup/tuck_data/kvolkel/envs/dnastorage
+name: /gpfs_backup/tuck_data/kvolkel/envs/dnastorage_tcp
 channels:
   - conda-forge
   - bioconda
@@ -248,4 +248,7 @@ dependencies:
   - zstd=1.5.2=h8a70e8d_2
   - pip:
     - file-read-backwards==2.0.0
-prefix: /gpfs_backup/tuck_data/kvolkel/envs/dnastorage
+    - julia==0.6.0
+    - mpi4py==3.1.4
+    - schwimmbad==0.1.dev180+g822cebf
+prefix: /gpfs_backup/tuck_data/kvolkel/envs/dnastorage_tcp

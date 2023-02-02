@@ -37,9 +37,7 @@ if __name__=="__main__":
     job.using_ncsu_mpi = True #want to use ncsu's MPI enviroment
     if args.avoid_hosts!=None:
         job.avoid_hosts=args.avoid_hosts
-
-    if args.python_env != "":
-        job.python_env=args.python_env
+        
     assert os.path.exists(args.params)
 
     with open(args.params,"r") as json_fd:

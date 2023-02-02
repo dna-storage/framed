@@ -108,6 +108,7 @@ if __name__=="__main__":
     find_data_paths(args.path,out_list,match_file)
 
     print("Directories with data {}".format(out_list))
+    print("Total directories with data {}".format(len(out_list)))
     final_dicts=[]
     for p in out_list:
         try:

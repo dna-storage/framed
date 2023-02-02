@@ -44,7 +44,6 @@ class PipeLine(EncodePacketizedFile,DecodePacketizedFile):
         DecodePacketizedFile.__init__(self,None)
 
         self._strand_count=0
-        
         self._packetsize_bytes=packetsize_bytes
         self._packetizedFile=packetizedfile
         if packetizedfile !=None:

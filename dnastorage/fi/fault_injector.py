@@ -4,13 +4,15 @@ import random
 import csv
 import pickle
 import re
-
-import dnastorage.util.generate as generate
 import time
-from dnastorage.strand_representation import *
-from dnastorage.fi.fault_strand_representation import *
 from Bio import SeqIO
 from scipy import stats
+import numpy as np
+import math
+
+import dnastorage.util.generate as generate
+from dnastorage.strand_representation import *
+from dnastorage.fi.fault_strand_representation import *
 
 import logging
 logger = logging.getLogger("dnastorage.fi.fault_injector")
@@ -36,6 +38,8 @@ class BaseFI:
             return strand_fault_compressed(**kwargs)
         elif fault_injector=="sequencing_experiment":
             return sequencing_experiment(**kwargs)
+        elif fault_injector=="sequencing_experiment_downsample":
+            return sequencing_experiment_downsample(**kwargs)
         elif fault_injector=="pattern_fixed_rate":
             return pattern_fixed_rate(**kwargs)
         elif fault_injector=="DNArSim":
@@ -45,10 +49,8 @@ class BaseFI:
     #These two setting functions allow easier altertion of the input library to fault injection, and parameters around fault injection
     def set_library(self,input_strands):
         self._input_library=input_strands
-        
     def Run(self):
-        raise NotImplementedError()
-    
+        raise NotImplementedError()    
     def read_csv(self,file_name):
         _file=open(file_name,'r')
         csv_parsed=csv.reader(_file,delimiter=',')
@@ -88,7 +90,7 @@ class sequencing_experiment(BaseFI):
             seq_strand,n_subs = re.subn("N","A",seq_strand)
             seq_strand=seq_strand.rstrip('\x00')
             index_ints = self._map.get(record.id,None)
-            if index_ints is None: continue #dead strands
+            if index_ints is None or index_ints not in input_library_map: continue #dead strand or is unwanted by the given studied file
             lib_strand=input_library_map[index_ints]
             out_list.append(FaultDNA(lib_strand,seq_strand))
             record_counter+=1
@@ -97,7 +99,32 @@ class sequencing_experiment(BaseFI):
         return out_list
     def Run(self):
         return self.sequence_run_injection()
-  
+
+#builds on sequencing experiment FI to consider a subset of the strands that are mapped
+class sequencing_experiment_downsample(sequencing_experiment):
+    def __init__(self,**args):
+        sequencing_experiment.__init__(self,**args)
+        self._down_sample = args.get("down_sample",None)
+        if type(self._down_sample) is str:
+            if not os.path.exists(self._down_sample):
+                raise ValueError("down_sample should point to a path indicating what down_sample the experiment should be subject to")
+            experiment_downsample_file = open(self._down_sample,'r')
+            for line in experiment_downsample_file.readlines():
+                experiment_name = line.split()[0]
+                if experiment_name in self._sequencing_data_path:
+                    self._down_sample=float(line.split()[1])
+        else: self._down_sample=float(self._down_sample)
+        assert type(self._down_sample) is float and self._down_sample<1.0 and self._down_sample>=0 #should have a float downsample at this point, and should be 0<= <1
+        self._rng = np.random.default_rng(seed=0)
+    def Run(self):
+        strands = sequencing_experiment.Run(self)
+        if self._down_sample is None: return strands #no downsampling
+        self._rng.shuffle(strands)
+        keep_percent = 1.0-self._down_sample
+        strands_to_keep = int(math.ceil(keep_percent*len(strands))) #round up the number of strands to keep
+        return strands[0:strands_to_keep]
+
+    
 #this class applies a fixed error rate to each nucleotide
 #Strands are a list, not a tuple representation
 class fixed_rate(BaseFI):
@@ -334,17 +361,6 @@ class DNArSim(BaseFI):
         Main.load_parameters(self.kmer_length,args["probability_path"])
         Main.include(os.path.join(self.DNArSimPath,"loadProb.jl"))
     def julia_run_injection(self):
-        """
-        out_list=[]
-        for strand_index,strand in enumerate(self._input_library):
-            logger.info("Running fi on strand {} {}".format(strand_index,strand.dna_strand))
-            injected_strand = Main.channel(1,self.kmer_length,strand.dna_strand)
-            logger.info("Done with fi on strand")
-            out_list.append(FaultDNA(strand,injected_strand))
-            Main.GC.gc()
-        logger.info("Finished DNArSim")
-        """
-        
         inject_set=[x.dna_strand for x in self._input_library]
         out_list=Main.channel(self.kmer_length,inject_set)
         assert len(inject_set)==len(out_list)

@@ -35,7 +35,7 @@ class DNAFilePipeline:
             strands = strand_interface.strands
             if mpi: #communicate out strands to different processes
                 strands = object_scatter(strands,mpi)
-            assert (strands is not None) and len(strands)>0
+            assert (strands is not None)
             header = Header(header_version,header_params,barcode_suffix=file_barcode,mpi=mpi)
             #initialize header pipeline
             try:

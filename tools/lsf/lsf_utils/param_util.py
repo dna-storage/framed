@@ -18,25 +18,24 @@ class NpEncoder(json.JSONEncoder): #this class should help with encoding numpy d
             return obj.tolist()
         return super(NpEncoder, self).default(obj)
 
-def path_search(path,out_paths):
-    for p in os.listdir(path):
-        joined_path = os.path.join(path,p)
-        out_paths.append(joined_path) #return every sub-path, rely on regular expression to determine what paths to filter 
-        if os.path.isdir(joined_path):
-            path_search(joined_path,out_paths)
-
 def regex_path_search(root_path,regexp,is_file):
     #search for paths from the root that meet the regexp
     reg_exp_prog = re.compile(regexp)
     paths=[]
     out_paths=[]
-    path_search(root_path,paths)
-    for path in paths:
-        if os.path.isfile(path) and not is_file: continue
-        if os.path.isdir(path) and is_file: continue
-        match = reg_exp_prog.search(path)
-        if match is None: continue
-        out_paths.append(path)
+    for (root,dirs,files) in os.walk(root_path,topdown=True): 
+        if is_file:
+            for f in files:
+                path=os.path.join(root,f)
+                match = reg_exp_prog.search(path)
+                if match is None: continue
+                out_paths.append(path)
+        else:
+            for d in dirs:
+                path=os.path.join(root,d)
+                match = reg_exp_prog.search(path)
+                if match is None: continue
+                out_paths.append(path)
     return out_paths
     
 def param_aggregation(l,out_list=None,previous=[]):
