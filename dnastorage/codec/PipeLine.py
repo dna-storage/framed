@@ -224,7 +224,7 @@ class PipeLine(EncodePacketizedFile,DecodePacketizedFile):
             self.writeToFile(p,out_data) #write out packet
         self.write()
 
-    def decode(self,strand):
+    def decode(self,strand,skip=False):
         if self._final_decode_run is True:
             self._final_decode_run=False
             self._decode_strands=[]
@@ -232,6 +232,9 @@ class PipeLine(EncodePacketizedFile,DecodePacketizedFile):
         strand.before_decode=strand.dna_strand
         self._strand_count+=1
         strand.is_reversed=False
+        if skip:
+            self.filter_strand(strand) #skip if told to do so
+            return 
         #perform the stream portion of the encoding pipeline, which processes the physical cascade. This should include stuff like removing physical portions
         self._dna_to_dna_cascade.decode(strand)
         if strand.dna_strand == None or len(strand.dna_strand.strip())==0:

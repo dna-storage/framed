@@ -18,7 +18,7 @@ at the given run path. It is up to the specific experiment to set these properti
 class LSFJob(object):
     def __init__(self,modules=['conda']):
         self.cores=1 #1 core
-        self.memory=8  #8 GB memory
+        self.memory=None  #8 GB memory
         self.time = 10 #10 Minutes
         self.run_path = os.environ["PWD"] #Run the job in this directory
         self.queue="tuck"
@@ -49,7 +49,7 @@ class LSFJob(object):
             if self.exclusive: f.write("\n#BSUB -x")
             if self.one_host: f.write("\n#BSUB -R \"span[hosts=1]\"") #this is to make sure all processes/thread sit at one host
             #f.write("\n#BSUB -R span[hosts=1]")
-            f.write("\n#BSUB -R \"rusage[mem={}GB]\"".format(self.memory))
+            if self.memory: f.write("\n#BSUB -R \"rusage[mem={}GB]\"".format(self.memory))
             if len(self.avoid_hosts)>0:
                 #avoid problematic hosts
                 for h in self.avoid_hosts:

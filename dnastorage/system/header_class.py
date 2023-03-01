@@ -207,14 +207,14 @@ class Header(object):
         self._decode_header=return_header
         return return_header
     
-    def decode_file_header(self,strands):
+    def decode_file_header(self,strands,skip=False):
         b = BytesIO()
         pf = WritePacketizedFilestream(b,self._header_length,0)
         self._pipeline.set_write_pf(pf)
         self._non_header_strands=[]
         self._pipeline.mpi=self._mpi
         for s in strands:
-            self._pipeline.decode(s)
+            self._pipeline.decode(s,skip)
         #should be able to finish decoding here
         self._pipeline.final_decode()
         try:

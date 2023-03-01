@@ -11,7 +11,7 @@ if __name__=="__main__":
     import argparse
     parser = argparse.ArgumentParser(description="Script to generate fault injection jobs")
     parser.add_argument('--params',type=str,required=True,action="store",help="Path to json file with parameters to perform fault injection with")
-    parser.add_argument('--memory',default=8,type=int,action="store",help="Memory for each job")
+    parser.add_argument('--memory',default=None,action="store",help="Memory for each job")
     parser.add_argument('--cores',default=4,type=int,action="store",help="Cores for each job, this is the active number of working processes during fi execution")
     parser.add_argument('--time',default=10,type=int,action="store",help="Time allowed for each job,in hours")
     parser.add_argument('--queue',default="tuck",type=str,action="store",help="Queue to use for jobs")

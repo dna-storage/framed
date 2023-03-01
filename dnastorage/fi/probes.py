@@ -49,7 +49,6 @@ class DNAErrorProbe(BaseCodec,Probe):
     @dna_attr.setter
     def dna_attr(self,attr:str):
         self._initial_dna_attr=attr
-
     def __init__(self,probe_name="",CodecObj=None):
         BaseCodec.__init__(self,CodecObj)
         if probe_name=="":
@@ -69,13 +68,15 @@ class DNAErrorProbe(BaseCodec,Probe):
         self._DNA_del_burst_rate_key = "{}::del_burst_rate".format(self.name)#given a deletion error, the number of dels that are bursts
         self._DNA_strand_length_key="{}::strand_length_hist".format(self.name) #histogram for strand lengths
         self._DNA_strand_error_key="{}::strand_error_hist".format(self.name) #histogram for strand error rates
-        self._DNA_max_kmer_error_key = "{}:::kmer_max_error_hist".format(self.name) #histogram for max kmer error window
+        self._DNA_max_kmer_error_key = "{}::kmer_max_error_hist".format(self.name) #histogram for max kmer error window
         self._DNA_error_pattern_key = "{}::error_pattern_hist".format(self.name) #histogram, but it will be a dictionary given we are mapping 
-        self._DNA_pattern_rate_key = "{}::pattern_rate_key".format(self.name) #tracks rate of error patterns in the strand, instead of individual errors
+        self._DNA_pattern_start_rate_key = "{}::pattern_rate_key".format(self.name) #tracks rate of error patterns in the strand, instead of individual errors
+        self._DNA_pattern_location_key="{}::pattern_locations".format(self.name) #tracks the location that error patterns occur throughout the strand
         stats.register_hist(self._DNA_strand_length_key)
         stats.register_hist(self._DNA_strand_error_key)
         stats.register_hist(self._DNA_max_kmer_error_key)
         if not self._DNA_error_pattern_key in stats: stats[self._DNA_error_pattern_key]={}
+        if not self._DNA_pattern_location_key in stats: stats[self._DNA_pattern_location_key]={}
         DNAErrorProbe.probe_id+=1
     def _encode(self,s):
         setattr(s,self.dna_attr,copy.copy(s.dna_strand)) #take a snapshot of the dna under an attribute specific to this isntantiation
@@ -112,14 +113,16 @@ class DNAErrorProbe(BaseCodec,Probe):
         stats.append(self._DNA_strand_error_key,applied_edits) #collect histogram of errors per strand
         stats.append(self._DNA_max_kmer_error_key,max_kmer_edits) #collect histogram of max errors in kmer window
         for pattern in pattern_dist: stats[self._DNA_error_pattern_key][pattern] = stats[self._DNA_error_pattern_key].get(pattern,0)+pattern_dist[pattern]
-        for start in pattern_starts: stats.inc(self._DNA_pattern_rate_key,dflt=np.zeros((len(base_dna),)),coords=start)
+        for start,pattern in sorted(pattern_starts,key=lambda x: x[1]):
+            stats.inc(self._DNA_pattern_start_rate_key,dflt=np.zeros((len(base_dna),)),coords=start)
+            if pattern not in stats[self._DNA_pattern_location_key]: stats[self._DNA_pattern_location_key][pattern]=np.zeros((len(base_dna),))
+            stats[self._DNA_pattern_location_key][pattern][start]+=1 #increment location that pattern shows up
         return s
 
 
-class CodewordErrorRateProbe(DNAErrorProbe):
+class CodewordErrorRateProbe(BaseCodec,Probe):
     #This probe should be placed after a single strand codec so that analysis can be performed 
     probe_id=0
-       
     @property
     def cw_attr(self):
         return self._initial_codeword_attr
@@ -127,12 +130,29 @@ class CodewordErrorRateProbe(DNAErrorProbe):
     def cw_attr(self,attr: str):
         self._initial_codeword_attr=attr
 
+    @property
+    def dna_attr(self):
+        return self._initial_dna_attr
+    @dna_attr.setter
+    def dna_attr(self,attr:str):
+        self._initial_dna_attr=attr
+        #create new dna error probes for the given dna attribute
+        self._correct_decode_strand_dna_probe =DNAErrorProbe("{}::correct".format(self.name))
+        self._correct_decode_strand_dna_probe.dna_attr=attr
+        self._incorrect_decode_strand_dna_probe=DNAErrorProbe("{}::incorrect".format(self.name))
+        self._incorrect_decode_strand_dna_probe.dna_attr=attr
     def __init__(self,probe_name="",dna_hook=None,CodecObj=None):
+        BaseCodec.__init__(self,CodecObj)
         if probe_name=="":
             self.name = "codeword_probe_{}".format(CodewordErrorRateProbe.probe_id)
         else:
             self.name = probe_name
-        DNAErrorProbe.__init__(self,self.name,CodecObj)
+        #instantiate some DNAErrorProbes that we can activate in decode/not decoded scenarios
+        if dna_hook:
+            self._correct_decode_strand_dna_probe =DNAErrorProbe("{}::correct".format(self.name))
+            self._correct_decode_strand_dna_probe.dna_attr=dna_hook
+            self._incorrect_decode_strand_dna_probe=DNAErrorProbe("{}:incorrect".format(self.name))
+            self._incorrect_decode_strand_dna_probe.dna_attr=dna_hook
         self.cw_attr = "{}::init_codewords".format(self.name)
         self._total_error_rate_key = "{}::total_errors".format(self.name)
         self._strands_seen_key = "{}::total_strands".format(self.name)
@@ -140,7 +160,10 @@ class CodewordErrorRateProbe(DNAErrorProbe):
         self._incorrect_key="{}::incorrect_strands".format(self.name)
         self._incorrect_not_none="{}::incorrect_strands_not_none".format(self.name)
         self._first_byte_error="{}::first_error".format(self.name)
-        self.dna_attr = dna_hook
+        self._decoded_strands_key="{}::decoded_strands".format(self.name)#actual sequences that decoded
+        self._failed_strands_key="{}::failed_decode_strands".format(self.name) #sequences that failed
+        stats.register_file(self._decoded_strands_key,"decoded_strands.txt")
+        stats.register_file(self._failed_strands_key,"failed_strands.txt")
         CodewordErrorRateProbe.probe_id+=1
     def _encode(self,s):
         setattr(s,self.cw_attr,copy.copy(s.codewords)) #take a snapshot of the codewords under an attribute specific to this isntantiation
@@ -159,34 +182,18 @@ class CodewordErrorRateProbe(DNAErrorProbe):
                     stats.inc(self._first_byte_error,dflt=np.zeros((len(base_codewords),)),coords=i)
             if i<len(fault_codewords) and base_codewords[i]!=fault_codewords[i] and fault_codewords[i]!=None:
                 stats.inc(self._incorrect_not_none,dflt=np.zeros((len(base_codewords),)),coords=i)
-        if(fault_codewords==base_codewords):
+        if(fault_codewords==base_codewords): #strand decoded bytes correctly
             stats.inc(self._correct_key)
-            if self.dna_attr:
-                DNAErrorProbe._decode(self,s) #call to the dna error rate analysis
-                ''' 
-                #TODO: remove the following code, just temporary, print the strand edits for decoded strands
-                base_dna = getattr(s,self.dna_attr)
-                fault_dna = s.dna_strand
-                editops= ld.editops(base_dna,fault_dna)
-                edit_strand_vis,applied_edits= calculate_edit_list(editops,len(base_dna))
-                if applied_edits>140 and applied_edits<160:
-                    logger.info("Decoded Strand Edits: {}".format("".join(edit_strand_vis)))
-                '''  
+            stats.append(self._decoded_strands_key,s.dna_strand)
+            if self._correct_decode_strand_dna_probe:
+                self._correct_decode_strand_dna_probe._decode(s) #call error rate analysis
         else:
+            stats.append(self._failed_strands_key,s.dna_strand)
+            if self._incorrect_decode_strand_dna_probe:#strand decoded bytes incorrectly
+                self._incorrect_decode_strand_dna_probe._decode(s) #call error rate analysis
             stats.inc(self._incorrect_key)
-            #TODO: remove the following code block, temporary, print the strand  edits for non-decoded strands
-            '''
-            if self.dna_attr:
-                base_dna = getattr(s,self.dna_attr)
-                fault_dna = s.dna_strand
-                editops= ld.editops(base_dna,fault_dna)
-                edit_strand_vis,applied_edits= calculate_edit_list(editops,len(base_dna))
-                if applied_edits>140 and applied_edits<160:
-                    logger.info("Error Decoding Strand Edits: {}".format("".join(edit_strand_vis)))
-            '''
         stats.inc(self._strands_seen_key)
         return s
-
 
 class FilteredDNACounter(BaseCodec,Probe):
     #This probe should be placed after DNAtoDNA probes to count filtered strands 

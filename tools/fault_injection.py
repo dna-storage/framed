@@ -66,11 +66,12 @@ def _monte_kernel(monte_start,monte_end,args,comm=None): #function that will run
             write_dna = DNAFilePipeline.open("w",format_name=args.arch,header_params=header_params,header_version=args.header_version,
                                              
                                              encoder_params=encoding_params,fsmd_header_filename=header_data_path, payload_header_filename = payload_header_data_path,
-                                             file_barcode=tuple(args.file_barcode),do_write=False,dna_file_name="{}.dna".format(base_file_path))
+                                             file_barcode=tuple(args.file_barcode),do_write=False,dna_file_name="{}.dna".format(base_file_path),store_header=args.store_header)
         else: #save 1 copy of the DNA file
             write_dna = DNAFilePipeline.open("w",format_name=args.arch,header_params=header_params,header_version=args.header_version,
                                              encoder_params=encoding_params,fsmd_header_filename=header_data_path,file_barcode=tuple(args.file_barcode),
-                                             payload_header_filename = payload_header_data_path,do_write=True,dna_file_name=os.path.join(args.out_dir,"{}.dna".format(base_file_path)))
+                                             payload_header_filename = payload_header_data_path,do_write=True,dna_file_name=os.path.join(args.out_dir,"{}.dna".format(base_file_path)),
+                                             store_header=args.store_header)
 
         write_dna.write(file_to_fault_inject.read())
         write_dna.close()
@@ -215,7 +216,7 @@ if __name__ == "__main__":
     parser.add_argument('--dna_process',required=False,default=None,help="set of processing steps to do on dna strands before fault injection")
     parser.add_argument('--out_dir',type=str,required=True,action="store",help="Directory where data will be dumped")
     parser.add_argument('--file_barcode',required=False,default=tuple(),nargs="+",type=int,help="Barcode for the file")
-    parser.add_argument('--store_header',required=False,default=1,help="Whether to store header data")
+    parser.add_argument('--store_header',required=False,default=1,type=int,help="Whether to store header data")
 
     args = parser.parse_args()
     if args.store_header==1: args.store_header=True

@@ -29,7 +29,7 @@ class dnastats(object):
     def set_pickle_fd(self,fd):
         self.pickle_fd=fd
     def register_file(self,stats_name,filename):
-        self.file_register[stats_name]=filename
+        self.file_register[stats_name]=filename #note, this just registerse a statistic with a file, should check stat exists before persisting it
     def register_hist(self,stats_name):
         self.hist_register[stats_name]=None
     def get_next_name(self,name):
@@ -113,6 +113,7 @@ class dnastats(object):
         """
         file_dictionaries={}
         for stat_key in self.file_register:
+            if stat_key not in self.all_stats: continue #stat was never filled in
             file_key = self.file_register[stat_key]
             if file_key not in file_dictionaries:
                 file_dictionaries[file_key]={}

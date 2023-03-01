@@ -107,7 +107,7 @@ if __name__=="__main__":
 
     find_data_paths(args.path,out_list,match_file)
 
-    print("Directories with data {}".format(out_list))
+#   print("Directories with data {}".format(out_list))
     print("Total directories with data {}".format(len(out_list)))
     final_dicts=[]
     for p in out_list:
@@ -117,7 +117,8 @@ if __name__=="__main__":
             complete_dict = {}
             for x in all_dicts: complete_dict.update(x)
             final_dicts.append(complete_dict)
-        except:
+        except Exception as e:
+            print(e)
             print("Error on path {}, data will not be loaded from here".format(p))
             continue
         

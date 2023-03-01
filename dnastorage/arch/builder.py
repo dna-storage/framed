@@ -363,8 +363,8 @@ def Basic_Hedges_Pipeline(pf,**kwargs):
     else: assert 0 and "Invalid CRC selection"
         
     #components related to DNA functionality
-    p5 = PrependSequencePipeline(primer5,ignore=False,handler="align",search_range=100)
-    p3 = AppendSequencePipeline(primer3,ignore=False,handler="align",search_range=100)
+    p5 = PrependSequencePipeline(primer5,ignore=False,handler="align",search_range=200) #search_range=100
+    p3 = AppendSequencePipeline(primer3,ignore=False,handler="align",search_range=200) #search_range=100
     length_filter = DNALengthFilterPipeline(filter_lower_length,filter_upper_length)
     
 

@@ -46,7 +46,9 @@ class DNAFilePipeline:
                 exit(1)
             #attempt to get header data
             try:
-                h = header.decode_file_header(strands) 
+                h = header.decode_file_header(strands,not store_header) 
+                if not store_header:
+                    raise Exception("store_header was false, trying file right away")
                 if mpi: #broadcast the actual decoded header
                     logger.info("Rank {} Broadcasting header".format(mpi.rank))
                     h = mpi.bcast(h,root=0)
@@ -54,7 +56,7 @@ class DNAFilePipeline:
                 if h!=None: logger.info("Able to decode header from DNA")
                 if h==None:
                     if not mpi or mpi.rank==0: stats.inc("dead_header",1) #only increment this in one rank, all other rank counts of this are redundant
-                    raise ValueError("Header failed to decode, trying file")  
+                    raise Exception("Header failed to decode from DNA, trying file")  
             except Exception as e:
                 try:
                     traceback.print_exc()

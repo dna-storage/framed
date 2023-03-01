@@ -19,7 +19,7 @@ if __name__=="__main__":
     parser.add_argument('--sequencing_regex',required=False,default=".+",action="store",help = "regular expression used to identify sequencing files to run")
     parser.add_argument('--params',type=str,required=True,action="store",help="Path to json file with parameters to perform sequencing analysis with")
     parser.add_argument('--job_name',default="dnastorage_fi",action="store",help="name for jobs that will be spawned")
-    parser.add_argument('--memory',default=8,type=int,action="store",help="Memory for each job")
+    parser.add_argument('--memory',default=None,action="store",help="Memory for each job")
     parser.add_argument('--cores',default=4,type=int,action="store",help="Cores for each job, this is the active number of working processes during fi execution")
     parser.add_argument('--time',default=10,type=int,action="store",help="Time allowed for each job,in hours")
     parser.add_argument('--queue',default="tuck",type=str,action="store",help="Queue to use for jobs")
