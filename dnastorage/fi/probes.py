@@ -151,7 +151,7 @@ class CodewordErrorRateProbe(BaseCodec,Probe):
         if dna_hook:
             self._correct_decode_strand_dna_probe =DNAErrorProbe("{}::correct".format(self.name))
             self._correct_decode_strand_dna_probe.dna_attr=dna_hook
-            self._incorrect_decode_strand_dna_probe=DNAErrorProbe("{}:incorrect".format(self.name))
+            self._incorrect_decode_strand_dna_probe=DNAErrorProbe("{}::incorrect".format(self.name))
             self._incorrect_decode_strand_dna_probe.dna_attr=dna_hook
         self.cw_attr = "{}::init_codewords".format(self.name)
         self._total_error_rate_key = "{}::total_errors".format(self.name)
@@ -184,11 +184,11 @@ class CodewordErrorRateProbe(BaseCodec,Probe):
                 stats.inc(self._incorrect_not_none,dflt=np.zeros((len(base_codewords),)),coords=i)
         if(fault_codewords==base_codewords): #strand decoded bytes correctly
             stats.inc(self._correct_key)
-            stats.append(self._decoded_strands_key,s.dna_strand)
+            #stats.append(self._decoded_strands_key,s.dna_strand)
             if self._correct_decode_strand_dna_probe:
                 self._correct_decode_strand_dna_probe._decode(s) #call error rate analysis
         else:
-            stats.append(self._failed_strands_key,s.dna_strand)
+            #stats.append(self._failed_strands_key,s.dna_strand)
             if self._incorrect_decode_strand_dna_probe:#strand decoded bytes incorrectly
                 self._incorrect_decode_strand_dna_probe._decode(s) #call error rate analysis
             stats.inc(self._incorrect_key)
