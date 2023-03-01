@@ -33,34 +33,39 @@ This package is supported for macOS and Linux. The package has been tested on th
 + Linux: Ubuntu 18.04.3
 + Linux: CentOS 7
 
-Note that most OSes will support our software by using Docker. You will also need:
-- git (optional but recommended)
+Note that most OSes will support our software by using Docker. *You will also need the following before completing the installation steps*:
+- git 
 - Python
 - C++ compiler
 - pip, python package installer
 - conda, package management
 - MPI implementation, currently tested with Intel MPI Library for Linux OS, Version 2017 Update 1 Build 20161016
+- Julia, currently tested with 1.6.2 (2021-07-14)
 
 
 ### Python Dependences
 
-Our code has been tested on python versions 3.6 to 3.10. A working environment with all dependencies that can be installed via conda can be found at [.yaml file](dnastorage.yaml).
+Our code has been tested on python versions 3.6 to 3.10. A working environment with all dependencies that can be installed via conda can be found at [.yaml file](dnastorage.yml).
 
 # Installation Guide
 
-If you already have python 3 installed on your system, the simplest thing to do is download or checkout the code from GitHub.  Then, run the following commands:
+Given that the previous dependencies have been installed, the first step is to get the code from GitHub with the following commands.
 
     git clone [this repository] dnastorage
     cd dnastorage
+    git submodule update --init --recursive
     
-I recommend making a conda environment with the required dependencies:
+I recommend making a conda environment with the required dependencies, you will also need to make sure to install that schwimmbad submodule. This submodule is a fork of a public repo but with added support of mpi-based workers that accept communicators for nested parallelism. The last command in this set of commands installs Julia packages needed for the interface between Python and Julia to work:
 
     conda env create -f dnastorage.yaml
     conda activate <path to conda environment>
+    cd schwimmbad; pip install .
+    python -c "import julia; julia.install()"
     
 Make sure to source environment variables for the project:
-    source dnastorage.env
 
+    source dnastorage.env
+    
 To install dnastorage package for local development:
 
     python setup.py develop
@@ -112,7 +117,5 @@ This software is released under the LGPLv3 license.
 # Acknowledgment
 
 This work was supported by the National Science Foundation (Grants CNS-1650148, CNS-1901324, ECCS 2027655) and a North Carolina State University Research and Innovation Seed Funding Award (Grant 1402-2018-2509).
-
-
 
 
