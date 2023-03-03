@@ -5,7 +5,7 @@ User level script to generate sequencing jobs through LSF.
 
 import os
 import errno
-from lsf_utils.lsf_submit import *
+from lsf_utils.submit import *
 from lsf_utils.param_util import *
 import hashlib
 import itertools
@@ -24,21 +24,33 @@ if __name__=="__main__":
     parser.add_argument('--time',default=10,type=int,action="store",help="Time allowed for each job,in hours")
     parser.add_argument('--queue',default="tuck",type=str,action="store",help="Queue to use for jobs")
     parser.add_argument('--dump_dir',required=True,help="path to store results")
+    parser.add_argument('--avoid_hosts',default=None,nargs='+',help="hosts to avoid when running jobs")
     parser.add_argument('--no',action='store_true', help="don't run bsub command, just test everything.")
     parser.add_argument('--conda_env_path',action="store",default=None,help="conda env to load")
-    parser.add_argument('--modules',default=['PrgEnv-intel'], nargs='+',help="modules to load")
-    args = parser.parse_args()
-        
-    job = LSFJob(modules=args.modules)
-    job.using_conda_env=args.conda_env_path
+    parser.add_argument('--modules', default=None, nargs='+',help="modules to load")
+    parser.add_argument('--submission', default = "LSF",choices = ["LSF","shell"])
 
-    
-    job.queue=args.queue
-    job.time=args.time
-    job.cores=args.cores 
-    job.job_name = args.job_name
-    job.memory=args.memory
-    job.one_host=False
+    args = parser.parse_args()
+
+    #Job parameter setup 
+    if args.submission=="LSF":
+        job = LSFJob()
+        job.queue=args.queue
+        job.time=args.time
+        job.memory=args.memory
+        job.one_host=False
+        job.job_name = args.job_name
+        if args.avoid_hosts!=None:
+            job.avoid_hosts=args.avoid_hosts
+    elif args.submission=="shell":
+        #shell execution
+        job = TcshJob()
+    else:
+        print("Did not specify correct execution backend")
+        exit(1)
+    job.cores=args.cores #plus one just to make sure we have enough cores
+    job.load_modules=args.modules
+    job.using_conda_env=args.conda_env_path
     job.using_ncsu_mpi = True #want to use ncsu's MPI enviroment
 
     assert os.path.exists(args.params)

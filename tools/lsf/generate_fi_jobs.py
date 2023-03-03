@@ -3,7 +3,7 @@ User level script to generate fault injection jobs through LSF.
 """
 
 import os
-from lsf_utils.lsf_submit import *
+from lsf_utils.submit import *
 from lsf_utils.param_util import *
 import hashlib
 
@@ -22,24 +22,33 @@ if __name__=="__main__":
     parser.add_argument('--experiment_prefix',default="",type=str,action="store",help="custom prefix to combine with top level directory name")
     parser.add_argument('--no',action='store_true', help="don't run bsub command, just test everything.")
     parser.add_argument('--conda_env_path',action="store",default=None,help="conda env to load")
-    parser.add_argument('--modules',default=['PrgEnv-intel','julia'], nargs='+',help="modules to load")
+    parser.add_argument('--modules',default=None, nargs='+',help="modules to load")
+    parser.add_argument('--submission', default = "LSF",choices = ["LSF","shell"])
     args = parser.parse_args()
 
-    job = LSFJob(modules=args.modules)
-    job.using_conda_env=args.conda_env_path
-
-    job.queue=args.queue
-    job.time=args.time
+    #Job parameter setup 
+    if args.submission=="LSF":
+        job = LSFJob()
+        job.queue=args.queue
+        job.time=args.time
+        job.memory=args.memory
+        job.one_host=False
+        job.job_name = args.job_name
+        if args.avoid_hosts!=None:
+            job.avoid_hosts=args.avoid_hosts
+    elif args.submission=="shell":
+        #shell execution
+        job = TcshJob()
+    else:
+        print("Did not specify correct execution backend")
+        exit(1)
     job.cores=args.cores*args.core_depth+1 #plus one just to make sure we have enough cores
-    job.memory=args.memory
-    job.one_host=False
-    job.job_name = args.job_name
+    job.load_modules=args.modules
+    job.using_conda_env=args.conda_env_path
     job.using_ncsu_mpi = True #want to use ncsu's MPI enviroment
-    if args.avoid_hosts!=None:
-        job.avoid_hosts=args.avoid_hosts
-        
-    assert os.path.exists(args.params)
 
+    #loading parameters for jobs
+    assert os.path.exists(args.params)
     with open(args.params,"r") as json_fd:
         params_dict= json.load(json_fd)
 
