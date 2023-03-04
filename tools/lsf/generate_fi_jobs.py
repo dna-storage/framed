@@ -62,7 +62,7 @@ if __name__=="__main__":
         header_params = params_dict["header_params"]
         fi_env_params = params_dict["fi_env_params"]
         encoding_architecture = params_dict["arch"]
-        file_path = params_dict["file"]
+        file_path = os.path.expandvars(params_dict["file"])
     except Exception as e:
         raise ValueError("Parameter file does not have right parameters: {}".format(e))
 

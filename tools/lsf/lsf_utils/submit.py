@@ -49,6 +49,7 @@ class TcshJob(object):
     def generate(self):
         #generate the main body of the script to execute the job
         self._script_lines.append("#!/bin/tcsh")
+        #self._script_lines.append("cd {}".format(self.run_path))
         if len(self.load_modules) > 0:
             self._script_lines.append('module load {}'.format(" ".join(self.load_modules)))
             for m in self.load_modules: self.set_env(self._script_lines,m) #set additional env variables for certain modules
@@ -68,6 +69,7 @@ class TcshJob(object):
                 f.write("{}\n".format(l))
                 
     def submit(self, no=False):
+        self._script_lines=[] #clear out script lines before writing new ones
         assert self.command!=None
         current_path = os.environ["PWD"]
         self.generate()

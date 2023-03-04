@@ -45,14 +45,16 @@ def param_aggregation(l,out_list=None,previous=[]):
         directory_string=""
         param_dict={}
         for p in previous:
-            param_string+=" --{} {} ".format(p[0],p[1])
-            if isinstance(p[1],str) and os.path.exists(p[1]): #TODO: make sure paths are handled sensibly
+            name,value = p[0],p[1]
+            param_string+=" --{} {} ".format(name,value)
+            if isinstance(value,str) and os.path.exists(os.path.expandvars(value)): 
+                value = os.path.expandvars(value) #This allows for env variables in jsons
                 md_hash=hashlib.md5()
-                md_hash.update(p[1].encode("utf-8"))
-                directory_string+="{}={}___".format(p[0],md_hash.hexdigest()[0:8])
+                md_hash.update(value.encode("utf-8"))
+                directory_string+="{}={}___".format(name,md_hash.hexdigest()[0:8])
             else: 
-                directory_string+="{}={}___".format(p[0],p[1])
-            param_dict[p[0]]=p[1]
+                directory_string+="{}={}___".format(name,value)
+            param_dict[name]=value
         out_list.append((param_string,directory_string,param_dict))
         return
     
@@ -67,9 +69,9 @@ def param_aggregation(l,out_list=None,previous=[]):
         if value_type == "value_list":
             param_values=params[1:] 
         elif value_type=="dir_name":
-            param_values = regex_path_search(params[1],params[2],False)
+            param_values = regex_path_search(os.path.expandvars(params[1]),params[2],False)
         elif value_type=="file_name":
-            param_values = regex_path_search(params[1],params[2],True)
+            param_values = regex_path_search(os.path.expandvars(params[1]),params[2],True)
         elif value_type=="range":
             param_values = np.arange(*(params[1:]))
         else:
