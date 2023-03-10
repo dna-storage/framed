@@ -1,0 +1,3 @@
+[submodule "schwimmbad"]
+	path = schwimmbad
+	url = https://github.com/kvolkel/schwimmbad

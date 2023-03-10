@@ -1,0 +1,194 @@
+11,38c11,20
+< function channel(nbrSim=0,k=0,seq="")
+< 
+< 
+< 	#check if seq is correct
+< 	if(length(seq)>1)
+< 		if(seq[1][1]=='>')
+< 			seq=seq[2]
+< 		else	
+< 			println()
+< 			println("Error: reference file format incorrect!")
+< 			exit(1)
+< 		end
+< 	end
+< 
+< 	if(!occursin(r"^[ACGT]+$", seq))
+< 		println()
+< 		println("Error: reference file contains unknown bases")
+< 		exit(1)
+< 		
+< 	end
+< 
+< 
+< 	simSeq=[]
+< 	iRef=[1]
+< 	startKmer=[1]
+< 
+< 	for iSeq=1:nbrSim
+< 		print("\r-> Launching... [Sim=",iSeq,"]")
+---
+> function channel(k,seq_set)
+> 	nbrSim=1
+> 	n_seq = length(seq_set)
+> 	out_set=[]
+> 	for strand_index=1:n_seq
+> 	    iRef=[1]
+> 	    startKmer=[1]
+> 	    simSeq=[]
+> 	    seq=seq_set[strand_index]
+> 	    for iSeq=1:nbrSim
+55,57d36
+< 		push!(simSeq,[])
+< 
+< 
+101c80
+< 									deleteB(simSeq[iSeq])
+---
+> 									deleteB(simSeq)
+105c84
+< 									substB(simSeq[iSeq],rangeTransProb,currBase)
+---
+> 									substB(simSeq,rangeTransProb,currBase)
+119c98
+< 											insertB(simSeq[iSeq],rangeLenInsK,lenInsK)
+---
+> 											insertB(simSeq,rangeLenInsK,lenInsK)
+127c106
+< 							matchB(simSeq[iSeq],currBase)
+---
+> 							matchB(simSeq,currBase)
+141c120
+< 									insertB(simSeq[iSeq],rangeLenInsK,lenInsK)
+---
+> 									insertB(simSeq,rangeLenInsK,lenInsK)
+155c134
+< 									deleteB(simSeq[iSeq])
+---
+> 									deleteB(simSeq)
+158c137
+< 									substB(simSeq[iSeq],rangeTransProb,currBase)
+---
+> 									substB(simSeq,rangeTransProb,currBase)
+163c142
+< 											insertB(simSeq[iSeq],rangeLenInsMidA,lenInsMidA)
+---
+> 											insertB(simSeq,rangeLenInsMidA,lenInsMidA)
+169c148
+< 								matchB(simSeq[iSeq],currBase)
+---
+> 								matchB(simSeq,currBase)
+174c153
+< 										insertB(simSeq[iSeq],rangeLenInsMidA,lenInsMidA)
+---
+> 										insertB(simSeq,rangeLenInsMidA,lenInsMidA)
+185c164
+< 									deleteB(simSeq[iSeq])
+---
+> 									deleteB(simSeq)
+188c167
+< 									substB(simSeq[iSeq],rangeTransProb,currBase)
+---
+> 									substB(simSeq,rangeTransProb,currBase)
+193c172
+< 											insertB(simSeq[iSeq],rangeLenInsMidC,lenInsMidC)
+---
+> 											insertB(simSeq,rangeLenInsMidC,lenInsMidC)
+199c178
+< 								matchB(simSeq[iSeq],currBase)
+---
+> 								matchB(simSeq,currBase)
+204c183
+< 										insertB(simSeq[iSeq],rangeLenInsMidC,lenInsMidC)
+---
+> 										insertB(simSeq,rangeLenInsMidC,lenInsMidC)
+216c195
+< 									deleteB(simSeq[iSeq])
+---
+> 									deleteB(simSeq)
+219c198
+< 									substB(simSeq[iSeq],rangeTransProb,currBase)
+---
+> 									substB(simSeq,rangeTransProb,currBase)
+224c203
+< 											insertB(simSeq[iSeq],rangeLenInsMidG,lenInsMidG)
+---
+> 											insertB(simSeq,rangeLenInsMidG,lenInsMidG)
+230c209
+< 								matchB(simSeq[iSeq],currBase)
+---
+> 								matchB(simSeq,currBase)
+235c214
+< 										insertB(simSeq[iSeq],rangeLenInsMidG,lenInsMidG)
+---
+> 										insertB(simSeq,rangeLenInsMidG,lenInsMidG)
+247c226
+< 									deleteB(simSeq[iSeq])
+---
+> 									deleteB(simSeq)
+250c229
+< 									substB(simSeq[iSeq],rangeTransProb,currBase)
+---
+> 									substB(simSeq,rangeTransProb,currBase)
+255c234
+< 											insertB(simSeq[iSeq],rangeLenInsMidT,lenInsMidT)
+---
+> 											insertB(simSeq,rangeLenInsMidT,lenInsMidT)
+261c240
+< 								matchB(simSeq[iSeq],currBase)
+---
+> 								matchB(simSeq,currBase)
+266c245
+< 										insertB(simSeq[iSeq],rangeLenInsMidT,lenInsMidT)
+---
+> 										insertB(simSeq,rangeLenInsMidT,lenInsMidT)
+289c268
+< 							insertB(simSeq[iSeq],rangeLenInsEnd,lenInsEnd)
+---
+> 							insertB(simSeq,rangeLenInsEnd,lenInsEnd)
+292c271
+< 							deleteB(simSeq[iSeq])
+---
+> 							deleteB(simSeq)
+295c274
+< 							substB(simSeq[iSeq],rangeTransProb,currBase)
+---
+> 							substB(simSeq,rangeTransProb,currBase)
+299c278
+< 						matchB(simSeq[iSeq],currBase)
+---
+> 						matchB(simSeq,currBase)
+314c293
+< 						insertB(simSeq[iSeq],rangeLenInsBeg,lenInsBeg)
+---
+> 						insertB(simSeq,rangeLenInsBeg,lenInsBeg)
+317c296
+< 						deleteB(simSeq[iSeq])
+---
+> 						deleteB(simSeq)
+320c299
+< 						substB(simSeq[iSeq],rangeTransProb,currBase)
+---
+> 						substB(simSeq,rangeTransProb,currBase)
+324c303
+< 					matchB(simSeq[iSeq],currBase)
+---
+> 					matchB(simSeq,currBase)
+329,331d307
+< 
+< 
+< 
+334,335c310,311
+< 
+< 
+---
+> 		#KV: made change so that returned values are strings, easier for pyton
+> 		simSeq = join(simSeq)
+337,339c313,315
+< 	println()
+< 	return simSeq
+< 
+---
+> 	push!(out_set,simSeq)
+> 	end
+> 	return out_set

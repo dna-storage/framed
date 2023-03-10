@@ -1,0 +1,4 @@
+18c18
+< root="./probEdit/k$(k)"
+---
+> #KV:moved root and k variables to interface.jl
