@@ -88,6 +88,16 @@ After the fault injection experiments are run, there will be a number of statist
  
 The final command generates a Pandas dataframe, and stores it at the top directory path of the collection of results, e.g. <top result path>. This data frame can be loaded and analyzed any way in which you prefer. An example of anlayzing data frames can be found in the notebook [bioinformatics.pynb](notebooks/bioinformatics.pynb) which produces the figures of the paper using raw data collected using `db_gen.py`.
 
+## FrameD Notebooks
+
+Included in this repo is a directory with a Jupyter notebook that was used to generate figures for the manuscript. This notebook is at the path `notebooks/framed.ipynb`. The raw data from simulation outputs that are used to generate figures are at the paths `notebooks/framed_DNArSim.pickle` and `notebooks/framed_iid.pickle`. The notebook can be run by starting in the top directory for the project and running:
+
+	conda activate framed_conda
+	cd notebooks
+	jupyter-lab framed.ipynb
+	
+From there run the notebook to run the full analysis.
+
 
 # License
 

@@ -19,7 +19,11 @@ conda env create --prefix $FRAMED_CONDA --file $PWD/dnastorage.yml
 
 conda activate $FRAMED_CONDA
 
-git submodule update --init --recursive
+if (git rev-parse --git-dir >& /dev/null)
+    git submodule update --init --recursive
+else
+    git clone https://github.com/kvolkel/schwimmbad
+endif
 
 cd schwimmbad; pip install .
 
