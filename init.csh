@@ -19,7 +19,9 @@ conda env create --prefix $FRAMED_CONDA --file $PWD/dnastorage.yml
 
 conda activate $FRAMED_CONDA
 
-if (git rev-parse --git-dir >& /dev/null)
+git rev-parse --git-dir >& /dev/null                                                                                                                                                   
+set is_git_status = $?
+if (${is_git_status} == 0) then
     git submodule update --init --recursive
 else
     git clone https://github.com/kvolkel/schwimmbad
