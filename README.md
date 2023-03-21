@@ -1,3 +1,5 @@
+[![DOI](https://zenodo.org/badge/611912849.svg)](https://zenodo.org/badge/latestdoi/611912849)
+
 # FrameD
 
 - [Overview](#overview)
