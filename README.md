@@ -15,7 +15,7 @@ Core encoding, decoding, and file manipulation support for modeling DNA-based in
 
 # Documentation
 
-In depth documentation can be found in the [wiki]().
+In depth documentation can be found in the [wiki](https://github.com/dna-storage/framed/wiki).
 
 # System Requirements
 
