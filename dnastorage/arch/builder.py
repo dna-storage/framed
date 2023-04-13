@@ -147,6 +147,7 @@ def SDC_pipeline(pf,**kwargs):
     hedges_check_rates = kwargs.get("check_rates",None)
     hedges_do_rate_check = kwargs.get("do_rate_check",False)
 
+    use_oracle_filter = kwargs.get("use_oracle_filter",False)
     
     if "outerECCStrands" not in kwargs and "blockSizeInBytes" in kwargs:
         outerECCStrands = 255 - blockSizeInBytes//strandSizeInBytes
@@ -196,7 +197,7 @@ def SDC_pipeline(pf,**kwargs):
         DNA_pipeline=DNA_pipeline+(primer_check_probe,)
 
     return pipeline.PipeLine(out_pipeline+inner_pipeline+DNA_pipeline,blockSizeInBytes,strandSizeInBytes,upper_strand_length,1,packetizedfile=pf,cw_consolidator=consolidator,
-                            barcode=barcode)
+                             barcode=barcode,use_oracle_filter=use_oracle_filter)
 
 
 def ReedSolomon_Base4_Pipeline(pf,**kwargs):
@@ -296,6 +297,10 @@ def Basic_Hedges_Pipeline(pf,**kwargs):
     primer3 =kwargs.get("primer3",'A'*20) #basic 3' primer region
     crc_type = kwargs.get("crc_type","strand") #location where to put the CRC check
     reverse_payload = kwargs.get("reverse_payload",False) #should the payload be reversed
+    primer5_search_depth = kwargs.get("primer5_depth",100) #specifies the depth to search for the primer5 primer
+    primer3_search_depth = kwargs.get("primer3_depth",100) #specifies the depth to search for the primer3 primer
+
+    
     
     #set lengths for checking strands that are encoded/decoded
     dna_length = kwargs.get("dna_length",300) #if strands longer than this value, throw exceptions (encode)
@@ -361,10 +366,11 @@ def Basic_Hedges_Pipeline(pf,**kwargs):
         logger.info("BasicHedges: Using Index CRC")
         crc = CRC8_Index()
     else: assert 0 and "Invalid CRC selection"
-        
+
+    
     #components related to DNA functionality
-    p5 = PrependSequencePipeline(primer5,ignore=False,handler="align",search_range=200) #search_range=100
-    p3 = AppendSequencePipeline(primer3,ignore=False,handler="align",search_range=200) #search_range=100
+    p5 = PrependSequencePipeline(primer5,ignore=False,handler="align",search_range=primer5_search_depth) #search_range=200
+    p3 = AppendSequencePipeline(primer3,ignore=False,handler="align",search_range=primer3_search_depth) #search_range=200
     length_filter = DNALengthFilterPipeline(filter_lower_length,filter_upper_length)
     
 

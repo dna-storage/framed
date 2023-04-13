@@ -10,6 +10,7 @@ from dnastorage.strand_representation import *
 from dnastorage.primer.primer_util import *
 from dnastorage.util.mpi_utils import *
 from dnastorage.codec_types import *
+from dnastorage.fi.fault_strand_representation import *
 from io import *
 import random
 import math
@@ -38,7 +39,7 @@ def cascade_build(component_list):
 class PipeLine(EncodePacketizedFile,DecodePacketizedFile):
     def __init__(self,components,packetsize_bytes,
                  basestrand_bytes, DNA_upper_bound, final_decode_iterations,dna_consolidator=None,cw_consolidator=None,packetizedfile=None,
-                 barcode=tuple(),constant_index_bytes=None):
+                 barcode=tuple(),constant_index_bytes=None,use_oracle_filter=False):
         
         EncodePacketizedFile.__init__(self,None)
         DecodePacketizedFile.__init__(self,None)
@@ -57,6 +58,7 @@ class PipeLine(EncodePacketizedFile,DecodePacketizedFile):
         self._decode_strands=[] #strands that will be decoded
         self._final_decode_iterations=final_decode_iterations #how many complete final decoding processes should be done
         self._index_bytes = constant_index_bytes #allow constant index_bytes to be used, useful for controlling for DNA strand size
+        self._use_oracle_filter=use_oracle_filter #allows for oracle filtering so that barcodes can be quickly sorted
         
         #support the ability for 2 consolidators, dna consolidators may actually need a cw_consolidator to filter repeat indexes
         self._dna_consolidator = dna_consolidator 
@@ -163,7 +165,17 @@ class PipeLine(EncodePacketizedFile,DecodePacketizedFile):
     def _inner_pipeline(self,strand):
         self._cw_to_DNA_cascade.decode(strand)
         self._inner_cascade.decode(strand)
-      
+
+    def _oracle_filter(self,strand):
+        #if this is a fault injected strand, we should be able to filter a priori if we want to
+        if self._use_oracle_filter:
+            if isinstance(strand,FaultDNA) and len(self._barcode)>0:
+                if tuple(strand.encoded_index_ints[:len(self._barcode)])!=self._barcode:
+                    #print("{} {}".format(self._barcode,tuple(strand.encoded_index_ints[:len(self._barcode)])))
+                    self.filter_strand(strand)
+                    return True
+        return False
+    
     def final_decode(self):
         #performs the final decode on the streamed in strands 
         self._final_decode_run=True
@@ -172,6 +184,7 @@ class PipeLine(EncodePacketizedFile,DecodePacketizedFile):
             self._decode_strands = self._dna_consolidator.decode(self._decode_strands)
         after_inner=[]
         for strand in self._decode_strands:
+            if self._oracle_filter(strand): continue
             self._inner_pipeline(strand)
             if not self._strand_valid_index(strand):
                 self.filter_strand(strand)
