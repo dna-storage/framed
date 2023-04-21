@@ -17,6 +17,7 @@ if __name__=="__main__":
     parser = argparse.ArgumentParser(description="Script to generate fault injection jobs")
     parser.add_argument('--sequencing_path',required=True,action="store",help="Top path to sequencing data to analyze, can be a directory or a single file")
     parser.add_argument('--sequencing_regex',required=False,default=".+",action="store",help = "regular expression used to identify sequencing files to run")
+    parser.add_argument('--experiment_prefix',default="",type=str,action="store",help="custom prefix to combine with top level directory name")
     parser.add_argument('--params',type=str,required=True,action="store",help="Path to json file with parameters to perform sequencing analysis with")
     parser.add_argument('--job_name',default="dnastorage_fi",action="store",help="name for jobs that will be spawned")
     parser.add_argument('--memory',default=None,action="store",help="Memory for each job")
@@ -79,7 +80,7 @@ if __name__=="__main__":
     assert os.path.exists(sequencing_tool_path)
 
     #need to make up parts of directories where things are going to exist
-    top_experiment_portion="Sequencing___{}".format(os.path.basename(args.sequencing_path.rstrip("/")))
+    top_experiment_portion="{}___Sequencing___{}".format(args.experiment_prefix,os.path.basename(args.sequencing_path.rstrip("/")))
     run_path = os.path.join(args.dump_dir,top_experiment_portion)
 
     #Need to go through each file in the file list and create parameter sets for each one

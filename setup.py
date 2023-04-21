@@ -3,7 +3,6 @@
 from setuptools import setup, find_packages
 from distutils.core import setup, Extension
 
-
 with open('README.md') as f:
     readme = f.read()
 

@@ -60,7 +60,6 @@ class BaseFI:
 class sequencing_experiment(BaseFI):
     def __init__(self,**args):
         BaseFI.__init__(self)
-        self._max_reads=args.get("max_reads",float('inf')) #allow for subsetting of the whole indexed set
         if "sequencing_data_path" in args and "mapping_path" in args:
             assert os.path.exists(args["sequencing_data_path"]) and os.path.exists(args["mapping_path"])
             self._sequencing_data_path = args["sequencing_data_path"]
@@ -94,7 +93,6 @@ class sequencing_experiment(BaseFI):
             lib_strand=input_library_map[index_ints]
             out_list.append(FaultDNA(lib_strand,seq_strand))
             record_counter+=1
-            if record_counter>=self._max_reads: break 
         assert len(out_list)>0
         return out_list
     def Run(self):
@@ -104,8 +102,8 @@ class sequencing_experiment(BaseFI):
 class sequencing_experiment_downsample(sequencing_experiment):
     def __init__(self,**args):
         sequencing_experiment.__init__(self,**args)
-        self._down_sample = args.get("down_sample",None)
-        if type(self._down_sample) is str:
+        self._down_sample = args.get("down_sample",None) #for percentages, down_sample is the percent you want removed, for integer inputs, downsample is what you want to keep
+        if type(self._down_sample) is str: 
             if not os.path.exists(self._down_sample):
                 raise ValueError("down_sample should point to a path indicating what down_sample the experiment should be subject to")
             experiment_downsample_file = open(self._down_sample,'r')
@@ -113,15 +111,21 @@ class sequencing_experiment_downsample(sequencing_experiment):
                 experiment_name = line.split()[0]
                 if experiment_name in self._sequencing_data_path:
                     self._down_sample=float(line.split()[1])
-        else: self._down_sample=float(self._down_sample)
-        assert type(self._down_sample) is float and self._down_sample<1.0 and self._down_sample>=0 #should have a float downsample at this point, and should be 0<= <1
+                    break
+            if not type(self._down_sample) is float: raise ValueError("down sample file did not include entry that matched input sequencing data path") 
+        else: #Use a raw value 
+            self._down_sample=float(self._down_sample)
+        assert type(self._down_sample) is float  and self._down_sample>=0 #should have a downsample value at this point
         self._rng = np.random.default_rng(seed=0)
     def Run(self):
         strands = sequencing_experiment.Run(self)
         if self._down_sample is None: return strands #no downsampling
         self._rng.shuffle(strands)
-        keep_percent = 1.0-self._down_sample
-        strands_to_keep = int(math.ceil(keep_percent*len(strands))) #round up the number of strands to keep
+        if self._down_sample<=1.0:
+            keep_percent = 1.0-self._down_sample
+            strands_to_keep = int(math.ceil(keep_percent*len(strands))) #round up the number of strands to keep
+        elif self._down_sample>=1.0:
+            strands_to_keep=int(math.ceil(self._down_sample)) #just keep this number of strands
         return strands[0:strands_to_keep]
 
     

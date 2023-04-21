@@ -18,7 +18,7 @@ import time
 import copy
 import json
 
-logger = logging.getLogger()                                                                                                                                     
+logger =logging.getLogger()                                                                                                                                     
 
 def get_param_files(args):
     if os.path.exists(args.enc_params):
@@ -249,3 +249,4 @@ if __name__ == "__main__":
     #create pool of workers, only rank 0 should continue from here
     pool = schwimmbad.choose_pool(mpi=True,processes=args.cores,comm=MPI.COMM_WORLD)
     run_monte(pool,args)
+

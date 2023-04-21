@@ -61,4 +61,3 @@ if __name__=="__main__":
     
     out_sequencing_stats_path = os.path.join(args.framed_seq_path,"sequencing.pickle")
     pickle.dump(sequencing_stats,open(out_sequencing_stats_path,'wb+'))
-    

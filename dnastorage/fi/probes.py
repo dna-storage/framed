@@ -113,10 +113,10 @@ class DNAErrorProbe(BaseCodec,Probe):
         stats.append(self._DNA_strand_error_key,applied_edits) #collect histogram of errors per strand
         stats.append(self._DNA_max_kmer_error_key,max_kmer_edits) #collect histogram of max errors in kmer window
         for pattern in pattern_dist: stats[self._DNA_error_pattern_key][pattern] = stats[self._DNA_error_pattern_key].get(pattern,0)+pattern_dist[pattern]
-        for start,pattern in sorted(pattern_starts,key=lambda x: x[1]):
+        for start,pattern in pattern_starts: #sorted(pattern_starts,key=lambda x: x[1]):
             stats.inc(self._DNA_pattern_start_rate_key,dflt=np.zeros((len(base_dna),)),coords=start)
-            if pattern not in stats[self._DNA_pattern_location_key]: stats[self._DNA_pattern_location_key][pattern]=np.zeros((len(base_dna),))
-            stats[self._DNA_pattern_location_key][pattern][start]+=1 #increment location that pattern shows up
+            #if pattern not in stats[self._DNA_pattern_location_key]: stats[self._DNA_pattern_location_key][pattern]=np.zeros((len(base_dna),))
+            #stats[self._DNA_pattern_location_key][pattern][start]+=1 #increment location that pattern shows up
         return s
 
 
@@ -148,6 +148,8 @@ class CodewordErrorRateProbe(BaseCodec,Probe):
         else:
             self.name = probe_name
         #instantiate some DNAErrorProbes that we can activate in decode/not decoded scenarios
+        self._incorrect_decode_strand_dna_probe=None
+        self._correct_decode_strand_dna_probe=None
         if dna_hook:
             self._correct_decode_strand_dna_probe =DNAErrorProbe("{}::correct".format(self.name))
             self._correct_decode_strand_dna_probe.dna_attr=dna_hook

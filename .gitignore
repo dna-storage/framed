@@ -32,3 +32,11 @@ config.log
 
 # Mac files
 .DS_Store
+
+#data
+tools/lsf/*___*
+
+*.out
+*.err
+*.fastq
+*.fasta
