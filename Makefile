@@ -15,7 +15,7 @@ clean:
 
 
 install:
-	python setup.py install --user
+	python setup.py install
 
 develop:
-	python setup.py develop --user
+	python setup.py develop 

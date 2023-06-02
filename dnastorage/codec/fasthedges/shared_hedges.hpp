@@ -1,10 +1,13 @@
 #ifndef SHARED_HPP
 #define SHARED_HPP
+
 #include <Python.h>
 #include "fast_hedges.hpp"
 #include "codeword_hedges.hpp"
 
-long getLong(PyObject *Object, const char *attr)
+using namespace hedges;
+
+inline long getLong(PyObject *Object, const char *attr)
 {
   if (PyObject_HasAttrString(Object, attr))
     {
@@ -17,7 +20,7 @@ long getLong(PyObject *Object, const char *attr)
   return -1;
 }
 
-double getDouble(PyObject *Object, const char *attr)
+inline double getDouble(PyObject *Object, const char *attr)
 {
   if (PyObject_HasAttrString(Object, attr))
     {
@@ -30,7 +33,7 @@ double getDouble(PyObject *Object, const char *attr)
   return -1.0;
 }
 
-static hedges::hedge make_hedge_from_pyobject(PyObject *object)
+static hedges::hedge<Constraint> make_hedge_from_pyobject(PyObject *object)
 {
   double rate = getDouble(object,"rate");
   int seq_bytes = getLong(object, "seq_bytes");
@@ -55,14 +58,13 @@ static hedges::hedge make_hedge_from_pyobject(PyObject *object)
   if (salt_bits == -1)
     salt_bits = 8;
     
-  hedges::hedge h(rate, seq_bytes, message_bytes, pad_bits, prev_bits, salt_bits,
+  hedges::hedge<Constraint> h(rate, seq_bytes, message_bytes, pad_bits, prev_bits, salt_bits,
 		  codeword_sync_period,parity_period,parity_history,wild_card_reward);
   return h;
 }
 
 
-
-template<typename Constraint = hedges::Constraint, typename Reward = hedges::Reward,  template <typename> class Context = hedges::context>
+template<typename DNAConstraint = hedges::Constraint, typename Reward = hedges::Reward,  template <typename> class Context = hedges::context>
 static PyObject *
 shared_decode(PyObject *self, PyObject *args)
 {
@@ -72,15 +74,15 @@ shared_decode(PyObject *self, PyObject *args)
     
     if (PyArg_ParseTuple(args, "sO|i", &strand, &hObj, &guesses)) {
 
-      hedges::hedge h = make_hedge_from_pyobject(hObj);
+      hedges::hedge<DNAConstraint> h = make_hedge_from_pyobject(hObj);
       
       std::vector<uint8_t> mess(h.message_bytes), seq(h.seq_bytes);
 
       std::string sstrand(strand);
       
-      hedges::hedge::decode_return_t t(0,0);
-      if(h.parity_period==0) t = h. template decode<Constraint,Reward,Context,hedges::search_tree>(sstrand,seq,mess,guesses);
-      else t  = h. template decode<Constraint,Reward,Context,hedges::search_tree_parity>(sstrand,seq,mess,guesses); //parity search tree considers parity data during decoding
+      hedges::decode_return_t t(0,0);
+      if(h.parity_period==0) t = h. template decode<Reward,Context,hedges::search_tree>(sstrand,seq,mess,guesses);
+      else t  = h. template decode<Reward,Context,hedges::search_tree_parity>(sstrand,seq,mess,guesses); //parity search tree considers parity data during decoding
       int sz = seq.size() + mess.size();
       PyObject *list = PyList_New(sz);
       for(auto i=0; i<sz; i++)

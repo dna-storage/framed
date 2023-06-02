@@ -21,7 +21,7 @@ fasthedges_encode2(PyObject *self, PyObject *args)
 
     if (PyArg_ParseTuple(args, "y*O", buff, &hObj)) {
 
-      hedge h = make_hedge_from_pyobject(hObj);
+      hedge<Constraint> h = make_hedge_from_pyobject(hObj);
       
       std::vector<uint8_t> index;
       std::vector<uint8_t> message;
@@ -39,8 +39,8 @@ fasthedges_encode2(PyObject *self, PyObject *args)
 	  message.push_back(buf[i]);
 	}
 
-      std::string buff = h.encode(index, message);
-
+      std::string buff = h.encode(index, message,-1);
+      
       PyObject *o = Py_BuildValue("s",buff.c_str());
       return o;      
     }
@@ -55,12 +55,12 @@ fasthedges_decode2(PyObject *self, PyObject *args)
   return shared_decode(self,args);
 }
 
-static PyObject * decode_item(const char *strand, hedge &h, int guesses=1000000)
+static PyObject * decode_item(const char *strand, hedge<Constraint> &h, int guesses=1000000)
 {
   std::string sstrand(strand);
 
   std::vector<uint8_t> mess(h.message_bytes), seq(h.seq_bytes);
-  hedges::hedge::decode_return_t t = h.decode(sstrand,seq,mess,guesses);
+  hedges::decode_return_t t = h.decode(sstrand,seq,mess,guesses);
 
   // std::cout << "[";
   // for(auto i : seq)
@@ -98,7 +98,7 @@ fasthedges_bulk_decode(PyObject *self, PyObject *args)
     
     if (PyArg_ParseTuple(args, "OO|i", &l, &hObj, &guesses)) {
 
-      hedge h = make_hedge_from_pyobject(hObj);
+      hedge<Constraint> h = make_hedge_from_pyobject(hObj);
       
       if (l!=NULL && !PyList_Check(l)) {
          PyErr_SetString(FasthedgesError, "Expected first argument to be a list of DNA strands.");
@@ -134,7 +134,7 @@ fasthedges_echo(PyObject *self, PyObject *args)
     
     if (PyArg_ParseTuple(args, "O", &hObj))
       {
-	hedge h = make_hedge_from_pyobject(hObj);
+	hedge<Constraint> h = make_hedge_from_pyobject(hObj);
 
 	h.print(true);
       }
@@ -146,7 +146,6 @@ static PyMethodDef FasthedgesMethods[] = {
     {"decode",  fasthedges_decode2, METH_VARARGS, "Decode from DNA back into bytes."},
     {"bulk_decode",  fasthedges_bulk_decode, METH_VARARGS, "Bulk decode a list of strands from DNA back into bytes."},
     {"echo",  fasthedges_echo, METH_VARARGS, "Echo hedges configuration."},
-    
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
 

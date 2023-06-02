@@ -1,13 +1,13 @@
 
 template<typename Context>
-  bool search_tree<Context>::isIncomplete()
+bool search_tree<Context>::isIncomplete()
 {
   return c.index < h->max_index;
 }
 
 
 template<typename Context>
-search_tree<Context>::search_tree(hedge *_h,
+search_tree<Context>::search_tree(hedge<Constraint> *_h,
 				  search_tree *parent,
 				  const Context  &_c,
 				  float _score,
@@ -36,7 +36,7 @@ search_tree<Context>::search_tree(hedge *_h,
       }
     }
     else{
-       bits = parent->bits;
+      bits = parent->bits;
     }
     
     bases = std::make_shared<bit_tree<char>>(parent->bases,base);
@@ -62,7 +62,7 @@ void search_tree_parity<Context>::_update_parity(uint8_t bit){
 }
 
 template<typename Context>
-search_tree_parity<Context>::search_tree_parity(hedge *_h,
+search_tree_parity<Context>::search_tree_parity(hedge<Constraint> *_h,
 						search_tree_parity *parent,
 						const Context &_c,
 						float _score,
@@ -382,8 +382,8 @@ std::ostream& operator << (std::ostream& os, Context<Constraint> &c)
   return os;
 }
 
-template<typename Constraint = Constraint, typename Reward = Reward, template <typename> class Context=context>
-std::ostream & operator << (std::ostream &o, search_tree<Context<Constraint>> &node)
+template<typename DNAConstraint = Constraint, typename Reward = Reward, template <typename> class Context=context>
+std::ostream & operator << (std::ostream &o, search_tree<Context<DNAConstraint>> &node)
 {
   o << "i:" << std::dec << node.c.index << " " << "score:" << node.score;
 
@@ -431,21 +431,22 @@ std::vector<SearchTree>make2bitGuesses(SearchTree*s)
   return ret;  
 }
 
-template <typename Constraint, typename Reward, template <typename> class Context,
-	  template <typename> class SearchTree>
-hedges::hedge::decode_return_t hedge::decode(std::string &observed,
-		   std::vector<uint8_t> &seqId,
-		   std::vector<uint8_t> &message,
-		   int max_guesses)
+template <typename DNAConstraint>
+template < typename Reward, template <typename> class Context,
+	   template <typename> class SearchTree>
+hedges::decode_return_t hedge<DNAConstraint>::decode(std::string &observed,
+						     std::vector<uint8_t> &seqId,
+						     std::vector<uint8_t> &message,
+						     int max_guesses)
 {
-  using node = SearchTree<Context<Constraint>>;
+  using node = SearchTree<Context<DNAConstraint>>;
   
   std::priority_queue<node,std::vector<node>,BestScore<node> > heap;
 
   while( observed.size() < max_index )
     observed.append("A");
   
-  Context<Constraint> state(prev_bits,salt_bits);
+  Context<DNAConstraint> state(prev_bits,salt_bits);
   state.salt = 0xA5A5A5A5;    
   heap.push(node(this,state,1000,0,&observed));
     
@@ -521,3 +522,123 @@ hedges::hedge::decode_return_t hedge::decode(std::string &observed,
 
 
 
+template<typename DNAConstraint>  
+hedge<DNAConstraint>::hedge(double rate,
+			    int seq_bytes,
+			    int message_bytes,
+			    int pad_bits,
+			    int prev_bits,
+			    int salt_bits,
+			    int codeword_sync_period,
+			    int parity_period,
+			    int parity_history,
+			    double wild_card_reward
+			    ):raw_rate(rate),codeword_sync_period(codeword_sync_period),seq_bytes(seq_bytes),
+			      message_bytes(message_bytes),pad_bits(pad_bits),prev_bits(prev_bits),
+			      salt_bits(salt_bits),parity_period(parity_period),parity_history(parity_history),
+			      wild_card_reward(wild_card_reward),encoding_context(prev_bits,salt_bits)
+{
+  
+  this->rate = pick_rate(rate);  
+  this->parity_history_mask =((1ULL)<<parity_history)-1; //generate mask for parity history, used by search tree nodes
+
+  //Take into account parity when determining adjusted message bits so that the index can be correctly calcualted
+  uint32_t total_parameter_data_bits = message_bytes*8+pad_bits;
+  if(this->parity_period>0){
+    assert(this->parity_period>1 && "Parity can't be set to a period of just 1");
+    //parity is interleaved into pad_bits speced by user, so that needs to be taken into account in the total bits
+    total_parameter_data_bits = (this->parity_period+1) + (total_parameter_data_bits-this->parity_period)/(this->parity_period-1) + total_parameter_data_bits;   
+  }
+  
+  this->adj_seq_bits = seq_bytes*8 + check_if_padding_needed(seq_bytes*8);
+  this->adj_pad_bits = this->pad_bits + check_if_padding_needed(total_parameter_data_bits);
+  this->adj_message_bits = total_parameter_data_bits + (this->adj_pad_bits-this->pad_bits);
+  this->max_index = get_index_range(adj_message_bits + adj_seq_bits);
+  
+}
+
+
+template<typename DNAConstraint>
+void hedge<DNAConstraint>::print(bool extra)
+{
+  std::cout << "-------- hedges --------" << std::endl;
+  std::cout << "rate:               " << this->raw_rate << std::endl;
+  std::cout << "rate id:            " << int(this->rate) << std::endl;
+  std::cout << "seq_bytes:          " << this->seq_bytes << std::endl;
+  std::cout << "message_bytes:      " << this->message_bytes << std::endl;
+  std::cout << "salt bits:          " << this->salt_bits << std::endl;
+  std::cout << "prev bits:          " << this->prev_bits << std::endl;
+  std::cout << "index range:        " << 0 << " to " << max_index << std::endl;
+
+  if (extra)
+    {
+      std::cout << "Extra details: " << std::endl;
+      std::cout << "adj message bits:    " << this->adj_message_bits << std::endl;
+      std::cout << "adj seq bits:        " << this->adj_seq_bits << std::endl;
+      std::cout << "adj pad bits:        " << this->adj_pad_bits << std::endl;
+    }
+}
+
+
+
+template<typename DNAConstraint>
+std::string hedge<DNAConstraint>::encode(std::vector<uint8_t> seqId, std::vector<uint8_t> message,int bytes_to_encode)
+{
+  bitwrapper seq(seqId);    
+  bitwrapper mess(message);
+  std::string buff;
+  
+  std::vector<int> pat = patterns[ (int) rate ];
+  int len = pattern_length[ (int) rate ];
+  
+  uint32_t bit = 0;
+  uint32_t total_data_bits=0;
+  uint32_t index = 0;
+  
+  context<Constraint>& state = this->encoding_context;
+  state=context<Constraint>(this->prev_bits,this->salt_bits); //clear out context before encoding for safety
+  // initial static salt; not really required
+  // could be good to base this on the primer
+  // or file id
+  state.salt = 0xA5A5A5A5;
+
+  std::cout << std::hex;
+  
+  // Encode seqId
+  while(index < get_index_range(adj_seq_bits)) {
+    int nbits = pat[index%len];
+    int val = seq.get_bits(bit, bit+nbits);
+    total_data_bits += seq.get_num_bits_from_data(bit,bit+nbits);
+    char c = state.nextSymbolWithUpdate(nbits,val,0);
+    buff.push_back(c);
+    if(bytes_to_encode!=-1 && bytes_to_encode<total_data_bits/8) return buff;
+    index ++;
+    bit += nbits;
+  }
+
+  //std::cout << "after seq: " << std::dec << index << ": " << std::hex << state << std::endl;  
+    
+  // Copy prev over to be the salt
+  state.salt = state.prev;
+  // ? Should we set prev to 0 or not? Since we have the salt now, we don't need the prev.
+  //   Probably doesn't make much of a difference since it's just redundant information.
+  state.prev = 0;
+  bit = 0;
+
+  if(bytes_to_encode!=-1 && bytes_to_encode<=total_data_bits/8) return buff;
+  // Encode message
+  while(index < max_index) {
+    int nbits = pat[index%len];
+    int val = mess.get_bits(bit, bit+nbits);
+    total_data_bits += mess.get_num_bits_from_data(bit,bit+nbits);
+    char c = state.nextSymbolWithUpdate(nbits,val,0);
+    buff.push_back(c);
+    if(bytes_to_encode!=-1 && bytes_to_encode==total_data_bits/8) return buff;
+    index++;
+    bit += nbits;
+  }
+
+  std::cout << std::dec;
+  
+  return buff;
+}
