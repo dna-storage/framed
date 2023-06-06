@@ -330,6 +330,11 @@ def Basic_Hedges_Pipeline(pf,**kwargs):
     cw_consolidator = SimpleMajorityVote()
 
 
+    #stat options
+    calculate_hamming_distance = kwargs.get("calculate_hamming_distance",False)
+
+
+    
     if "packeted_inner_strand_size" in kwargs: #allow for packeting to reduce parameter waste 
         hedges_rate,strandSizeInBytes=kwargs["packeted_inner_strand_size"]
     
@@ -389,7 +394,7 @@ def Basic_Hedges_Pipeline(pf,**kwargs):
     DNA_pipeline = (length_filter,)+DNA_pipeline #add filter to end of DNAtoDNA decoding
     
     if fault_injection: #some counters for data collection
-        post_cluster_DNA_probe = DNAErrorProbe(probe_name="{}::post_cluster".format(pipeline_title))            
+        post_cluster_DNA_probe = DNAErrorProbe(probe_name="{}::post_cluster".format(pipeline_title),calculate_hamming=calculate_hamming_distance)            
         index_probe = IndexDistribution(probe_name=pipeline_title,prefix_to_match=barcode)
         hedges_probe = CodewordErrorRateProbe(probe_name="{}::hedges".format(pipeline_title))
         if not using_randomize: inner_pipeline = (index_probe,crc,hedges_probe,post_cluster_DNA_probe,hedges)
@@ -401,7 +406,7 @@ def Basic_Hedges_Pipeline(pf,**kwargs):
             post_cluster_DNA_probe.dna_attr = dna_hook_probe.name 
             length_filter.alignment_name=dna_hook_probe.name
             hedges_probe.dna_attr=dna_hook_probe.name
-            DNA_error_probe = DNAErrorProbe(probe_name=pipeline_title)
+            DNA_error_probe = DNAErrorProbe(probe_name=pipeline_title,calculate_hamming=calculate_hamming_distance)
             DNA_pipeline =(DNA_error_probe,dna_hook_probe)+DNA_pipeline
         
     return pipeline.PipeLine(out_pipeline+inner_pipeline+DNA_pipeline,blockSizeInBytes,strandSizeInBytes,dna_length,1,packetizedfile=pf,
