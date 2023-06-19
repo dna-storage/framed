@@ -169,12 +169,13 @@ def run_monte(pool,args):
     last_monte_iter = args.num_sims%args.cores
     processIters=0
     tasks=[] #list of arguments for each task
-    for i in range(args.cores):
-        if i==args.cores-1:
-            tasks.append((processIters,processIters+monteIters+last_monte_iter,args))
+    for i in range(args.cores): #KV: changed this so that load balancing is a little better, where the last job isn't overloaded
+        if i>=0 and i<last_monte_iter:
+            tasks.append((processIters,processIters+monteIters+1,args))
+            processIters+=(monteIters+1) #set up next range of montecarlo simulations
         else:
             tasks.append((processIters,processIters+monteIters,args))
-        processIters+=monteIters #set up next range of montecarlo simulations
+            processIters+=monteIters #set up next range of montecarlo simulations
 
     results = pool.map(_monte_parallel_wrapper,tasks) #map the work to different processes
 

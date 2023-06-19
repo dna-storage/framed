@@ -163,7 +163,9 @@ class LSFJob(TcshJob):
         self.job_name="job"
         self.exclusive=False
         self._generate_name="hpc_lsfjob.csh"
-
+        self.hosts_span=None
+        self.ptile=None
+        self.model=None
     
     def submission_command(self,submission_script_name):
         return "bsub < {}".format(submission_script_name)
@@ -182,8 +184,11 @@ class LSFJob(TcshJob):
         lsf_script_lines.append("#BSUB -n " + str(self.cores))
         lsf_script_lines.append("#BSUB -W {}:00".format(self.time))
         if self.exclusive: lsf_script_lines.append("#BSUB -x")
+        if self.hosts_span: lsf_script_lines.append('#BSUB -R \"span[hosts={}]\"'.format(self.hosts_span))
         if self.one_host: lsf_script_lines.append("#BSUB -R \"span[hosts=1]\"") #this is to make sure all processes/thread sit at one host
         if self.memory: lsf_script_lines.append("#BSUB -R \"rusage[mem={}GB]\"".format(self.memory))
+        if self.ptile: lsf_script_lines.append("#BSUB -R \"span[ptile={}]\"".format(self.ptile))
+        if self.model: lsf_script_lines.append("#BSUB -R \"select[model={}]\"".format(self.model))
         if len(self.avoid_hosts)>0:
             #avoid problematic hosts
             for h in self.avoid_hosts:
@@ -239,6 +244,7 @@ class LSFJob(TcshJob):
     @property
     def avoid_hosts(self):
         return self._avoid_hosts
+    
     @avoid_hosts.setter
     def avoid_hosts(self,hosts):
         if not type(hosts) is list:
@@ -247,3 +253,27 @@ class LSFJob(TcshJob):
             h=hosts
         self._avoid_hosts=h
 
+    @property
+    def hosts_span(self):
+        return self._hosts_span
+    
+    @hosts_span.setter
+    def hosts_span(self,hosts):
+        self._hosts_span = hosts
+
+
+    @property
+    def ptile(self):
+        return self._ptile
+    
+    @hosts_span.setter
+    def ptile(self,p):
+        self._ptile = p
+
+    @property
+    def model(self):
+        return self._model
+    
+    @hosts_span.setter
+    def ptile(self,m):
+        self._model = m

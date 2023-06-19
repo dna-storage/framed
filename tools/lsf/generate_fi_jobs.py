@@ -17,6 +17,10 @@ if __name__=="__main__":
     parser.add_argument('--queue',default="tuck",type=str,action="store",help="Queue to use for jobs")
     parser.add_argument('--dump_dir',required=True,help="path to store results")
     parser.add_argument('--core_depth',default=1,type=int,action="store",help="the number of additional cores to request per core. Example use case is if you want multiple mpi cores per mpi task")
+    parser.add_argument('--exclusive',default=False,action="store_true",help="run exclusive")
+    parser.add_argument('--span',default=None,action="store",help="number of hosts to span over")
+    parser.add_argument('--ptile',default=None,action="store",help="how to tile job")
+    parser.add_argument('--model',default=None,action="store",help="model of processor to request")
     parser.add_argument('--job_name',default="dnastorage_fi",action="store",help="name for jobs that will be spawned")
     parser.add_argument('--avoid_hosts',default=None,nargs='+',help="hosts to avoid when running jobs")
     parser.add_argument('--experiment_prefix',default="",type=str,action="store",help="custom prefix to combine with top level directory name")
@@ -29,6 +33,10 @@ if __name__=="__main__":
     #Job parameter setup 
     if args.submission=="LSF":
         job = LSFJob()
+        job.exclusive=args.exclusive
+        job.hosts_span=args.span
+        job.model = args.model
+        job.ptile=args.ptile
         job.queue=args.queue
         job.time=args.time
         job.memory=args.memory
