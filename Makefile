@@ -14,4 +14,4 @@ install:
 	python setup.py install --user
 
 develop:
-	python setup.py develop --user
+	python setup.py develop 
