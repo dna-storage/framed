@@ -72,9 +72,11 @@ We include a pre-built Docker image that replicates a near-exact environment to 
 
     docker pull kvolkel/framed:revision
 
-Now, you should be able to simply run the following to run a container with a complete environment that can run FrameD and the small examples in the following sections. No further installation steps should be required.
+Now, you should be able to simply run the following to run a container with a complete environment that can run FrameD and the small examples in the following sections:
 
-   docker run -it kvolkel/framed:revision
+	docker run -it kvolkel/framed:revision
+
+No further installation steps should be required.
 
 # Running FrameD Analysis 
 
