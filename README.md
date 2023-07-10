@@ -29,8 +29,6 @@ The dnastorage module requires only a standard computer with enough RAM and comp
 ### OS Requirements
 This package is supported for macOS and Linux. The package has been tested on the following systems:
 
-+ macOS: Catalina 10.15.3
-+ Linux: Ubuntu 18.04.3
 + Linux: CentOS 7
 
 Note that most OSes will support our software by using Docker. **You will also need the following before completing the installation steps**:
@@ -39,7 +37,9 @@ Note that most OSes will support our software by using Docker. **You will also n
 - C++ compiler
 - pip, python package installer
 - conda, package management
-- MPI implementation, currently tested with Intel MPI Library for Linux OS, Version 2017 Update 1 Build 20161016
+- MPI implementation
+	- tested with Intel MPI Library for Linux OS, Version 2017 Update 1 Build 20161016
+ 	- tested with open MPI Library for Linux OS, Version 4.1.5
 - Julia, currently tested with 1.6.2 (2021-07-14)
 
 
@@ -48,6 +48,8 @@ Note that most OSes will support our software by using Docker. **You will also n
 Our code has been tested on python versions 3.6 to 3.10. A working environment with all dependencies that can be installed via conda can be found at [.yaml file](dnastorage.yml). This installation is handled automatically, as demostrated in the following guide on installation.
 
 # Installation Guide
+
+## Installing natively 
 
 Given that the previous dependencies have been installed and loaded, the first step is to get the code from GitHub and initialize the enviroment with additional dependencies with the following commands.
    
@@ -62,6 +64,17 @@ To install dnastorage package for local development:
     make develop
 
 **Note: activating the environment and loading environment variables should be done every new user session.**
+
+
+## Installing via Docker Image
+
+We include a pre-built Docker image that replicates a near-exact environment to that used for running fault injection simulations. The only difference being we use openmpi for this image for easier installation. With docker installed pull the image from the public repo on dockerhub using:
+
+    docker pull kvolkel/framed:revision
+
+Now, you should be able to simply run the following to run a container with a complete environment that can run FrameD and the small examples in the following sections. No further installation steps should be required.
+
+   docker run -it kvolkel/framed:revision
 
 # Running FrameD Analysis 
 
