@@ -266,7 +266,7 @@ class LSFJob(TcshJob):
     def ptile(self):
         return self._ptile
     
-    @hosts_span.setter
+    @ptile.setter
     def ptile(self,p):
         self._ptile = p
 
@@ -274,6 +274,6 @@ class LSFJob(TcshJob):
     def model(self):
         return self._model
     
-    @hosts_span.setter
-    def ptile(self,m):
+    @model.setter
+    def model(self,m):
         self._model = m

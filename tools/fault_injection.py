@@ -66,7 +66,7 @@ def _monte_kernel(monte_start,monte_end,args,comm=None): #function that will run
             write_dna = DNAFilePipeline.open("w",format_name=args.arch,header_params=header_params,header_version=args.header_version,
                                              
                                              encoder_params=encoding_params,fsmd_header_filename=header_data_path, payload_header_filename = payload_header_data_path,
-                                             file_barcode=tuple(args.file_barcode),do_write=False,dna_file_name="{}.dna".format(base_file_path),store_header=args.store_header)
+                                             file_barcode=tuple(args.file_barcode),do_write=False,dna_file_name=os.path.join(args.out_dir,"{}.dna".format(base_file_path)),store_header=args.store_header)
         else: #save 1 copy of the DNA file
             write_dna = DNAFilePipeline.open("w",format_name=args.arch,header_params=header_params,header_version=args.header_version,
                                              encoder_params=encoding_params,fsmd_header_filename=header_data_path,file_barcode=tuple(args.file_barcode),
