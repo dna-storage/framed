@@ -21,9 +21,11 @@ In depth documentation can be found in the [wiki](https://github.com/dna-storage
 
 ## Hardware Requirements
 
-The dnastorage module requires only a standard computer with enough RAM and compute power to support the needed operations. However, encoding or decoding large files may perform poorly, necessitating a more capable system. The infrastructure to encode, decode, and analyze sequencing data will perform best if using an HPC system with an MPI implementation installed.
+The dnastorage module requires only a standard computer with enough RAM and compute power to support the needed operations. However, encoding or decoding large files may perform poorly, necessitating a more capable system. The infrastructure to encode, decode, and analyze sequencing data will perform best if using an HPC system, or system with considerble number of cores at its disposal, with an MPI implementation installed.
 
-**Given the nature of evaluating dnastorage systems, we not only leverage MPI parallelism, but we also rely on batch level parallelism. Our infrastructure currently assumes an IBM LSF managed platform to launch many independent jobs. If your system is different, e.g. Cobalt, you will need to write in your support for launching such jobs by extending the TcshJob class in [submit.py](tools/lsf/submit.py) directory.**
+**Given the nature of evaluating dnastorage systems, we not only leverage MPI parallelism, but we also rely on batch level parallelism. Our infrastructure currently assumes an IBM LSF managed platform to launch many independent jobs. If your system is different, e.g. Cobalt, Slurm, etc you will need to write in your support for launching such jobs by extending the TcshJob class in [submit.py](tools/lsf/submit.py) directory.**
+
+**For simplicity, we also support background jobs run in a sub-shell as a quick way of testing a small set of encoding/decoding excersizes.**
 
 ## Software Requirements
 ### OS Requirements
