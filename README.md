@@ -105,7 +105,7 @@ After the fault injection experiments are run, there will be a number of statist
     cd tools/data_analysis
     python db_gen.py --path <top result path> --name fault_injection_dataframe
  
-The final command generates a Pandas dataframe, and stores it at the top directory path of the collection of results, e.g. <top result path>. This data frame can be loaded and analyzed any way in which you prefer. An example of anlayzing data frames can be found in the notebook [bioinformatics.pynb](notebooks/bioinformatics.pynb) which produces the figures of the paper using raw data collected using `db_gen.py`.
+The final command generates a Pandas dataframe, and stores it at the top directory path of the collection of results, e.g. <top result path>. This data frame can be loaded and analyzed any way in which you prefer. An example of anlayzing data frames can be found in the notebook [framed.pynb](notebooks/framed.pynb) which produces the figures of the paper using raw data collected using `db_gen.py`.
 
 ## FrameD Notebooks
 
