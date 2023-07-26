@@ -38,6 +38,7 @@ def calculate_reverse_burst(editops,index,edit_type):
         next_pos-=1
     return total_burst
 
+
 class DNAErrorProbe(BaseCodec,Probe):
     #This probe should be placed after a single strand codec so that analysis can be performed 
     probe_id=0
@@ -49,7 +50,7 @@ class DNAErrorProbe(BaseCodec,Probe):
     @dna_attr.setter
     def dna_attr(self,attr:str):
         self._initial_dna_attr=attr
-    def __init__(self,probe_name="",CodecObj=None):
+    def __init__(self,probe_name="",calculate_hamming=False,CodecObj=None):
         BaseCodec.__init__(self,CodecObj)
         if probe_name=="":
             self.name = "dna_probe_{}".format(DNAErrorProbe.probe_id)
@@ -72,12 +73,16 @@ class DNAErrorProbe(BaseCodec,Probe):
         self._DNA_error_pattern_key = "{}::error_pattern_hist".format(self.name) #histogram, but it will be a dictionary given we are mapping 
         self._DNA_pattern_start_rate_key = "{}::pattern_rate_key".format(self.name) #tracks rate of error patterns in the strand, instead of individual errors
         self._DNA_pattern_location_key="{}::pattern_locations".format(self.name) #tracks the location that error patterns occur throughout the strand
+        self._DNA_hamming_distance_key = "{}::hamming_distance_key".format(self.name) #tracks hamming distance for strands that are the same length
+        self._DNA_hamming_distance_strand_count_key = "{}::total_hamming_distance_strands".format(self.name)
+        
         stats.register_hist(self._DNA_strand_length_key)
         stats.register_hist(self._DNA_strand_error_key)
         stats.register_hist(self._DNA_max_kmer_error_key)
         if not self._DNA_error_pattern_key in stats: stats[self._DNA_error_pattern_key]={}
         if not self._DNA_pattern_location_key in stats: stats[self._DNA_pattern_location_key]={}
         DNAErrorProbe.probe_id+=1
+        self._calculate_hamming=calculate_hamming
     def _encode(self,s):
         setattr(s,self.dna_attr,copy.copy(s.dna_strand)) #take a snapshot of the dna under an attribute specific to this isntantiation
         return s
@@ -91,6 +96,11 @@ class DNAErrorProbe(BaseCodec,Probe):
             stats.inc(self._DNA_correct_key)
         else:
             stats.inc(self._DNA_incorrect_key)
+        if len(fault_dna)==len(s.dna_strand) and self._calculate_hamming:
+            stats.inc(self._DNA_hamming_distance_strand_count_key,dflt=0)
+            for index,(i,j) in enumerate(zip(fault_dna,base_dna)):
+                if i!=j: stats.inc(self._DNA_hamming_distance_key,dflt=np.zeros((len(fault_dna),)),coords=index)
+            
         stats.inc(self._DNA_strands_seen_key)
         #do edit distance analysis
         editops= ld.editops(base_dna,fault_dna)
@@ -118,7 +128,6 @@ class DNAErrorProbe(BaseCodec,Probe):
             #if pattern not in stats[self._DNA_pattern_location_key]: stats[self._DNA_pattern_location_key][pattern]=np.zeros((len(base_dna),))
             #stats[self._DNA_pattern_location_key][pattern][start]+=1 #increment location that pattern shows up
         return s
-
 
 class CodewordErrorRateProbe(BaseCodec,Probe):
     #This probe should be placed after a single strand codec so that analysis can be performed 

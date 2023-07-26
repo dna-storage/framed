@@ -173,9 +173,10 @@ class WriteDNAFilePipeline(DNAFilePipeline):
         self.pf= ReadPacketizedFilestream(self.mem_buffer)
 
         self.pipe = enc_func(self.pf,**self._enc_opts,barcode=(DATA_BARCODE,)+self._file_barcode)
-        if 'output' in kwargs and kwargs["output"] !=None :
+        if 'output' in kwargs and kwargs["output"] !=None:
             self.output_filename = kwargs['output']
-            self.out_fd = open(self.output_filename,"w")
+            if self._do_write:
+                self.out_fd = open(self.output_filename,"w")
         elif 'out_fd' in kwargs:
             self.out_fd = kwargs['out_fd']
             self.output_filename = ""
@@ -242,16 +243,13 @@ class WriteDNAFilePipeline(DNAFilePipeline):
             self._header_fd.write(bytearray(header.get_header_pipeline_data()))
             self._header_fd.close()
             
-        if self.out_fd is None: return
+        if self.out_fd is None or not self._do_write: return
         comment = header.encode_file_header_comments(header_dict)
         comment+="% Primer 5 : {}\n".format(self._enc_opts["primer5"])
         comment+="% Primer 3 : {}\n".format(self._enc_opts["primer3"])
         self.out_fd.write(comment)
-        
-        if self._do_write:
-            for s in self.strands:
-                self.out_fd.write("{}:{}\n".format(s.index_ints,s.dna_strand))
-            
+        for s in self.strands:
+            self.out_fd.write("{}:{}\n".format(s.index_ints,s.dna_strand))
         if self.out_fd != sys.stdout and self.out_fd != sys.stderr:
             self.out_fd.close()
         return
