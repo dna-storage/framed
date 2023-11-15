@@ -194,7 +194,7 @@ def SDC_pipeline(pf,**kwargs):
     if check_primers: #checks data strands for matches in
         assert strand_path!=None
         primer_check_probe = StrandCheckProbe(strand_path) 
-        DNA_pipeline=DNA_pipeline+(primer_check_probe,)
+        DNA_pipeline=(primer_check_probe,)+DNA_pipeline#+(primer_check_probe,)
 
     return pipeline.PipeLine(out_pipeline+inner_pipeline+DNA_pipeline,blockSizeInBytes,strandSizeInBytes,upper_strand_length,1,packetizedfile=pf,cw_consolidator=consolidator,
                              barcode=barcode,use_oracle_filter=use_oracle_filter)
@@ -297,8 +297,8 @@ def Basic_Hedges_Pipeline(pf,**kwargs):
     primer3 =kwargs.get("primer3",'A'*20) #basic 3' primer region
     crc_type = kwargs.get("crc_type","strand") #location where to put the CRC check
     reverse_payload = kwargs.get("reverse_payload",False) #should the payload be reversed
-    primer5_search_depth = kwargs.get("primer5_depth",100) #specifies the depth to search for the primer5 primer
-    primer3_search_depth = kwargs.get("primer3_depth",100) #specifies the depth to search for the primer3 primer
+    primer5_search_depth = kwargs.get("primer5_depth",77) #specifies the depth to search for the primer5 primer
+    primer3_search_depth = kwargs.get("primer3_depth",60) #specifies the depth to search for the primer3 primer
 
     
     
@@ -329,10 +329,10 @@ def Basic_Hedges_Pipeline(pf,**kwargs):
     align_num_strands = kwargs.get("align_num_strands",15)
     cw_consolidator = SimpleMajorityVote()
 
-
     #stat options
     calculate_hamming_distance = kwargs.get("calculate_hamming_distance",False)
-
+    byte_error_map = kwargs.get("byte_error_map",False) #option to indicate whether to calculate byte error maps
+    dump_ids=kwargs.get("dump_ids",False)
 
     
     if "packeted_inner_strand_size" in kwargs: #allow for packeting to reduce parameter waste 
@@ -396,7 +396,7 @@ def Basic_Hedges_Pipeline(pf,**kwargs):
     if fault_injection: #some counters for data collection
         post_cluster_DNA_probe = DNAErrorProbe(probe_name="{}::post_cluster".format(pipeline_title),calculate_hamming=calculate_hamming_distance)            
         index_probe = IndexDistribution(probe_name=pipeline_title,prefix_to_match=barcode)
-        hedges_probe = CodewordErrorRateProbe(probe_name="{}::hedges".format(pipeline_title))
+        hedges_probe = CodewordErrorRateProbe(probe_name="{}::hedges".format(pipeline_title),error_maps=byte_error_map,dump_ID=dump_ids)
         if not using_randomize: inner_pipeline = (index_probe,crc,hedges_probe,post_cluster_DNA_probe,hedges)
         else: inner_pipeline = (index_probe,crc,randomize,hedges_probe,post_cluster_DNA_probe,hedges)
         dna_counter_probe = FilteredDNACounter(probe_name=pipeline_title)

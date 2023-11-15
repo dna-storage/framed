@@ -6,10 +6,11 @@ import pickle
 import re
 import time
 from Bio import SeqIO
-from scipy import stats
+import scipy
 import numpy as np
 import math
 
+from dnastorage.util.stats import stats
 import dnastorage.util.generate as generate
 from dnastorage.strand_representation import *
 from dnastorage.fi.fault_strand_representation import *
@@ -40,6 +41,8 @@ class BaseFI:
             return sequencing_experiment(**kwargs)
         elif fault_injector=="sequencing_experiment_downsample":
             return sequencing_experiment_downsample(**kwargs)
+        elif fault_injector=="sequencing_experiment_coverage":
+            return sequencing_experiment_coverage(**kwargs)
         elif fault_injector=="pattern_fixed_rate":
             return pattern_fixed_rate(**kwargs)
         elif fault_injector=="DNArSim":
@@ -85,6 +88,7 @@ class sequencing_experiment(BaseFI):
         #assume fastq file for now
         record_counter=0
         for record in SeqIO.parse(self._sequencing_data_path,"fastq"):
+            record_counter+=1
             seq_strand,subs = re.subn("U","T",str(record.seq))
             seq_strand,n_subs = re.subn("N","A",seq_strand)
             seq_strand=seq_strand.rstrip('\x00')
@@ -92,8 +96,36 @@ class sequencing_experiment(BaseFI):
             if index_ints is None or index_ints not in input_library_map: continue #dead strand or is unwanted by the given studied file
             lib_strand=input_library_map[index_ints]
             out_list.append(FaultDNA(lib_strand,seq_strand))
-            record_counter+=1
+            out_list[-1].record_id=record.id
+        stats["sequencing_experiment::total_seq_file_strands"] = record_counter
         assert len(out_list)>0
+        return out_list
+    def Run(self):
+        return self.sequence_run_injection()
+    
+class sequencing_experiment_coverage(sequencing_experiment):
+    def __init__(self,**args):
+        sequencing_experiment.__init__(self,**args) 
+        self._coverage = args["coverage"]
+        self._rng = np.random.default_rng()
+    def sequence_run_injection(self):
+        out_list=[]
+        input_library_map={}
+        for strand in self._input_library:
+            input_library_map[strand.index_ints] = strand
+        strands_to_sample = self._coverage*len(self._input_library)
+        records=[]
+        for record in SeqIO.parse(self._sequencing_data_path,"fastq"):
+            records.append(record)
+        records_to_use = self._rng.choice(np.array(records,dtype=object),int(strands_to_sample))
+        for record in records_to_use:
+            seq_strand,subs = re.subn("U","T",str(record.seq))
+            seq_strand,n_subs = re.subn("N","A",seq_strand)
+            seq_strand=seq_strand.rstrip('\x00')
+            index_ints = self._map.get(record.id,None)
+            if index_ints is None or index_ints not in input_library_map: continue #dead strand or is unwanted by the given studied file
+            lib_strand=input_library_map[index_ints]
+            out_list.append(FaultDNA(lib_strand,seq_strand))
         return out_list
     def Run(self):
         return self.sequence_run_injection()
@@ -209,18 +241,18 @@ class position_fixed_rate(fixed_rate): #does fixed rate error rates, except on a
 class pattern_fixed_rate(fixed_rate): #allows the injection of patterns rather than single errors
     def __init__(self,**args):
         fixed_rate.__init__(self,**args)
-        strand_rate_path = args.get("error_rate_path",None) #path to rates for each base indicating probability of pattern occuring
-        pattern_dist_path = args.get("pattern_dist_path",None) #distribution of error patterns, given an error ocurred
+        rate_path = args.get("error_rate_path",None) #path to rates for each base indicating probability of pattern occuring
         try:
-            self._rate_data = pickle.load(open(strand_rate_path,"rb"))
-            pattern_data = pickle.load(open(pattern_dist_path,"rb"))
+            rate_dict=pickle.load(open(rate_path,"rb"))
+            self._rate_data = rate_dict["error_dist"]
+            pattern_data = rate_dict["pattern_dist"]
         except Exception as e:
             logger.warning(e)
             exit(1)
         items = sorted(pattern_data.items(),key=lambda x: x[1],reverse=True)
         indexed_probs = [(i,_[1]) for i,_ in enumerate(items)] #distribution will generate indices to patterns
         self._pattern_map = [_[0] for _ in items] #map indices back to patterns
-        self._pattern_gen = stats.rv_discrete(name="pattern",values=(list(zip(*indexed_probs))[0],list(zip(*indexed_probs))[1]))
+        self._pattern_gen = scipy.stats.rv_discrete(name="pattern",values=(list(zip(*indexed_probs))[0],list(zip(*indexed_probs))[1]))
             
     #go through each nucleotide in each strand and apply a flat fault rate
     def injection_sites(self):

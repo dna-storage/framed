@@ -14,7 +14,7 @@ it has received all size/packetSize packets.  The indices are assumed to be dens
 to size/packetSize by 1.  Pythonically: range(0,size/packetSize+(size-size/packetSize*packetSize),1).
 """
 class WritePacketizedFilestream:
-    def __init__(self,fd,size,packetSize,minKey=0,zeroFillMissing=False):
+    def __init__(self,fd,size,packetSize,minKey=0,zeroFillMissing=True):
         self.__fd = fd
         self.size = size
         self.__set_packetSize(packetSize)

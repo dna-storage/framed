@@ -10,6 +10,7 @@ from dnastorage.system.formats import *
 from dnastorage.util.strandinterface import *
 from dnastorage.util.mpi_logger import *
 import dnastorage.util.generate as generate
+from dnastorage.util.stats import stats
 import logging
 import numpy as np
 import sys
@@ -123,8 +124,10 @@ def _monte_kernel(monte_start,monte_end,args,comm=None): #function that will run
             length_fi_data+=1
             index+=1
             if fi_data==original_data:
+                #print("Orginal Data {} fi_data {}".format(original_data,fi_data))
                 continue
             else:
+                #print("Orginal Data {} fi_data {}".format(original_data,fi_data))
                 total_mismatch_data+=1
         stats.inc("total_mismatch_bytes",total_mismatch_data)
         stats.inc("file_size_difference_bytes",abs(file_to_inject_size-length_fi_data))

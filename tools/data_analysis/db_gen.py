@@ -51,14 +51,14 @@ def load_pickle_dict(path):
     return data_dict
 
 
-def load_fi_json(path,all_dicts):
+def load_fi_json(pickle_name,path,all_dicts):
     all_dicts.append(load_json_dict(os.path.join(path,"encoder_params.json"),prefix="encoder"))
     all_dicts.append(load_json_dict(os.path.join(path,"distribution_params.json")))
     all_dicts.append(load_json_dict(os.path.join(path,"dna_process.json")))
     all_dicts.append(load_json_dict(os.path.join(path,"fault_params.json")))
     all_dicts.append(load_json_dict(os.path.join(path,"header_params.json"),prefix="header"))
     all_dicts.append(load_json_dict(os.path.join(path,"sim_params.json")))
-    all_dicts.append(load_pickle_dict(os.path.join(path,"fi.pickle")))
+    all_dicts.append(load_pickle_dict(os.path.join(path,pickle_name)))
 
 def load_seq_json(path,all_dicts):
     decoder_paths=[]
@@ -85,21 +85,22 @@ def load_seq_json(path,all_dicts):
 
 if __name__=="__main__":
     import argparse
-
+    import functools
     parser = argparse.ArgumentParser(description="Bring fault injection data together into a dataframe")                                                                                   
     parser.add_argument('--path',required=True,help="Path to generated data")
     parser.add_argument('--name',required=True,help="name of dataframe")
     parser.add_argument('--type',default="fi",choices=["fi","sequencing"],help="fi: data is from fault injection runs, sequencing: data is from sequencing runs")
+    parser.add_argument('--ext',default="",help="extension to add to pickle files to look for")
     args = parser.parse_args()
     out_list =[]
     assert(os.path.exists(args.path))
 
     load_function=None
     if args.type=="fi":
-        match_file = "fi.pickle"
-        load_function=load_fi_json
+        match_file = "fi.pickle"+args.ext
+        load_function=functools.partial(load_fi_json,match_file)
     elif args.type=="sequencing":
-        match_file="sequencing.pickle"
+        match_file="sequencing.pickle"+args.ext
         load_function=load_seq_json
     else:
         assert 0

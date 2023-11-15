@@ -10,6 +10,7 @@ from dnastorage.primer.nextera import *
 from nupack.complexes import *
 from nupack.mfe import *
 from collections import deque
+from collections import namedtuple
 
 def getTm(seq):
     return mt.Tm_NN(seq)
@@ -397,8 +398,7 @@ def nupack_check_nextera_bindings(s):
     return True
 
 
-
-def calculate_edit_list(edit_ops,max_index,kmer_length=None,pattern=False):
+def calculate_edit_list(edit_ops,max_index,kmer_length=None,pattern=False,error_strand=None):
     edit_strand_index=0
     edit_strand_vis=[]
     applied_edits=0
@@ -406,7 +406,9 @@ def calculate_edit_list(edit_ops,max_index,kmer_length=None,pattern=False):
     current_kmer_edits=0
     kmer_error_array=deque()
     pattern_dist = {} #counts how many of each pattern we observe
+    insertion_dist ={} #counts the number of times a certain base-string is inserted into the original message
     current_pattern=[] #tracks the current error pattern in the edit operations
+    current_pattern_base=[] #track the current base-changes
     start_indexes=[] #tracks the start points of all patterns, and the pattern that started at the position
     for e in edit_ops:
         edit_index = e[1]
@@ -424,7 +426,10 @@ def calculate_edit_list(edit_ops,max_index,kmer_length=None,pattern=False):
             if len(current_pattern)>0:
                 pattern_dist["".join(current_pattern)]=pattern_dist.get("".join(current_pattern),0)+1
                 start_indexes[-1]=(start_indexes[-1],"".join(current_pattern))
+                if "R" not in current_pattern and "D" not in current_pattern: #log only insertion patterns
+                    insertion_dist["".join(current_pattern_base)]=pattern_dist.get("".join(current_pattern_base),0)+1
                 current_pattern=[]
+                current_pattern_base=[]
             if edit_strand_index>=max_index: break
         if edit_index>=max_index: break
         if len(current_pattern)==0: start_indexes.append(edit_strand_index)
@@ -448,7 +453,11 @@ def calculate_edit_list(edit_ops,max_index,kmer_length=None,pattern=False):
                 if kmer_error_array.popleft()==0: current_kmer_edits+=1
                 kmer_error_array.append(1)
         applied_edits+=1
+        
         current_pattern.append(edit_strand_vis[-1])
+        if error_strand:
+            if error_strand and (e[0]=="insert" or e[0]=="replace"):
+                current_pattern_base.append(error_strand[e[2]])
 
     #wrap up if current pattern has not finished, due to strand ending in errors
     if len(current_pattern)>0:
@@ -462,6 +471,8 @@ def calculate_edit_list(edit_ops,max_index,kmer_length=None,pattern=False):
     if pattern:
         return_list.append(pattern_dist)
         return_list.append(start_indexes)
+    if error_strand:
+        return_list.append(insertion_dist)
     return tuple(return_list)
     
 

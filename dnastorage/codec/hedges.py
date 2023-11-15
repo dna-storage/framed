@@ -955,6 +955,7 @@ class FastHedgesPipeline(BaseCodec,CWtoDNA):
     
     def _decode(self,strand):
         reverse = False
+        #logger.info(strand.dna_strand)
         if self._try_reverse: #if we need to check reverse, try a small number of guesses
             reverse=self._test_reverse(strand)
         if self._check_rates:

@@ -13,9 +13,9 @@ import shutil
 if __name__=="__main__":
     import argparse
     parser = argparse.ArgumentParser(description="add experiments to sequencing data")
-    parser.add_argument('-p','--sequencing_experiment_top_path', default=None,required=True,help="path to sequencing data")
+    parser.add_argument('-p','--sequencing_experiment_top_path', default=None,required=True,help="target directory for Framed experiments")
     parser.add_argument('-e','--regex',default="",type=str,required=True,help="regular expression to look for, creates a copy of an already existing experiment if the substring matches a directory in the sequencing experiment data path and also matches a fastq file name input to this tool which represents a new experiment.")
-    parser.add_argument('-t','--target_directory',default="",type=str,required=True,help="path to target directory that should contain the names of the fastqs that we want to add to the sequencing experiment_directory")
+    parser.add_argument('-t','--target_directory',default="",type=str,required=True,help="path to target directory containing fastqs")
     args = parser.parse_args()
 
     assert os.path.exists(args.target_directory) and os.path.exists(args.sequencing_experiment_top_path)
@@ -46,9 +46,10 @@ if __name__=="__main__":
                     os.makedirs(new_directory,exist_ok=True)
                     root,files,dirs=next(os.walk(new_directory,topdown=False))
                     for fd in dirs: #remove some old sym links 
-                        if os.path.islink(os.path.join(root,fd)):
+                        if os.path.islink(os.path.join(root,fd)):# or os.path.isfile(os.path.join(root,fd)):
                             print("Remove {}".format(os.path.join(root,fd)))
                             os.remove(os.path.join(root,fd))
+
                     print("Copy from source {} to destination {}".format(s,new_directory))
                     shutil.copytree(s,new_directory,symlinks=True,dirs_exist_ok=True)
                     root,files,dirs = next(os.walk(new_directory,topdown=False))

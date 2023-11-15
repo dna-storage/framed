@@ -1,3 +1,4 @@
+
 '''
 Class that implements probes that can be used to check fault injection results throughout the pipeline.
 '''
@@ -71,6 +72,7 @@ class DNAErrorProbe(BaseCodec,Probe):
         self._DNA_strand_error_key="{}::strand_error_hist".format(self.name) #histogram for strand error rates
         self._DNA_max_kmer_error_key = "{}::kmer_max_error_hist".format(self.name) #histogram for max kmer error window
         self._DNA_error_pattern_key = "{}::error_pattern_hist".format(self.name) #histogram, but it will be a dictionary given we are mapping 
+        self._DNA_ins_error_pattern_key = "{}::ins_error_pattern_hist".format(self.name) #histogram, but it will be a dictionary given we are mapping
         self._DNA_pattern_start_rate_key = "{}::pattern_rate_key".format(self.name) #tracks rate of error patterns in the strand, instead of individual errors
         self._DNA_pattern_location_key="{}::pattern_locations".format(self.name) #tracks the location that error patterns occur throughout the strand
         self._DNA_hamming_distance_key = "{}::hamming_distance_key".format(self.name) #tracks hamming distance for strands that are the same length
@@ -81,6 +83,7 @@ class DNAErrorProbe(BaseCodec,Probe):
         stats.register_hist(self._DNA_max_kmer_error_key)
         if not self._DNA_error_pattern_key in stats: stats[self._DNA_error_pattern_key]={}
         if not self._DNA_pattern_location_key in stats: stats[self._DNA_pattern_location_key]={}
+        if not self._DNA_ins_error_pattern_key in stats: stats[self._DNA_ins_error_pattern_key]={}
         DNAErrorProbe.probe_id+=1
         self._calculate_hamming=calculate_hamming
     def _encode(self,s):
@@ -104,7 +107,9 @@ class DNAErrorProbe(BaseCodec,Probe):
         stats.inc(self._DNA_strands_seen_key)
         #do edit distance analysis
         editops= ld.editops(base_dna,fault_dna)
-        edit_strand_vis,applied_edits,max_kmer_edits,pattern_dist,pattern_starts= calculate_edit_list(editops,len(base_dna),kmer_length=50,pattern=True)
+        edit_strand_vis,applied_edits,max_kmer_edits,pattern_dist,pattern_starts,insertion_dist= calculate_edit_list(editops,len(base_dna),kmer_length=50,pattern=True,
+                                                                                                                     error_strand=fault_dna)
+        #if self.name=="payload::hedges::correct" or self.name=="payload":logger.info("{} {} \n {} ".format(self.name,"".join(edit_strand_vis),fault_dna))
         for edit_op_index,(operation,base_index,fault_index) in enumerate(editops):
             if base_index<len(base_dna):
                 stats.inc(self._total_ed_rate_key,dflt=np.zeros((len(base_dna),)),coords=base_index)
@@ -123,6 +128,7 @@ class DNAErrorProbe(BaseCodec,Probe):
         stats.append(self._DNA_strand_error_key,applied_edits) #collect histogram of errors per strand
         stats.append(self._DNA_max_kmer_error_key,max_kmer_edits) #collect histogram of max errors in kmer window
         for pattern in pattern_dist: stats[self._DNA_error_pattern_key][pattern] = stats[self._DNA_error_pattern_key].get(pattern,0)+pattern_dist[pattern]
+        for pattern in insertion_dist: stats[self._DNA_ins_error_pattern_key][pattern] = stats[self._DNA_ins_error_pattern_key].get(pattern,0)+insertion_dist[pattern]
         for start,pattern in pattern_starts: #sorted(pattern_starts,key=lambda x: x[1]):
             stats.inc(self._DNA_pattern_start_rate_key,dflt=np.zeros((len(base_dna),)),coords=start)
             #if pattern not in stats[self._DNA_pattern_location_key]: stats[self._DNA_pattern_location_key][pattern]=np.zeros((len(base_dna),))
@@ -130,6 +136,7 @@ class DNAErrorProbe(BaseCodec,Probe):
         return s
 
 class CodewordErrorRateProbe(BaseCodec,Probe):
+    import bitarray as ba
     #This probe should be placed after a single strand codec so that analysis can be performed 
     probe_id=0
     @property
@@ -150,7 +157,7 @@ class CodewordErrorRateProbe(BaseCodec,Probe):
         self._correct_decode_strand_dna_probe.dna_attr=attr
         self._incorrect_decode_strand_dna_probe=DNAErrorProbe("{}::incorrect".format(self.name))
         self._incorrect_decode_strand_dna_probe.dna_attr=attr
-    def __init__(self,probe_name="",dna_hook=None,CodecObj=None):
+    def __init__(self,probe_name="",calculate_ber=True,error_maps=False,dump_ID=False,dna_hook=None,CodecObj=None):
         BaseCodec.__init__(self,CodecObj)
         if probe_name=="":
             self.name = "codeword_probe_{}".format(CodewordErrorRateProbe.probe_id)
@@ -171,28 +178,45 @@ class CodewordErrorRateProbe(BaseCodec,Probe):
         self._incorrect_key="{}::incorrect_strands".format(self.name)
         self._incorrect_not_none="{}::incorrect_strands_not_none".format(self.name)
         self._first_byte_error="{}::first_error".format(self.name)
-        self._decoded_strands_key="{}::decoded_strands".format(self.name)#actual sequences that decoded
-        self._failed_strands_key="{}::failed_decode_strands".format(self.name) #sequences that failed
-        stats.register_file(self._decoded_strands_key,"decoded_strands.txt")
-        stats.register_file(self._failed_strands_key,"failed_strands.txt")
+        self._total_ber_key = "{}::total_bit_errors".format(self.name) #bit error rate counter
+        if error_maps: self._error_map_key = "{}::error_maps".format(self.name) #bitmap of errors
+        if dump_ID: 
+            self._ID_key="{}::read_ids".format(self.name)
+            stats.register_file(self._ID_key,"strands_analyzed.txt")
+        self._ber=calculate_ber
         CodewordErrorRateProbe.probe_id+=1
     def _encode(self,s):
         setattr(s,self.cw_attr,copy.copy(s.codewords)) #take a snapshot of the codewords under an attribute specific to this isntantiation
         return s
+
+    def ber(self,base_codewords,fault_codewords):
+        gt = self.ba.bitarray()
+        f = self.ba.bitarray()
+        gt.frombytes(bytes(base_codewords))
+        f.frombytes(bytes([random.randbytes(1)[0] if x==None else x for x in fault_codewords])) #use random to alleviate bias 
+        for i in range(len(gt)):
+            if i>=len(f) or f[i]!=gt[i]:
+                stats.inc(self._total_ber_key,dflt=np.zeros((len(gt),)),coords=i)
+
     def _decode(self,s):
         if not hasattr(s,self.cw_attr): return s #might have a leak over from some other encoding/decoding pipeline, cannot rely on this being true always, best compromise is to return
         base_codewords = getattr(s,self.cw_attr)
         fault_codewords = s.codewords
         #now analyze error rates b/w the base and fault
+        if self._ber: self.ber(base_codewords,fault_codewords)
         first=True
+        map = np.zeros(len(base_codewords),dtype=np.bool8)
         for i in range(len(base_codewords)):
             if i>=len(fault_codewords) or base_codewords[i]!=fault_codewords[i]:
                 stats.inc(self._total_error_rate_key,dflt=np.zeros((len(base_codewords),)),coords=i)
+                map[i]=1
                 if first:
                     first=False
                     stats.inc(self._first_byte_error,dflt=np.zeros((len(base_codewords),)),coords=i)
             if i<len(fault_codewords) and base_codewords[i]!=fault_codewords[i] and fault_codewords[i]!=None:
                 stats.inc(self._incorrect_not_none,dflt=np.zeros((len(base_codewords),)),coords=i)
+        if first is False and hasattr(self,"_error_map_key"): stats.append(self._error_map_key,map)
+        if hasattr(self,"_ID_key"): stats.append(self._ID_key,s.record_id)
         if(fault_codewords==base_codewords): #strand decoded bytes correctly
             stats.inc(self._correct_key)
             #stats.append(self._decoded_strands_key,s.dna_strand)
@@ -205,7 +229,7 @@ class CodewordErrorRateProbe(BaseCodec,Probe):
             stats.inc(self._incorrect_key)
         stats.inc(self._strands_seen_key)
         return s
-
+    
 class FilteredDNACounter(BaseCodec,Probe):
     #This probe should be placed after DNAtoDNA probes to count filtered strands 
     probe_id=0
@@ -302,8 +326,8 @@ class StrandCheckProbe(BaseCodec,Probe):
             for i in range(0,len(s.dna_strand)-len(check_strand)):
                 forward_distance = hamming_distance(check_strand,s.dna_strand[i:i+len(check_strand)])
                 reverse_distance = hamming_distance(reverse_complement(check_strand),s.dna_strand[i:i+len(check_strand)])
-                if forward_distance == 0 or reverse_distance ==0: #im assuming any match is due to a region that should be there...
-                    continue
+                #if forward_distance == 0 or reverse_distance ==0: #im assuming any match is due to a region that should be there...
+                #    continue
                 new_tuple_reverse = (reverse_distance,s.index_ints,i,s.dna_strand[i:i+len(check_strand)]) #get more information about the closest match
                 stats[reverse_key]=min(new_tuple_reverse,stats[reverse_key],key=lambda x: x[0])
                 new_tuple_forward = (forward_distance,s.index_ints,i,s.dna_strand[i:i+len(check_strand)])
