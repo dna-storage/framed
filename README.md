@@ -70,52 +70,33 @@ To install dnastorage package for local development:
 
 ## Installing via Docker Image
 
-We include a pre-built Docker image that replicates a near-exact environment to that used for running fault injection simulations. The only difference being we use openmpi for this image for easier installation. With docker installed pull the image from the public repo on dockerhub using:
+We will include a pre-built docker image at https://hub.docker.com/repository/docker/kvolkel/framed/ when it becomes available.
 
-    docker pull kvolkel/framed:revision
+In the meantime, with this branch, you can try to build an image yourself and run it with the following 2 commands
 
-Now, you should be able to simply run the following to run a container with a complete environment that can run FrameD and the small examples in the following sections:
+	docker build -t sdc_submission .
+ 	docker run -it sdc_submission
 
-	docker run -it kvolkel/framed:revision
+When a pre-built image becomes available, you will be able to run the following command to run the container 
 
-No further installation steps should be required.
+	docker run -it kvolkel/framed:sdc_submission
 
-# Running FrameD Analysis 
+This should set up an appropriate environment in which the code for this project can at least be run, although it may not be tractible unless on an HPC system.
 
-## Complete Data Generation Configuration
+# Running Sequencing Analysis 
+TODO: Finish this section
+## Get Raw Data
 
-This repository comes with ocnfiguration files that were used to generate the data in the paper. These can be found under [examples/](examples). There are 6 total `.json` files used for the paper, 3 under [examples/iid](examples/iid) for simulating the i.i.d error model, and 3 under [examples/DNArSim](examples/DNArSim) for simulating a nanopore channel using the DNArSim simulator. Each directory contains a C-shell script which calls the job generation tools using the jsons as input, running these will launch all 240 simulations. 
+## Commands For Performing Sequencing Analysis
+
 
 **NOTE: This will only be tractable on HPC systems, and at the moment these commands will only work on HPC systems with an LSF scheduler. Extending to other schedulers, like SLURM, should be relatively easy by following the LSFJob class in [sumbit.py](tools/lsf/lsf_utils/submit.py).**
 
 ## Non-HPC Examples
 
-We recognize that HPC systems may not be immediately available, so we include 2 small examples that can be run to excersize the pipelines and error models evaluated in the FrameD paper on commodity hardware. We do this by spawning subshell background processes that run job scripts to emulate the HPC-based job submission process and output. These examples can be found in [examples/small](examples/small). The following command will generate two shell jobs, with a total of 12 cores being used.
+We recognize that HPC systems may not be immediately available, so we include some small examples that analyze small portions of the reads that we have mapped from our sequencing runs. 
 
-    cd $DNASTORAGE_HOME
-    tcsh examples/small/run_small.csh
-
-Within the core limitations of the user's hardware, this approach can be used to perform larger simulations if desired and only requires an implementation of MPI to be installed on the machine.
-
-## Compiling Fault Injection Results
-
-After the fault injection experiments are run, there will be a number of statistics and json files in each leaf directory. In these leaves, you will also find a human readable "fi.stats" file containing statistics gathered during fault injection. To make analysis more interesting by comparing the results of different run configurations, you can compile all the data together for a given file that was fault injected with the following commands.
-
-    cd $DNASTORAGE_HOME
-    cd tools/data_analysis
-    python db_gen.py --path <top result path> --name fault_injection_dataframe
- 
-The final command generates a Pandas dataframe, and stores it at the top directory path of the collection of results, e.g. <top result path>. This data frame can be loaded and analyzed any way in which you prefer. An example of anlayzing data frames can be found in the notebook [framed.ipynb](notebooks/framed.ipynb) which produces the figures of the paper using raw data collected using `db_gen.py`.
-
-## FrameD Notebooks
-
-Included in this repo is a directory with a Jupyter notebook that was used to generate figures for the manuscript. This notebook is at the path `notebooks/framed.ipynb`. The raw data from simulation outputs that are used to generate figures are at the paths `notebooks/framed_DNArSim.pickle` and `notebooks/framed_iid.pickle`. The notebook can be run by starting in the top directory for the project and running:
-
-	conda activate framed_conda
-	cd notebooks
-	jupyter-lab framed.ipynb
-	
-From there run the notebook to run the full analysis.
+TODO: Finish this section
 
 
 # License
