@@ -1,11 +1,7 @@
 
 init:
-	#make -C other_software/nupack3.0.6 all
-	pip install --user -r requirements.txt
-
+	tcsh init.csh
 test:
-        #! /usr/bin/python2.7.15
-	nosetests tests
 
 clean:
 	rm -rf build
@@ -15,7 +11,7 @@ clean:
 
 
 install:
-	python setup.py install
+	python setup.py install --user
 
 develop:
 	python setup.py develop 

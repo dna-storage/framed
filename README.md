@@ -1,13 +1,13 @@
-# dnastorage
-![testing](https://github.ncsu.edu/dna-based-storage/dnastorage/actions/workflows/makefile.yml/badge.svg)
+[![DOI](https://zenodo.org/badge/611912849.svg)](https://zenodo.org/badge/latestdoi/611912849)
+
+# FrameD
 
 - [Overview](#overview)
 - [Documentation](#documentation)
 - [System Requirements](#system-requirements)
 - [Installation Guide](#installation-guide)
-- [Quick Start](#quick-start)
+- [FrameD Analysis](#running-framed-analysis)
 - [License](#license)
-- [Issues](https://github.ncsu.com/dna-based-storage/dnastorage/issues)
 
 # Overview
 
@@ -15,89 +15,87 @@ Core encoding, decoding, and file manipulation support for modeling DNA-based in
 
 # Documentation
 
-In depth documentation can be found in the [wiki](https://github.ncsu.edu/dna-based-storage/dnastorage/wiki).
+In depth documentation can be found in the [wiki](https://github.com/dna-storage/framed/wiki).
 
 # System Requirements
 
 ## Hardware Requirements
 
-The dnastorage module requires only a standard computer with enough RAM and compute power to support the needed operations. However, encoding or decoding large files may perform poorly, necessitating a more capable system. The infrastructure to encode, decode, and analyze sequencing data will perform best if using an HPC system with an MPI implementation installed.
+The dnastorage module requires only a standard computer with enough RAM and compute power to support the needed operations. However, encoding or decoding large files may perform poorly, necessitating a more capable system. The infrastructure to encode, decode, and analyze sequencing data will perform best if using an HPC system, or system with considerble number of cores at its disposal, with an MPI implementation installed.
 
-**Given the nature of evaluating dnastorage systems, we not only leverage MPI parallelism, but we also rely on batch level parallelism. Our infrastructure currently assumes an IBM LSF managed platform to launch many independent jobs. If your system is different, e.g. Cobalt, you will need to write in your support for launching such jobs in the [lsf](tools/lsf) directory.**
+**Given the nature of evaluating dnastorage systems, we not only leverage MPI parallelism, but we also rely on batch level parallelism. Our infrastructure currently assumes an IBM LSF managed platform to launch many independent jobs. If your system is different, e.g. Cobalt, Slurm, etc you will need to write in your support for launching such jobs by extending the TcshJob class in [submit.py](tools/lsf/submit.py) directory.**
+
+**For simplicity, we also support background jobs run in a sub-shell as a quick way of testing a small set of encoding/decoding excersizes.**
 
 ## Software Requirements
 ### OS Requirements
 This package is supported for macOS and Linux. The package has been tested on the following systems:
 
-+ macOS: Catalina 10.15.3
-+ Linux: Ubuntu 18.04.3
 + Linux: CentOS 7
 
-Note that most OSes will support our software by using Docker. *You will also need the following before completing the installation steps*:
+Note that most OSes will support our software by using Docker. **You will also need the following before completing the installation steps**:
 - git 
-- Python
+- C shell
 - C++ compiler
 - pip, python package installer
 - conda, package management
-- MPI implementation, currently tested with Intel MPI Library for Linux OS, Version 2017 Update 1 Build 20161016
+- MPI implementation
+	- tested with Intel MPI Library for Linux OS, Version 2017 Update 1 Build 20161016
+ 	- tested with open MPI Library for Linux OS, Version 4.1.5
 - Julia, currently tested with 1.6.2 (2021-07-14)
 
 
 ### Python Dependences
 
-Our code has been tested on python versions 3.6 to 3.10. A working environment with all dependencies that can be installed via conda can be found at [.yaml file](dnastorage.yml).
+Our code has been tested on python versions 3.6 to 3.10. A working environment with all dependencies that can be installed via conda can be found at [.yaml file](dnastorage.yml). This installation is handled automatically, as demostrated in the following guide on installation.
 
 # Installation Guide
 
-Given that the previous dependencies have been installed, the first step is to get the code from GitHub with the following commands.
+## Installing natively 
 
-    git clone [this repository] dnastorage
-    cd dnastorage
-    git submodule update --init --recursive
-    
-I recommend making a conda environment with the required dependencies, you will also need to make sure to install that schwimmbad submodule. This submodule is a fork of a public repo but with added support of mpi-based workers that accept communicators for nested parallelism. The last command in this set of commands installs Julia packages needed for the interface between Python and Julia to work:
-
-    conda env create -f dnastorage.yaml
-    conda activate <path to conda environment>
-    cd schwimmbad; pip install .
-    python -c "import julia; julia.install()"
-    
-Make sure to source environment variables for the project:
-
+Given that the previous dependencies have been installed and loaded, the first step is to get the code from GitHub and initialize the enviroment with additional dependencies with the following commands.
+   
+    tcsh 
+    git clone [this repository] framed
+    cd framed
     source dnastorage.env
-    
+    make init
+
 To install dnastorage package for local development:
-
-    python setup.py develop
-
-Check to make sure it's (mostly) working properly. These tests need some further development to thoroughly validate the infrastructure:
-
-    pytest new_tests
-
-Note: activating the environment and loading environment variables should be done every new user session.
-
-# Quick Start 
-
-## Running Fault Injection Jobs
-
-More detail on how to write new encoding/decoding pipelines and how to configure them will be more extensively covered in the Wiki documentation for this project. The following is a quick start to running a fault injection job. 
-
-First open the example configuration in a text editor:
     
-    emacs tools/lsf/examples/fault_injection/basic_hedges.json
-    
-Make a change to the following line in the example json file, this "file" option should be changed to a path to a file on your system you want to encode/decode:
+    make develop
 
-    "file":"path/to/file"
-    
-Once this is changed, perform the following commands to run fault injection experiments:
-    
+**Note: activating the environment and loading environment variables should be done every new user session.**
+
+
+## Installing via Docker Image
+
+We include a pre-built Docker image that replicates a near-exact environment to that used for running fault injection simulations. The only difference being we use openmpi for this image for easier installation. With docker installed pull the image from the public repo on dockerhub using:
+
+    docker pull kvolkel/framed:revision
+
+Now, you should be able to simply run the following to run a container with a complete environment that can run FrameD and the small examples in the following sections:
+
+	docker run -it kvolkel/framed:revision
+
+No further installation steps should be required.
+
+# Running FrameD Analysis 
+
+## Complete Data Generation Configuration
+
+This repository comes with ocnfiguration files that were used to generate the data in the paper. These can be found under [examples/](examples). There are 6 total `.json` files used for the paper, 3 under [examples/iid](examples/iid) for simulating the i.i.d error model, and 3 under [examples/DNArSim](examples/DNArSim) for simulating a nanopore channel using the DNArSim simulator. Each directory contains a C-shell script which calls the job generation tools using the jsons as input, running these will launch all 240 simulations. 
+
+**NOTE: This will only be tractable on HPC systems, and at the moment these commands will only work on HPC systems with an LSF scheduler. Extending to other schedulers, like SLURM, should be relatively easy by following the LSFJob class in [sumbit.py](tools/lsf/lsf_utils/submit.py).**
+
+## Non-HPC Examples
+
+We recognize that HPC systems may not be immediately available, so we include 2 small examples that can be run to excersize the pipelines and error models evaluated in the FrameD paper on commodity hardware. We do this by spawning subshell background processes that run job scripts to emulate the HPC-based job submission process and output. These examples can be found in [examples/small](examples/small). The following command will generate two shell jobs, with a total of 12 cores being used.
+
     cd $DNASTORAGE_HOME
-    cd tools/lsf/
-    python generate_fi_jobs.py --params examples/fault_injection/basic_hedges.json --memory 8 --cores 100 --core_depth 1 --dump_dir `pwd` --queue standard --time 4
-    
-This command will generate a number of jobs, 1 for each encoding and fault injection enviroment combination. The command specifies a run time of 4 hours, using 100 cores for fault injection parallelization, and 8 GB of memory for each node. The results will be placed in a directory with a name related to the file name used in the previous step. From there you will find a directory tree where each leaf in the tree is a directory containing results for each unique run
- 
+    tcsh examples/small/run_small.csh
+
+Within the core limitations of the user's hardware, this approach can be used to perform larger simulations if desired and only requires an implementation of MPI to be installed on the machine.
 
 ## Compiling Fault Injection Results
 
@@ -105,9 +103,19 @@ After the fault injection experiments are run, there will be a number of statist
 
     cd $DNASTORAGE_HOME
     cd tools/data_analysis
-    python fault_injection_db_gen.py --path <top result path> --name fault_injection_dataframe
+    python db_gen.py --path <top result path> --name fault_injection_dataframe
  
-The final command generates a Pandas dataframe, and stores it at the top directory path of the collection of results, e.g. <top result path>. This data frame can be loaded and analyzed any way in which you prefer.
+The final command generates a Pandas dataframe, and stores it at the top directory path of the collection of results, e.g. <top result path>. This data frame can be loaded and analyzed any way in which you prefer. An example of anlayzing data frames can be found in the notebook [framed.ipynb](notebooks/framed.ipynb) which produces the figures of the paper using raw data collected using `db_gen.py`.
+
+## FrameD Notebooks
+
+Included in this repo is a directory with a Jupyter notebook that was used to generate figures for the manuscript. This notebook is at the path `notebooks/framed.ipynb`. The raw data from simulation outputs that are used to generate figures are at the paths `notebooks/framed_DNArSim.pickle` and `notebooks/framed_iid.pickle`. The notebook can be run by starting in the top directory for the project and running:
+
+	conda activate framed_conda
+	cd notebooks
+	jupyter-lab framed.ipynb
+	
+From there run the notebook to run the full analysis.
 
 
 # License
@@ -117,5 +125,7 @@ This software is released under the LGPLv3 license.
 # Acknowledgment
 
 This work was supported by the National Science Foundation (Grants CNS-1650148, CNS-1901324, ECCS 2027655) and a North Carolina State University Research and Innovation Seed Funding Award (Grant 1402-2018-2509).
+
+
 
 
