@@ -1,0 +1,44 @@
+{
+    "fault_model":"fixed_rate",
+    "file":"$IMAGE_FILES/zebrafish_thumb.jpg",
+    "strand_distribution":"bernoulli",
+    "arch": "CustomSDC",
+    "header_version":"0.2",
+    "file_barcode":[3],
+    "simulation_runs":100,
+    "encoder_params":{
+	"primer3": "CTTCAGGAAGTGGCCAGAAT", 
+	"primer5": "AGGCTGGAGGTCCAATCTTG", 
+	"RT-PCR": "GTACTCGAAGACGAGCTGAC", 
+	"hedges_rate": ["value_list",0.5], 
+	"strandSizeInBytes": 14, 
+	"blockSizeInBytes": 3905,
+	"outerECCdivisor":56,
+	"outerECCStrands":["value_list",56],
+	"dna_length": 400, 
+	"title": "payload", 
+	"fi": true
+    },
+    "header_params":{
+	"primer3": "CTTCAGGAAGTGGCCAGAAT", 
+	"primer5": "AGGCTGGAGGTCCAATCTTG", 
+	"RT-PCR": "GTACTCGAAGACGAGCTGAC", 
+	"hedges_rate": 0.25, 
+	"strandSizeInBytes": 5, 
+	"blockSizeInBytes": 90,
+	"outerECCStrands":36,
+	"dna_length": 400, 
+	"title": "header", 
+	"fi": true
+    },
+    "fault_params":{
+	"fault_rate":["value_list",0.1]
+    },
+    "distribution_params":{
+	"mean":["value_list",0.7],
+	"n_success":["value_list",5]
+    },
+    "dna_processing":{
+	"T7_Transcription":[]
+    }
+}

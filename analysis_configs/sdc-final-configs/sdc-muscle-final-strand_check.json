@@ -1,0 +1,51 @@
+{
+    "file":"$IMAGE_FILES/muscle.jpg",
+    "arch": "CustomSDC",
+    "header_version":"0.2",
+    "file_barcode":[2],
+    "simulation_runs":1,
+    "encoder_params":{
+	"primer3": "CTCAAAGGCTCCTGGACAAA", 
+	"primer5": "AACTAAACGGAGGCCAACAG", 
+	"RT-PCR": "CTAGTGAGCTAGCTCAGACT", 
+	"hedges_rate": ["value_list",0.5], 
+	"strandSizeInBytes": 14, 
+	"blockSizeInBytes": 2780,
+	"outerECCdivisor":50,
+	"outerECCStrands":["value_list",50],
+	"dna_length": 400, 
+	"title": "payload", 
+	"fi": true,
+	"check_primers":true,
+	"strand_path":"$FINAL_CONFIGS/strand_check_files/strand_check_muscle.txt"
+    },
+    "header_params":{
+	"primer3": "", 
+	"primer5": "", 
+	"RT-PCR": "",
+	"T7":"", 
+	"hedges_rate": 0.25, 
+	"strandSizeInBytes": 5, 
+	"blockSizeInBytes": 90,
+	"outerECCStrands":36,
+	"dna_length": 400, 
+	"title": "header", 
+	"fi": true,
+	"check_primers":true,
+	"strand_path":"$IMAGE_FILES/strand_check_files/strand_check_muscle.txt"
+    },
+    "fault_params":{
+	"fault_rate":["value_list",0]
+    },
+    "distribution_params":{
+	"mean":["value_list",1.0],
+	"n_success":["value_list",1]
+    },
+    "dna_processing":{
+    },
+    "fi_env_params":{
+	"fault_model":"fixed_rate",
+	"distribution":"bernoulli",
+	"reverse_complement":false
+    }
+}

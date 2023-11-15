@@ -1,0 +1,54 @@
+{
+    "file":"$IMAGE_FILES/muscle.jpg", 
+    "arch": "CustomSDC",
+    "header_version":"0.2",
+    "simulation_runs":1,
+    "file_barcode":[2],
+    "store_header":1,
+    "encoder_params":{
+	"primer3": "CTCAAAGGCTCCTGGACAAA", 
+	"primer5": "AACTAAACGGAGGCCAACAG",
+	"RT-PCR":"AGCTCAGACT",
+	"hedges_rate":0.5,
+	"check_rates":["value_list",[0.5,0.25]],
+	"strandSizeInBytes": 14,
+	"outerECCdivisor":50,
+	"hedges_guesses":["value_list",200000],
+	"blockSizeInBytes":2780,
+	"outerECCStrands":50,
+	"dna_length": 400,
+	"using_oracle_filter":true,
+	"title": "payload",
+	"fi": true
+    },
+    "header_params":{
+	"primer3": "CTCAAAGGCTCCTGGACAAA", 
+	"primer5": "AACTAAACGGAGGCCAACAG",
+	"RT-PCR": "AGCTCAGACT",
+	"check_rates":["value_list",[0.25,0.5]],
+	"hedges_rate": 0.25,
+	"hedges_guesses":200000,
+	"strandSizeInBytes": 5, 
+	"blockSizeInBytes": 90,
+	"outerECCStrands":36,
+	"dna_length": 400,
+	"using_oracle_filter":true,
+	"title": "header", 
+	"fi": true
+    },
+    "fault_params":{
+	"experiment_path": ["dir_name","$ONT_MAP","/.*\\.fastq/decoder.*/?$"],
+	"down_sample":["value_list",0]
+    },
+    "distribution_params":{
+	"mean":["value_list",1],
+	"n_success":["value_list",1]
+    },
+    "dna_processing":{
+    },
+    "fi_env_params":{
+	"fault_model":"sequencing_experiment_downsample",
+	"distribution":"bernoulli",
+	"reverse_complement":false
+    }
+}

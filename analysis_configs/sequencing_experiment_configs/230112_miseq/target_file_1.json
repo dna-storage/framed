@@ -1,0 +1,110 @@
+{
+    "file_list":[
+	{
+	    "arch": "CustomSDC",
+	    "header_version":"0.2",
+	    "barcode":[1],
+	    "encoder_params":{
+		"primer3": "CTGGTCAAGAAGAACCGAGG", 
+		"primer5": "CAGGAGAATGCCTTCCTAGG",
+		"RT-PCR":"CAGCTGAGAATTCGATACGC",
+		"hedges_rate":0.25,
+		"strandSizeInBytes": 4,
+		"outerECCdivisor":58,
+		"hedges_guesses":["value_list",200000],
+		"blockSizeInBytes":2084,
+		"outerECCStrands":108,
+		"dna_length": 100000, 
+		"title": "payload",
+		"fi": true
+	    },
+	     "header_params":{
+		 "primer3": "CTGGTCAAGAAGAACCGAGG", 
+		 "primer5": "CAGGAGAATGCCTTCCTAGG",
+		 "RT-PCR": "CAGCTGAGAATTCGATACGC", 
+		 "hedges_rate": 0.25,
+		 "hedges_guesses":200000,
+		 "strandSizeInBytes": 5, 
+		 "blockSizeInBytes": 90,
+		 "outerECCStrands":36,
+		 "dna_length": 400, 
+		 "title": "header", 
+		 "fi": true
+	     },
+	    "payload_header_path":"$MISEQ_CONFIGS/phos_payload.header",
+	    "header_header_path":"$MISEQ_CONFIGS/phos_header.header"
+	},
+	{
+	    "arch": "CustomSDC",
+	    "header_version":"0.2",
+	    "barcode":[3],
+	    "encoder_params":{
+		"primer3": "CTTCAGGAAGTGGCCAGAAT", 
+		"primer5": "AGGCTGGAGGTCCAATCTTG",
+		"RT-PCR":"GTACTCGAAGACGAGCTGAC",
+		"hedges_rate":0.5,
+		"check_rates":["value_list",[0.5,0.25]],
+		"strandSizeInBytes": 14,
+		"outerECCdivisor":56,
+		"hedges_guesses":["value_list",200000],
+		"blockSizeInBytes":3905,
+		"outerECCStrands":56,
+		"dna_length": 100000, 
+		"title": "payload",
+		"fi": true
+	    },
+	     "header_params":{
+		 "primer3": "CTTCAGGAAGTGGCCAGAAT", 
+		 "primer5": "AGGCTGGAGGTCCAATCTTG",
+		 "RT-PCR": "GTACTCGAAGACGAGCTGAC", 
+		 "hedges_rate": 0.25,
+		 "check_rates":[0.25,0.5],
+		 "hedges_guesses":200000,
+		 "strandSizeInBytes": 5, 
+		 "blockSizeInBytes": 90,
+		 "outerECCStrands":36,
+		 "dna_length": 400, 
+		 "title": "header", 
+		 "fi": true
+	     },
+	    "payload_header_path":"$MISEQ_CONFIGS/zebra_payload.header",
+	    "header_header_path":"$MISEQ_CONFIGS/zebra_header.header"
+	},
+	{
+	    "arch": "CustomSDC",
+	    "header_version":"0.2",
+	    "barcode":[2],
+	    "encoder_params":{
+		"primer3": "CTCAAAGGCTCCTGGACAAA", 
+		"primer5": "AACTAAACGGAGGCCAACAG",
+		"RT-PCR":"CTAGTGAGCTAGCTCAGACT",
+		"hedges_rate":0.5,
+		"check_rates":["value_list",[0.5,0.25]],
+		"strandSizeInBytes": 14,
+		"outerECCdivisor":50,
+		"hedges_guesses":["value_list",200000],
+		"blockSizeInBytes":2780,
+		"outerECCStrands":50,
+		"dna_length": 400, 
+		"title": "payload",
+		"fi": true
+	    },
+	     "header_params":{
+		 "primer3": "CTCAAAGGCTCCTGGACAAA", 
+		 "primer5": "AACTAAACGGAGGCCAACAG",
+		 "RT-PCR": "CTAGTGAGCTAGCTCAGACT", 
+		 "hedges_rate": 0.25,
+		 "check_rates":[0.25,0.5],
+		 "hedges_guesses":200000,
+		 "strandSizeInBytes": 5, 
+		 "blockSizeInBytes": 90,
+		 "outerECCStrands":36,
+		 "dna_length": 400, 
+		 "title": "header", 
+		 "fi": true
+	     },
+	    "payload_header_path":"$MISEQ_CONFIGS/muscle_payload.header",
+	    "header_header_path":"$MISEQ_CONFIGS/muscle_header.header"
+	}
+    ]
+}
