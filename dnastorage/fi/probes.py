@@ -120,9 +120,9 @@ class DNAErrorProbe(BaseCodec,Probe):
                     total_burst=forward_burst+reverse_burst
                     stats.inc(self._DNA_del_burst_len_key,i=total_burst,dflt=np.zeros((len(base_dna),)),coords=base_index)
                     if total_burst>0: stats.inc(self._DNA_del_burst_rate_key,dflt=np.zeros((len(base_dna),)),coords=base_index)
-                elif operation=="insert":
-                    stats.inc(self._sub_ed_rate_key,dflt=np.zeros((len(base_dna),)),coords=base_index)
                 elif operation=="replace":
+                    stats.inc(self._sub_ed_rate_key,dflt=np.zeros((len(base_dna),)),coords=base_index)
+                elif operation=="insert":
                     stats.inc(self._inser_ed_rate_key,dflt=np.zeros((len(base_dna),)),coords=base_index)
             else: break
         stats.append(self._DNA_strand_error_key,applied_edits) #collect histogram of errors per strand
