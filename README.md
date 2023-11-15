@@ -1,12 +1,12 @@
 [![DOI](https://zenodo.org/badge/611912849.svg)](https://zenodo.org/badge/latestdoi/611912849)
 
-# FrameD
+# SDC Project
 
 - [Overview](#overview)
 - [Documentation](#documentation)
 - [System Requirements](#system-requirements)
 - [Installation Guide](#installation-guide)
-- [FrameD Analysis](#running-framed-analysis)
+- [Running Sequencing Analysis](#running-sequencing-analysis)
 - [License](#license)
 
 # Overview
