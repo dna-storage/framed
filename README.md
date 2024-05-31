@@ -11,7 +11,7 @@
 
 # Overview
 
-Core encoding, decoding, and file manipulation support for modeling DNA-based information storage systems.
+Core encoding, decoding, and file manipulation support for modeling DNA-based information storage systems as published at https://academic.oup.com/bioinformatics/article/39/10/btad572/7274858?utm_source=advanceaccess&utm_campaign=bioinformatics&utm_medium=email.
 
 # Documentation
 
