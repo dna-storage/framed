@@ -83,8 +83,7 @@ When a pre-built image becomes available, you will be able to run the following 
 
 This should set up an appropriate environment in which the code for this project can at least be run, although it may not be tractible unless on an HPC system.
 
-# Running Sequencing Analysis 
-TODO: Finish this section
+
 ## Get Raw Data
 
 ## Commands For Performing Sequencing Analysis
