@@ -6,12 +6,12 @@
 - [Documentation](#documentation)
 - [System Requirements](#system-requirements)
 - [Installation Guide](#installation-guide)
-- [Running Sequencing Analysis](#running-sequencing-analysis)
+- [FrameD Analysis](#running-framed-analysis)
 - [License](#license)
 
 # Overview
 
-Core encoding, decoding, and file manipulation support for modeling DNA-based information storage systems.
+Core encoding, decoding, and file manipulation support for modeling DNA-based information storage systems as published at https://academic.oup.com/bioinformatics/article/39/10/btad572/7274858?utm_source=advanceaccess&utm_campaign=bioinformatics&utm_medium=email.
 
 # Documentation
 
@@ -70,32 +70,33 @@ To install dnastorage package for local development:
 
 ## Installing via Docker Image
 
-We will include a pre-built docker image at https://hub.docker.com/repository/docker/kvolkel/framed/ when it becomes available.
+You can build our analysis environemnt that is based on FrameD by running the command 
 
-In the meantime, with this branch, you can try to build an image yourself and run it with the following 2 commands
+ 	docker build -t framed-image .
 
-	docker build -t sdc_submission .
- 	docker run -it sdc_submission
+No further installation steps should be required, and you should have the FrameD analysis suite installed within the ``framed-image`` image. 
 
-When a pre-built image becomes available, you will be able to run the following command to run the container 
+# Running FrameD Analysis 
 
-	docker run -it kvolkel/framed:sdc_submission
+# Non-HPC Example Fault Injection
 
-This should set up an appropriate environment in which the code for this project can at least be run, although it may not be tractible unless on an HPC system.
+We recognize that HPC systems may not be immediately available, so we include 2 small examples that can be run to excersize the pipelines and error models evaluated in the FrameD paper on commodity hardware. We do this by spawning subshell background processes that run job scripts to emulate the HPC-based job submission process and output. These examples can be found in [examples/small](examples/small). The following command will generate two shell jobs, with a total of 12 cores being used.
 
+    cd $DNASTORAGE_HOME
+    tcsh examples/small/run_small.csh
 
-## Get Raw Data
+Within the core limitations of the user's hardware, this approach can be used to perform larger simulations if desired and only requires an implementation of MPI to be installed on the machine.
 
-## Commands For Performing Sequencing Analysis
+## Compiling Fault Injection Results
 
+After the fault injection experiments are run, there will be a number of statistics and json files in each leaf directory. In these leaves, you will also find a human readable "fi.stats" file containing statistics gathered during fault injection. To make analysis more interesting by comparing the results of different run configurations, you can compile all the data together for a given file that was fault injected with the following commands.
 
-**NOTE: This will only be tractable on HPC systems, and at the moment these commands will only work on HPC systems with an LSF scheduler. Extending to other schedulers, like SLURM, should be relatively easy by following the LSFJob class in [sumbit.py](tools/lsf/lsf_utils/submit.py).**
+    cd $DNASTORAGE_HOME
+    cd tools/data_analysis
+    python db_gen.py --path <top result path> --name fault_injection_dataframe
+ 
+The final command generates a Pandas dataframe, and stores it at the top directory path of the collection of results, e.g. <top result path>. This data frame can be loaded and analyzed any way in which you prefer. An example of anlayzing data frames can be found in the notebook [framed.ipynb](notebooks/framed.ipynb) which produces the figures of the paper using raw data collected using `db_gen.py`.
 
-## Non-HPC Examples
-
-We recognize that HPC systems may not be immediately available, so we include some small examples that analyze small portions of the reads that we have mapped from our sequencing runs. 
-
-TODO: Finish this section
 
 
 # License
@@ -105,6 +106,8 @@ This software is released under the LGPLv3 license.
 # Acknowledgment
 
 This work was supported by the National Science Foundation (Grants CNS-1650148, CNS-1901324, ECCS 2027655) and a North Carolina State University Research and Innovation Seed Funding Award (Grant 1402-2018-2509).
+
+
 
 
 
