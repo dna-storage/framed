@@ -42,6 +42,8 @@ These 10 bytes are appended to ``PipeLine.encode_header_data()`` and consumed at
 *end* of ``PipeLine.decode_header_data()``.
 """
 
+from typing import Optional
+
 from dnastorage.codec.fountain.lt import LTCode
 from dnastorage.codec.base_conversion import convertIntToBytes, convertBytesToInt
 
@@ -70,8 +72,8 @@ class FileLevelFountainCodec:
         self.parity_blocks = parity_blocks
         self.seed = seed
         # Set during encode (generate_parity_bytes) or restored from header during decode.
-        self._num_data_blocks: int = None
-        self._block_size: int = None
+        self._num_data_blocks: Optional[int] = None
+        self._block_size: Optional[int] = None
 
     # ------------------------------------------------------------------
     # Header serialisation
