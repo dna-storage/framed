@@ -13,6 +13,16 @@ FileSystemFormats = {
               Basic_Hedges_Pipeline,Basic_Hedges_Pipeline],
     0x0704 : [0x0704,0,0,"ReedSolomon_Base4_Pipeline","Reed solomon with base encoding and clustering algorithms",
               ReedSolomon_Base4_Pipeline,ReedSolomon_Base4_Pipeline],
+    0x0705 : [0x0705,0,0,"Fountain_Base4_Pipeline","LT fountain code with base4 encoding and clustering algorithms",
+              Fountain_Base4_Pipeline,Fountain_Base4_Pipeline],
+    0x0706 : [0x0706,208,15,"Fountain_Hedges_Pipeline","LT fountain code with Hedges inner code",
+              Fountain_Hedges_Pipeline,Fountain_Hedges_Pipeline],
+    0x0707 : [0x0707,0,0,"ReedSolomon_Base4_FileLevelFountain_Pipeline",
+              "Reed-Solomon + Base4 with file-level LT fountain erasure protection",
+              ReedSolomon_Base4_FileLevelFountain_Pipeline,ReedSolomon_Base4_FileLevelFountain_Pipeline],
+    0x0708 : [0x0708,0,0,"Fountain_Base4_FileLevelFountain_Pipeline",
+              "LT fountain + Base4 with file-level LT fountain erasure protection",
+              Fountain_Base4_FileLevelFountain_Pipeline,Fountain_Base4_FileLevelFountain_Pipeline],
 
 }
 
