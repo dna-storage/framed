@@ -405,7 +405,7 @@ def Fountain_Hedges_Pipeline(pf, **kwargs):
     if crc_type == "strand":
         crc = CRC8()
     elif crc_type == "index":
-        logger.info("FountainHedges: Using Index CRC")
+        logger.info("Fountain_Hedges: Using Index CRC")
         crc = CRC8_Index()
     else:
         assert 0 and "Invalid CRC selection"
@@ -422,7 +422,7 @@ def Fountain_Hedges_Pipeline(pf, **kwargs):
         inner_pipeline = (crc, hedges)
 
     if reverse_payload:
-        logger.info("FountainHedges: Using reverse after payload DNA")
+        logger.info("Fountain_Hedges: Using reverse after payload DNA")
         r = ReversePipeline()
         DNA_pipeline = (r, p3, p5)
     else:

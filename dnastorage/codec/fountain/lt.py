@@ -110,7 +110,13 @@ class LTCode:
         self._cdf = _cumulative(self._dist)
 
     def _make_rng(self, parity_index: int) -> random.Random:
-        """Create a fresh RNG seeded deterministically for parity symbol `parity_index`."""
+        """Create a fresh RNG seeded deterministically for parity symbol `parity_index`.
+
+        The multiplicative constant 0x9E3779B9 is the 32-bit truncation of the
+        golden-ratio hash multiplier (2^32 / phi).  Multiplying the parity index by
+        it before XORing with the base seed ensures that adjacent parity indices
+        produce well-dispersed seeds (Fibonacci / Knuth multiplicative hashing).
+        """
         return random.Random(self.seed ^ (parity_index * 0x9E3779B9 & 0xFFFFFFFF))
 
     def neighbors(self, parity_index: int) -> List[int]:

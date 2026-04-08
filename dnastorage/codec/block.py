@@ -159,7 +159,8 @@ class FountainOuterPipeline(BaseOuterCodec):
         strand_count = len(packets[0])
         strand_length = len(packets[0][0].codewords)
 
-        # Build parity sub-packet skeletons (empty codeword lists)
+        # Build parity sub-packet skeletons.  Codewords start empty and are filled
+        # in below when each strand position is processed.
         parity_packets = [[BaseDNA(codewords=[]) for _ in range(strand_count)]
                           for _ in range(self._parity_packets)]
 

@@ -24,11 +24,11 @@ from dnastorage.codec.base_conversion import convertIntToBytes, convertBytesToIn
 # Helpers
 # ---------------------------------------------------------------------------
 
-def make_strands(num_packets, strands_per_packet, strand_len=8, seed=0):
+def make_strands(num_sub_packets, strands_per_packet, strand_len=8, seed=0):
     """Return a list-of-lists of BaseDNA with random codewords."""
     rng = random.Random(seed)
     packets = []
-    for sp in range(num_packets):
+    for sp in range(num_sub_packets):
         pkt = []
         for si in range(strands_per_packet):
             cws = [rng.randint(0, 255) for _ in range(strand_len)]
