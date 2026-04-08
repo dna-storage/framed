@@ -243,3 +243,214 @@ def Basic_Hedges_Pipeline(pf,**kwargs):
     return pipeline.PipeLine(out_pipeline+inner_pipeline+DNA_pipeline,blockSizeInBytes,strandSizeInBytes,dna_length,1,packetizedfile=pf,
                              barcode=barcode,cw_consolidator=cw_consolidator,dna_consolidator=dna_consolidator,constant_index_bytes=index_bytes)
 
+
+def _make_fountain_outer(blockSizeInBytes, strandSizeInBytes, **kwargs):
+    """Helper: construct a FountainOuterPipeline from common kwargs."""
+    outerECCStrands = kwargs.get("outerECCStrands", 75)
+    fountain_seed = kwargs.get("fountain_seed", 42)
+    if "outerECCdivisor" in kwargs:
+        divisor = kwargs["outerECCdivisor"]
+    else:
+        divisor = blockSizeInBytes // strandSizeInBytes
+    return FountainOuterPipeline(divisor, outerECCStrands, seed=fountain_seed)
+
+
+def Fountain_Base4_Pipeline(pf, **kwargs):
+    """
+    Pipeline identical to ReedSolomon_Base4_Pipeline but with an LT fountain
+    code as the outer erasure code instead of Reed-Solomon.
+
+    All keyword arguments are the same as ReedSolomon_Base4_Pipeline except:
+    - ``outerECCStrands`` (default 75): number of parity sub-packets
+    - ``fountain_seed``   (default 42): PRNG seed for the LT Tanner graph
+    """
+    required = ["blockSizeInBytes", "strandSizeInBytes", "hedges_rate",
+                "dna_length", "crc_type", "reverse_payload"]
+    check_required(required, **kwargs)
+    index_bytes = kwargs.get("index_bytes", None)
+    primer5 = kwargs.get("primer5", 'A' * 20)
+    primer3 = kwargs.get("primer3", 'A' * 20)
+    p5 = PrependSequencePipeline(primer5, ignore=False, handler="align", search_range=100)
+    p3 = AppendSequencePipeline(primer3, ignore=False, handler="align", search_range=100)
+    fault_injection = kwargs.get("fi", False)
+    blockSizeInBytes = kwargs.get("blockSizeInBytes", 180 * 15)
+    strandSizeInBytes = kwargs.get("strandSizeInBytes", 15)
+    pipeline_title = kwargs.get("title", "")
+    barcode = kwargs.get("barcode", tuple())
+    inner_ECC = kwargs.get("inner_ECC", 0)
+
+    if "packeted_inner_strand_size" in kwargs:
+        inner_ECC, strandSizeInBytes = kwargs["packeted_inner_strand_size"]
+
+    using_DNA_consolidator = kwargs.get("using_DNA_consolidator", "lsh")
+    lsh_m_sigs = kwargs.get("lsh_m", 50)
+    lsh_kmer = kwargs.get("lsh_k", 5)
+    lsh_sim = kwargs.get("lsh_sim", 0.5)
+    lsh_sig_samples = kwargs.get("lsh_sig_samples", 4)
+    lsh_sample_length = kwargs.get("lsh_sample_length", 100000)
+    align_num_strands = kwargs.get("align_num_strands", 15)
+    cw_consolidator = SimpleMajorityVote()
+    if using_DNA_consolidator:
+        if using_DNA_consolidator == "lsh":
+            cluster = LocalitySensitiveHashCluster(lsh_m_sigs, lsh_kmer, lsh_sig_samples,
+                                                   int(1 / (lsh_sim ** lsh_sig_samples)),
+                                                   lsh_sample_length)
+        if using_DNA_consolidator == "ideal":
+            cluster = IdealCluster()
+        align = MuscleAlign(align_num_strands)
+        dna_consolidator = BasicDNAClusterModel(cluster, align, name=pipeline_title)
+
+    outerECCStrands = kwargs.get("outerECCStrands", 75)
+    if outerECCStrands > 0:
+        fountainOuter = _make_fountain_outer(blockSizeInBytes, strandSizeInBytes, **kwargs)
+        out_pipeline = (fountainOuter,)
+    else:
+        out_pipeline = (BaseOuterCodec(int(math.ceil(blockSizeInBytes / strandSizeInBytes))),)
+
+    randomize = RandomizePayloadPipeline()
+    base4codec = Base4TranscodePipeline()
+    RS_inner = ReedSolomonInnerCodecPipeline(inner_ECC)
+    inner_pipeline = (randomize, RS_inner, base4codec)
+    DNA_pipeline = (p5, p3)
+
+    if fault_injection:
+        index_probe = IndexDistribution(probe_name=pipeline_title, prefix_to_match=barcode)
+        RS_probe = CodewordErrorRateProbe(probe_name="{}::inner_rs".format(pipeline_title))
+        Base4Probe = CodewordErrorRateProbe(probe_name="{}::base4".format(pipeline_title))
+        RandomizeProbe = CodewordErrorRateProbe(probe_name="{}::randomize".format(pipeline_title))
+        dna_hook_probe = HookProbe("dna_strand", RS_probe.name)
+        DNA_error_probe = DNAErrorProbe(probe_name=pipeline_title)
+        post_cluster_DNA_probe = DNAErrorProbe(probe_name="{}::post_cluster".format(pipeline_title))
+        post_cluster_DNA_probe.dna_attr = dna_hook_probe.name
+        inner_pipeline = (index_probe, RandomizeProbe, randomize, RS_probe, RS_inner,
+                          Base4Probe, post_cluster_DNA_probe, base4codec)
+        DNA_pipeline = (DNA_error_probe, dna_hook_probe, p5, p3)
+    upper_strand_length = 400
+    return pipeline.PipeLine(out_pipeline + inner_pipeline + DNA_pipeline,
+                             blockSizeInBytes, strandSizeInBytes, upper_strand_length, 1,
+                             packetizedfile=pf, barcode=barcode,
+                             dna_consolidator=dna_consolidator,
+                             cw_consolidator=cw_consolidator,
+                             constant_index_bytes=index_bytes)
+
+
+def Fountain_Hedges_Pipeline(pf, **kwargs):
+    """
+    Pipeline identical to Basic_Hedges_Pipeline but with an LT fountain code as
+    the outer erasure code instead of Reed-Solomon.
+
+    All keyword arguments are the same as Basic_Hedges_Pipeline except:
+    - ``outerECCStrands`` (default 75): number of parity sub-packets
+    - ``fountain_seed``   (default 42): PRNG seed for the LT Tanner graph
+    """
+    required = ["blockSizeInBytes", "strandSizeInBytes", "hedges_rate",
+                "dna_length", "crc_type", "reverse_payload"]
+    check_required(required, **kwargs)
+
+    fault_injection = kwargs.get("fi", False)
+    sequencing_run = kwargs.get("seq", False)
+    blockSizeInBytes = kwargs.get("blockSizeInBytes", 180 * 15)
+    strandSizeInBytes = kwargs.get("strandSizeInBytes", 15)
+    index_bytes = kwargs.get("index_bytes", None)
+    primer5 = kwargs.get("primer5", 'A' * 20)
+    primer3 = kwargs.get("primer3", 'A' * 20)
+    crc_type = kwargs.get("crc_type", "strand")
+    reverse_payload = kwargs.get("reverse_payload", False)
+    dna_length = kwargs.get("dna_length", 300)
+    filter_upper_length = kwargs.get("filter_upper_length", float('inf'))
+    filter_lower_length = kwargs.get("filter_lower_length", float('-inf'))
+    pipeline_title = kwargs.get("title", "")
+    barcode = kwargs.get("barcode", tuple())
+    hedges_rate = kwargs.get("hedges_rate", 1 / 2.)
+    hedges_pad_bits = kwargs.get("hedges_pad", 8)
+    hedges_previous = kwargs.get("hedge_prev_bits", 8)
+    hedges_guesses = kwargs.get("hedges_guesses", 100000)
+    try_reverse = kwargs.get("try_reverse", False)
+
+    using_DNA_consolidator = kwargs.get("using_DNA_consolidator", False)
+    lsh_m_sigs = kwargs.get("lsh_m", 50)
+    lsh_kmer = kwargs.get("lsh_k", 5)
+    lsh_sim = kwargs.get("lsh_sim", 0.5)
+    lsh_sig_samples = kwargs.get("lsh_sig_samples", 4)
+    lsh_sample_length = kwargs.get("lsh_sample_length", 100000)
+    align_num_strands = kwargs.get("align_num_strands", 15)
+    cw_consolidator = SimpleMajorityVote()
+
+    if "packeted_inner_strand_size" in kwargs:
+        hedges_rate, strandSizeInBytes = kwargs["packeted_inner_strand_size"]
+
+    if using_DNA_consolidator:
+        if using_DNA_consolidator == "lsh":
+            cluster = LocalitySensitiveHashCluster(lsh_m_sigs, lsh_kmer, lsh_sig_samples,
+                                                   int(1 / (lsh_sim ** lsh_sig_samples)),
+                                                   lsh_sample_length)
+        if using_DNA_consolidator == "ideal":
+            cluster = IdealCluster()
+        align = MuscleAlign(align_num_strands)
+        dna_consolidator = BasicDNAClusterModel(cluster, align, name=pipeline_title)
+    else:
+        dna_consolidator = None
+
+    outerECCStrands = kwargs.get("outerECCStrands", 75)
+    if outerECCStrands > 0:
+        fountainOuter = _make_fountain_outer(blockSizeInBytes, strandSizeInBytes, **kwargs)
+        out_pipeline = (fountainOuter,)
+    else:
+        out_pipeline = (BaseOuterCodec(int(math.ceil(blockSizeInBytes / strandSizeInBytes))),)
+
+    hedges = FastHedgesPipeline(rate=hedges_rate, pad_bits=hedges_pad_bits,
+                                prev_bits=hedges_previous, try_reverse=try_reverse,
+                                guess_limit=hedges_guesses)
+
+    if crc_type == "strand":
+        crc = CRC8()
+    elif crc_type == "index":
+        logger.info("FountainHedges: Using Index CRC")
+        crc = CRC8_Index()
+    else:
+        assert 0 and "Invalid CRC selection"
+
+    p5 = PrependSequencePipeline(primer5, ignore=False, handler="align", search_range=100)
+    p3 = AppendSequencePipeline(primer3, ignore=False, handler="align", search_range=100)
+    length_filter = DNALengthFilterPipeline(filter_lower_length, filter_upper_length)
+
+    using_randomize = kwargs.get("randomize", False)
+    randomize = RandomizePayloadPipeline()
+    if using_randomize:
+        inner_pipeline = (crc, randomize, hedges)
+    else:
+        inner_pipeline = (crc, hedges)
+
+    if reverse_payload:
+        logger.info("FountainHedges: Using reverse after payload DNA")
+        r = ReversePipeline()
+        DNA_pipeline = (r, p3, p5)
+    else:
+        DNA_pipeline = (p3, p5)
+
+    DNA_pipeline = (length_filter,) + DNA_pipeline
+
+    if fault_injection:
+        post_cluster_DNA_probe = DNAErrorProbe(probe_name="{}::post_cluster".format(pipeline_title))
+        index_probe = IndexDistribution(probe_name=pipeline_title, prefix_to_match=barcode)
+        hedges_probe = CodewordErrorRateProbe(probe_name="{}::hedges".format(pipeline_title))
+        if not using_randomize:
+            inner_pipeline = (index_probe, crc, hedges_probe, post_cluster_DNA_probe, hedges)
+        else:
+            inner_pipeline = (index_probe, crc, randomize, hedges_probe, post_cluster_DNA_probe, hedges)
+        dna_counter_probe = FilteredDNACounter(probe_name=pipeline_title)
+        DNA_pipeline = (dna_counter_probe,) + DNA_pipeline
+        if sequencing_run:
+            dna_hook_probe = HookProbe("dna_strand", hedges_probe.name)
+            post_cluster_DNA_probe.dna_attr = dna_hook_probe.name
+            length_filter.alignment_name = dna_hook_probe.name
+            hedges_probe.dna_attr = dna_hook_probe.name
+            DNA_error_probe = DNAErrorProbe(probe_name=pipeline_title)
+            DNA_pipeline = (DNA_error_probe, dna_hook_probe) + DNA_pipeline
+
+    return pipeline.PipeLine(out_pipeline + inner_pipeline + DNA_pipeline,
+                             blockSizeInBytes, strandSizeInBytes, dna_length, 1,
+                             packetizedfile=pf, barcode=barcode,
+                             cw_consolidator=cw_consolidator,
+                             dna_consolidator=dna_consolidator,
+                             constant_index_bytes=index_bytes)
