@@ -68,6 +68,12 @@ class PipeLine(EncodePacketizedFile,DecodePacketizedFile):
         self._filtered_strands=[] #strands that have been filtered out due to physical pipeline or incoherence during the decode process
         self.mpi=None #mpi not used on default
         self._barcode=barcode
+        # File-level fountain codec (optional).  When set, encode_header_data /
+        # decode_header_data append / consume an extra HEADER_SIZE bytes, and
+        # final_decode calls _all_packets_hook with the full decoded-packet list
+        # so that the file-level decoder can capture parity block content.
+        self._file_level_codec = None
+        self._all_packets_hook = None
         for index,component in enumerate(components):
             if index>0: prev_component=components[index-1]
             if isinstance(component,BaseOuterCodec):
@@ -220,6 +226,12 @@ class PipeLine(EncodePacketizedFile,DecodePacketizedFile):
                 logger.info("Rank {} leaving pipeline".format(self.mpi.Get_rank()))
                 return #mpi support only up to the outer code
 
+        # Allow external hooks (e.g. file-level fountain codec) to inspect ALL
+        # decoded packets—including parity packets that WritePacketizedFilestream
+        # would silently discard because their indices exceed maxKey.
+        if self._all_packets_hook is not None:
+            self._all_packets_hook(total_out_datas)
+
         for p,out_data in total_out_datas:
             self.writeToFile(p,out_data) #write out packet
         self.write()
@@ -304,6 +316,12 @@ class PipeLine(EncodePacketizedFile,DecodePacketizedFile):
         data+=self._dna_to_dna_cascade.encode_header()
         data+=self._outer_cascade.encode_header()
 
+        # File-level fountain codec header (appended last so existing parsers
+        # that do not know about this field are unaffected when the feature is
+        # disabled, i.e. when _file_level_codec is None).
+        if self._file_level_codec is not None:
+            data += self._file_level_codec.encode_header()
+
         return data
 
     def decode_header_data(self,buff):
@@ -324,6 +342,12 @@ class PipeLine(EncodePacketizedFile,DecodePacketizedFile):
         buf=self._cw_to_DNA_cascade.decode_header(buf)
         buf=self._dna_to_dna_cascade.decode_header(buf)
         buf=self._outer_cascade.decode_header(buf)
+
+        # File-level fountain codec header (last HEADER_SIZE bytes, only present
+        # when _file_level_codec has been attached to this pipeline instance).
+        if self._file_level_codec is not None:
+            buf = self._file_level_codec.decode_header(buf)
+
         return buf
 
     @property

@@ -16,6 +16,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 
 from dnastorage.codec.fountain.lt import LTCode
 from dnastorage.codec.block import FountainOuterPipeline
+from dnastorage.codec.filelevel import FileLevelFountainCodec
 from dnastorage.strand_representation import BaseDNA
 from dnastorage.codec.base_conversion import convertIntToBytes, convertBytesToInt
 
@@ -258,6 +259,149 @@ class TestFountainOuterPipeline(unittest.TestCase):
             parity_pkts=150, erase_indices=list(range(0, 10)), seed=42
         )
         self.assertEqual(orig, dec)
+
+
+# ---------------------------------------------------------------------------
+# FileLevelFountainCodec tests
+# ---------------------------------------------------------------------------
+
+class TestFileLevelFountainCodec(unittest.TestCase):
+
+    def _make_blocks(self, num_blocks, block_size, seed=0):
+        """Return a list of ``num_blocks`` bytearrays of length ``block_size``."""
+        rng = random.Random(seed)
+        return [bytearray(rng.randint(0, 255) for _ in range(block_size))
+                for _ in range(num_blocks)]
+
+    # ------------------------------------------------------------------
+    # generate_parity_bytes / recover_missing round-trips
+    # ------------------------------------------------------------------
+
+    def test_no_missing_blocks(self):
+        """Encode + decode with no missing blocks returns empty recovery dict."""
+        blocks = self._make_blocks(6, 50)
+        codec = FileLevelFountainCodec(parity_blocks=4, seed=7)
+        parity = codec.generate_parity_bytes(blocks)
+        self.assertEqual(len(parity), 4)
+
+        all_data = {i: blocks[i] for i in range(len(blocks))}
+        for pi, pb in enumerate(parity):
+            all_data[len(blocks) + pi] = pb
+
+        recovered = codec.recover_missing(all_data, len(blocks), len(blocks[0]))
+        self.assertEqual(recovered, {})
+
+    def test_single_missing_block(self):
+        """One missing data block must be recovered from parity."""
+        blocks = self._make_blocks(8, 64, seed=1)
+        codec = FileLevelFountainCodec(parity_blocks=6, seed=13)
+        parity = codec.generate_parity_bytes(blocks)
+
+        # Omit block index 3
+        all_data = {i: blocks[i] for i in range(len(blocks)) if i != 3}
+        for pi, pb in enumerate(parity):
+            all_data[len(blocks) + pi] = pb
+
+        recovered = codec.recover_missing(all_data, len(blocks), len(blocks[0]))
+        self.assertIn(3, recovered)
+        self.assertEqual(bytearray(recovered[3]), blocks[3])
+
+    def test_multiple_missing_blocks(self):
+        """Several missing blocks; ample parity should recover all."""
+        blocks = self._make_blocks(10, 30, seed=99)
+        codec = FileLevelFountainCodec(parity_blocks=12, seed=77)
+        parity = codec.generate_parity_bytes(blocks)
+
+        erase_indices = {1, 4, 7}
+        all_data = {i: blocks[i] for i in range(len(blocks)) if i not in erase_indices}
+        for pi, pb in enumerate(parity):
+            all_data[len(blocks) + pi] = pb
+
+        recovered = codec.recover_missing(all_data, len(blocks), len(blocks[0]))
+        for idx in erase_indices:
+            self.assertIn(idx, recovered, f"Block {idx} was not recovered")
+            self.assertEqual(bytearray(recovered[idx]), blocks[idx],
+                             f"Wrong bytes for recovered block {idx}")
+
+    def test_missing_parity_blocks_tolerated(self):
+        """Missing parity blocks reduce redundancy but must not raise errors."""
+        blocks = self._make_blocks(5, 20, seed=55)
+        codec = FileLevelFountainCodec(parity_blocks=8, seed=3)
+        parity = codec.generate_parity_bytes(blocks)
+
+        # Erase one data block; supply only half the parity blocks
+        all_data = {i: blocks[i] for i in range(len(blocks)) if i != 2}
+        for pi in range(0, len(parity), 2):  # every other parity block
+            all_data[len(blocks) + pi] = parity[pi]
+
+        # No assertion on recovery success (depends on LT graph), just no crash.
+        recovered = codec.recover_missing(all_data, len(blocks), len(blocks[0]))
+        if 2 in recovered:
+            self.assertEqual(bytearray(recovered[2]), blocks[2])
+
+    def test_all_parity_missing_no_crash(self):
+        """If all parity is missing, recover_missing returns empty dict gracefully."""
+        blocks = self._make_blocks(4, 16, seed=22)
+        codec = FileLevelFountainCodec(parity_blocks=3, seed=9)
+        codec.generate_parity_bytes(blocks)
+
+        # Only data blocks present, block 1 missing, no parity
+        all_data = {i: blocks[i] for i in range(len(blocks)) if i != 1}
+
+        recovered = codec.recover_missing(all_data, len(blocks), len(blocks[0]))
+        # Cannot recover without parity; should return {}
+        self.assertNotIn(1, recovered)
+
+    # ------------------------------------------------------------------
+    # Header serialisation
+    # ------------------------------------------------------------------
+
+    def test_header_roundtrip(self):
+        """encode_header / decode_header must preserve all fields."""
+        codec_enc = FileLevelFountainCodec(parity_blocks=5, seed=31415)
+        blocks = self._make_blocks(7, 40)
+        codec_enc.generate_parity_bytes(blocks)  # sets _num_data_blocks / _block_size
+
+        header_bytes = codec_enc.encode_header()
+        self.assertEqual(len(header_bytes), FileLevelFountainCodec.HEADER_SIZE)
+
+        codec_dec = FileLevelFountainCodec(parity_blocks=0, seed=0)
+        remaining = codec_dec.decode_header(header_bytes)
+
+        self.assertEqual(codec_dec.seed, codec_enc.seed)
+        self.assertEqual(codec_dec.parity_blocks, codec_enc.parity_blocks)
+        self.assertEqual(codec_dec._num_data_blocks, codec_enc._num_data_blocks)
+        self.assertEqual(codec_dec._block_size, codec_enc._block_size)
+        self.assertEqual(remaining, [])
+
+    def test_header_extra_bytes_preserved(self):
+        """decode_header must return any bytes that follow the 10-byte header."""
+        codec = FileLevelFountainCodec(parity_blocks=2, seed=5)
+        codec._num_data_blocks = 3
+        codec._block_size = 100
+        header_bytes = codec.encode_header() + [0xAB, 0xCD]
+
+        codec2 = FileLevelFountainCodec(parity_blocks=0, seed=0)
+        remaining = codec2.decode_header(header_bytes)
+        self.assertEqual(list(remaining), [0xAB, 0xCD])
+
+    # ------------------------------------------------------------------
+    # Parity correctness: XOR structure
+    # ------------------------------------------------------------------
+
+    def test_parity_xor_consistency(self):
+        """For degree-1 parity symbols, the parity bytes must equal the single
+        source block's bytes (since XOR with one block = that block)."""
+        k = 1
+        block_size = 8
+        blocks = self._make_blocks(k, block_size, seed=42)
+        # With k=1, every parity symbol must have degree 1 and neighbor [0].
+        codec = FileLevelFountainCodec(parity_blocks=4, seed=0)
+        parity = codec.generate_parity_bytes(blocks)
+        for i, pb in enumerate(parity):
+            # Each parity symbol is XOR of neighbor bytes; with k=1 and degree 1
+            # the single neighbor is always block 0.
+            self.assertEqual(pb, blocks[0], f"Parity block {i} mismatch with k=1")
 
 
 if __name__ == '__main__':

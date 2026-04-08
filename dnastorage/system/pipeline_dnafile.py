@@ -4,6 +4,7 @@ from dnastorage.strand_representation import *
 from dnastorage.util.stats import stats
 from dnastorage.util.strandinterface import *
 from dnastorage.util.mpi_utils import *
+from dnastorage.codec.filelevel import FileLevelFountainCodec
 import io
 import os
 import sys
@@ -116,9 +117,47 @@ class ReadDNAFilePipeline(DNAFilePipeline):
         self.pipe = constructor_function(self.pf,**self._enc_opts,barcode=(DATA_BARCODE,)+self._file_barcode)
         self.pipe.decode_header_data(self.header["other_data"])
         self.pipe.mpi = mpi #attach the communicator to the pipeline
+
+        # If the pipeline carries a file-level fountain codec, intercept
+        # final_decode output to capture parity-block bytes before they are
+        # discarded by WritePacketizedFilestream (whose key range only covers
+        # the data blocks).
+        _all_decoded_packets = {}
+        _fll = self.pipe._file_level_codec
+        if _fll is not None:
+            def _capture_hook(out_datas):
+                for _p, _out in out_datas:
+                    _all_decoded_packets[_p] = bytearray(
+                        c if c is not None else 0 for c in _out
+                    )
+            self.pipe._all_packets_hook = _capture_hook
+
         for s in self.strands:
             self.pipe.decode(s)
         self.pipe.final_decode()
+
+        # File-level LT recovery: attempt to fill any completely missing data
+        # blocks using parity blocks captured by the hook above.
+        if _fll is not None and _fll._num_data_blocks is not None:
+            _missing = self.pf.getMissingKeys()
+            if _missing:
+                logger.info("File-level fountain: %d data block(s) missing; attempting recovery",
+                            len(_missing))
+                _recovered = _fll.recover_missing(
+                    _all_decoded_packets,
+                    _fll._num_data_blocks,
+                    _fll._block_size,
+                )
+                if _recovered:
+                    for _key, _data in _recovered.items():
+                        self.pf[_key] = _data
+                    # Re-write the output buffer now that recovered blocks are present.
+                    self.mem_buffer.seek(0)
+                    self.mem_buffer.truncate()
+                    self.pf.write()
+                    logger.info("File-level fountain: re-wrote output with %d recovered block(s)",
+                                len(_recovered))
+
         if mpi: logger.info("Rank {} leaving dnafile".format(mpi.rank))
         self.mem_buffer.seek(0,0) # set read point at beginning of buffer
         return
@@ -216,6 +255,31 @@ class WriteDNAFilePipeline(DNAFilePipeline):
         return
 
     def close(self):
+        # File-level fountain encoding: compute parity blocks from the raw byte
+        # buffer and append them *before* the pipeline encodes anything.  The
+        # pipeline then encodes data blocks + parity blocks identically; parity
+        # blocks receive the next contiguous packet indices after the data blocks.
+        # self.size tracks only the user-written bytes and is unaffected.
+        _fll = getattr(self.pipe, '_file_level_codec', None)
+        if _fll is not None:
+            _block_size = self.pipe._packetsize_bytes
+            self.mem_buffer.seek(0)
+            _blocks = []
+            while True:
+                _chunk = self.mem_buffer.read(_block_size)
+                if not _chunk:
+                    break
+                if len(_chunk) < _block_size:
+                    _chunk = _chunk.ljust(_block_size, b'\x00')
+                _blocks.append(bytearray(_chunk))
+            if _blocks:
+                _parity_list = _fll.generate_parity_bytes(_blocks)
+                self.mem_buffer.seek(0, 2)  # append to end of buffer
+                for _pb in _parity_list:
+                    self.mem_buffer.write(bytes(_pb))
+                logger.info("File-level fountain: appended %d parity block(s) to encode buffer",
+                            len(_parity_list))
+
         self.flush()
         header = Header(self._header_version,self._header_params,barcode_suffix=self._file_barcode)
 

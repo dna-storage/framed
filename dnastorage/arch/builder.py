@@ -20,6 +20,9 @@ from dnastorage.codec.hedges import *
 #import outer code
 from dnastorage.codec.block import *
 
+#import file-level fountain codec
+from dnastorage.codec.filelevel import FileLevelFountainCodec
+
 
 import logging
 logger = logging.getLogger("dnastorage.arch.builder")
@@ -454,3 +457,51 @@ def Fountain_Hedges_Pipeline(pf, **kwargs):
                              cw_consolidator=cw_consolidator,
                              dna_consolidator=dna_consolidator,
                              constant_index_bytes=index_bytes)
+
+
+def _attach_file_level_codec(pipe, **kwargs):
+    """Attach a :class:`FileLevelFountainCodec` to *pipe* using kwargs.
+
+    The codec is always attached for pipelines that use file-level coding (so
+    that ``decode_header_data`` can parse the extra header bytes even when the
+    caller does not explicitly supply ``file_level_parity_blocks``).  The actual
+    parameter values are overwritten by ``decode_header_data`` during decoding.
+
+    Parameters read from *kwargs*:
+    - ``file_level_parity_blocks`` (default 1): parity blocks to generate.
+    - ``file_level_seed``           (default 42): LT PRNG seed.
+    """
+    parity = kwargs.get('file_level_parity_blocks', 1)
+    seed = kwargs.get('file_level_seed', 42)
+    pipe._file_level_codec = FileLevelFountainCodec(parity, seed)
+    return pipe
+
+
+def ReedSolomon_Base4_FileLevelFountain_Pipeline(pf, **kwargs):
+    """
+    Reed-Solomon + Base4 pipeline with an additional file-level LT fountain code.
+
+    The file-level code operates *across* all encoded blocks, generating extra
+    "parity blocks" that can recover entire missing data blocks.
+
+    All keyword arguments are the same as :func:`ReedSolomon_Base4_Pipeline`
+    plus:
+
+    - ``file_level_parity_blocks`` (default 1): number of parity blocks.
+    - ``file_level_seed``           (default 42): LT PRNG seed.
+    """
+    pipe = ReedSolomon_Base4_Pipeline(pf, **kwargs)
+    return _attach_file_level_codec(pipe, **kwargs)
+
+
+def Fountain_Base4_FileLevelFountain_Pipeline(pf, **kwargs):
+    """
+    LT fountain + Base4 pipeline with an additional file-level LT fountain code.
+
+    All keyword arguments are the same as :func:`Fountain_Base4_Pipeline` plus:
+
+    - ``file_level_parity_blocks`` (default 1): number of parity blocks.
+    - ``file_level_seed``           (default 42): LT PRNG seed.
+    """
+    pipe = Fountain_Base4_Pipeline(pf, **kwargs)
+    return _attach_file_level_codec(pipe, **kwargs)
