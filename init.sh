@@ -1,5 +1,5 @@
 #!/bin/bash
-# init.sh – environment setup for FrameD (Linux and macOS)
+# init.sh - environment setup for FrameD (Linux and macOS)
 # Equivalent of init.csh but written in bash for broader platform support.
 set -e
 
