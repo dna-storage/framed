@@ -13,7 +13,7 @@ LABEL maintainer="kevinvolkel95@gmail.com"
 SHELL [ "/bin/bash", "--login", "-c" ]
 
 RUN yum update -y \
- && yum install git zip wget bash tcsh python3-pip python3 gcc-c++ which -y \
+ && yum install git zip wget bash python3-pip python3 gcc-c++ which -y \
  && yum groupinstall "Development Tools" -y
 
 
@@ -75,7 +75,7 @@ RUN conda activate dnastorage \
 COPY --chown=appuser . . 
 
 RUN conda activate dnastorage \
-&& tcsh ./init.csh -no-env \
+&& bash ./init.sh -no-env \
 && make develop \
 && cd schwimmbad \
 && pip install . \

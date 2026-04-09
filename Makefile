@@ -1,6 +1,7 @@
 
 init:
-	tcsh init.csh
+	bash init.sh
+
 test:
 
 clean:
@@ -11,7 +12,7 @@ clean:
 
 
 install:
-	python setup.py install --user
+	pip install --user .
 
 develop:
-	python setup.py develop 
+	pip install -e .

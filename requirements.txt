@@ -1,3 +1,2 @@
-file-read-backwards==2.0.0
-julia==0.6.0
-mpi4py==3.1.4
+file-read-backwards>=2.0.0
+julia>=0.6.0
