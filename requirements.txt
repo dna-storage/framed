@@ -1,2 +1,11 @@
+# Core runtime dependencies
+numpy>=1.21
+scipy>=1.7
+biopython>=1.79
+python-Levenshtein>=0.12
+bitarray>=2.3
 file-read-backwards>=2.0.0
-julia>=0.6.0
+
+# Optional: DNArSim fault-injection via Julia (not required for core functionality)
+# Uncomment and install Julia separately if needed:
+# julia>=0.6.0

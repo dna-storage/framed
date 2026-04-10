@@ -338,15 +338,21 @@ class strand_fault_compressed(BaseFI):
         return out_list        
 
 
-
-
-from julia.api import Julia
-jl = Julia(compiled_modules=False)    
-from julia import Main    
-
 #Python interface to DNArSim that is implemented in Julia, the injection module directly calls the DNArSim fault injector to generate nanopore-based error profiles
+#Julia and the julia Python package are optional dependencies; they are imported lazily inside this class.
 class DNArSim(BaseFI):
     def __init__(self,**args):
+        try:
+            from julia.api import Julia
+            Julia(compiled_modules=False)  # initializes the Julia runtime; return value not needed
+            from julia import Main
+            self._Main = Main
+        except ImportError as exc:
+            raise ImportError(
+                "DNArSim requires the 'julia' Python package and a Julia installation. "
+                "Install the Python wrapper with: pip install julia, then follow the "
+                "pyjulia setup instructions at https://pyjulia.readthedocs.io/"
+            ) from exc
         assert os.environ['DNArSimPath']
         self.DNArSimPath=os.environ['DNArSimPath']
         BaseFI.__init__(self)
@@ -354,18 +360,18 @@ class DNArSim(BaseFI):
         if "probability_path" not in args:
             raise ValueError("Path to probability path for DNArSim does not exist, please specify")
         #set up julia environment, this should really need to be done once each entire batch run
-        Main.eval("""using DelimitedFiles""")
-        Main.include(os.path.join(self.DNArSimPath,"functions.jl"))
-        Main.include(os.path.join(self.DNArSimPath,"channel.jl"))
-        Main.include(os.path.join(self.DNArSimPath,"interface.jl"))
-        Main.load_parameters(self.kmer_length,args["probability_path"])
-        Main.include(os.path.join(self.DNArSimPath,"loadProb.jl"))
+        self._Main.eval("""using DelimitedFiles""")
+        self._Main.include(os.path.join(self.DNArSimPath,"functions.jl"))
+        self._Main.include(os.path.join(self.DNArSimPath,"channel.jl"))
+        self._Main.include(os.path.join(self.DNArSimPath,"interface.jl"))
+        self._Main.load_parameters(self.kmer_length,args["probability_path"])
+        self._Main.include(os.path.join(self.DNArSimPath,"loadProb.jl"))
     def julia_run_injection(self):
         inject_set=[x.dna_strand for x in self._input_library]
-        out_list=Main.channel(self.kmer_length,inject_set)
+        out_list=self._Main.channel(self.kmer_length,inject_set)
         assert len(inject_set)==len(out_list)
         out_list=[FaultDNA(x,y) for x,y in zip(self._input_library,out_list)]
-        Main.GC.gc()
+        self._Main.GC.gc()
         return out_list
     def Run(self):
         return self.julia_run_injection()
