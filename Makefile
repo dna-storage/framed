@@ -12,7 +12,7 @@ clean:
 
 
 install:
-	pip install --user .
+	pip3 install --user .
 
 develop:
-	pip install -e .
+	pip3 install -e .

@@ -4,6 +4,9 @@ install
 build
 junk
 tmp
+framed_conda/
+framed_conda
+probEdit
 
 # Emacs editing
 *~
@@ -32,3 +35,13 @@ config.log
 
 # Mac files
 .DS_Store
+
+.egg-info
+dist
+build
+*.egg
+dnastorage.egg-info
+*.egg-info
+*.egg-info/
+
+dnastorage/fi/DNArSim/

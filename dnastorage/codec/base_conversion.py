@@ -115,12 +115,12 @@ ivalues = { 'A' : 0 ,
 def encodeWithExclusionHelper(dec,s,excluded):
     if len(s) < len(excluded):
         b = len(excluded[len(s)])
-        m = dec % b
-        q = dec / b
+        m = int(dec % b)
+        q = dec // b
         s += excluded[len(s)][m]
     else:
-        m = dec % 3
-        q = dec / 3
+        m = int(dec % 3)
+        q = dec // 3
         s += ibases[m]
 
     if q > 0 or len(s) < len(excluded):
