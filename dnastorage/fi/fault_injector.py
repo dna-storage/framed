@@ -344,7 +344,7 @@ class DNArSim(BaseFI):
     def __init__(self,**args):
         try:
             from julia.api import Julia
-            Julia(compiled_modules=False)
+            Julia(compiled_modules=False)  # initializes the Julia runtime; return value not needed
             from julia import Main
             self._Main = Main
         except ImportError as exc:

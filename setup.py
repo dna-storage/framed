@@ -63,6 +63,6 @@ setup(
     url='',
     license=license,
     packages=find_packages(exclude=( 'tests','docs', 'tools', 'other_software')),
-    ext_modules = [fasthedges,generate],
+    ext_modules = [fasthedges, generate],
     cmdclass={'build_ext': OptionalBuildExt},
 )

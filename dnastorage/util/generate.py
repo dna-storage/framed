@@ -13,9 +13,13 @@ _rng = _random.Random()
 
 
 def seed():
-    """Return a random seed value (mirrors the C++ extension behaviour)."""
+    """Return a random seed value (mirrors the C++ extension behaviour).
+
+    The C++ implementation uses ``std::random_device`` to produce a 32-bit
+    (4-byte) unsigned integer seed, so we do the same here.
+    """
     import os
-    raw = os.urandom(4)
+    raw = os.urandom(4)  # 4 bytes → 32-bit integer, matching the C++ extension
     return int.from_bytes(raw, "little")
 
 
