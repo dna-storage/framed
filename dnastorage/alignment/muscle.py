@@ -1,5 +1,4 @@
 from dnastorage.alignment.basealignment import *
-from Bio.Align.Applications import MuscleCommandline
 from Bio import AlignIO
 import os
 import tempfile

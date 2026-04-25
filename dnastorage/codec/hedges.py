@@ -25,7 +25,13 @@ import sys
 from inspect import currentframe
 
 from dnastorage.codec.base_conversion import *
-from Bio.SeqUtils import GC
+try:
+    from Bio.SeqUtils import gc_fraction as _gc_fraction
+    def GC(seq):
+        """Return GC content as a percentage (0-100) for compatibility."""
+        return _gc_fraction(seq) * 100.0
+except ImportError:
+    from Bio.SeqUtils import GC
 
 class BitTree(object):
     ''' BitTree lets us store only 1 bit in each node of the search tree. '''

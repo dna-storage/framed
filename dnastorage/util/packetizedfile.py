@@ -209,9 +209,9 @@ class ReadPacketizedFilestream:
     @property
     def numberOfPackets(self):
         if (self.size % self.packetSize)==0:
-            return self.size / self.packetSize
+            return self.size // self.packetSize
         else:
-            return self.size / self.packetSize + 1
+            return self.size // self.packetSize + 1
 
 
 class ReadPacketizedFile(ReadPacketizedFilestream):

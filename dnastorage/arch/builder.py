@@ -78,6 +78,7 @@ def ReedSolomon_Base4_Pipeline(pf,**kwargs):
     lsh_sample_length = kwargs.get("lsh_sample_length",100000)  #length of strand to consider when hashing
     align_num_strands = kwargs.get("align_num_strands",15)
     cw_consolidator = SimpleMajorityVote()
+    dna_consolidator = None
     if using_DNA_consolidator:
         if using_DNA_consolidator=="lsh":
             cluster = LocalitySensitiveHashCluster(lsh_m_sigs,lsh_kmer,lsh_sig_samples,int(1/(lsh_sim**lsh_sig_samples)),lsh_sample_length)
@@ -106,7 +107,8 @@ def ReedSolomon_Base4_Pipeline(pf,**kwargs):
     base4codec = Base4TranscodePipeline()
     RS_inner = ReedSolomonInnerCodecPipeline(inner_ECC)    
     inner_pipeline = (randomize,RS_inner,base4codec)
-    
+    DNA_pipeline = (p5, p3)
+
     if fault_injection: #some counters for data collection
         index_probe = IndexDistribution(probe_name=pipeline_title,prefix_to_match=barcode)
         RS_probe = CodewordErrorRateProbe(probe_name="{}::inner_rs".format(pipeline_title))
@@ -247,12 +249,12 @@ def Basic_Hedges_Pipeline(pf,**kwargs):
                              barcode=barcode,cw_consolidator=cw_consolidator,dna_consolidator=dna_consolidator,constant_index_bytes=index_bytes)
 
 
-def _make_fountain_outer(blockSizeInBytes, strandSizeInBytes, **kwargs):
-    """Helper: construct a FountainOuterPipeline from common kwargs."""
-    outerECCStrands = kwargs.get("outerECCStrands", 75)
-    fountain_seed = kwargs.get("fountain_seed", 42)
-    if "outerECCdivisor" in kwargs:
-        divisor = kwargs["outerECCdivisor"]
+def _make_fountain_outer(blockSizeInBytes, strandSizeInBytes,
+                         outerECCStrands=75, fountain_seed=42,
+                         outerECCdivisor=None):
+    """Helper: construct a FountainOuterPipeline from its parameters."""
+    if outerECCdivisor is not None:
+        divisor = outerECCdivisor
     else:
         divisor = blockSizeInBytes // strandSizeInBytes
     return FountainOuterPipeline(divisor, outerECCStrands, seed=fountain_seed)
@@ -293,6 +295,7 @@ def Fountain_Base4_Pipeline(pf, **kwargs):
     lsh_sample_length = kwargs.get("lsh_sample_length", 100000)
     align_num_strands = kwargs.get("align_num_strands", 15)
     cw_consolidator = SimpleMajorityVote()
+    dna_consolidator = None
     if using_DNA_consolidator:
         if using_DNA_consolidator == "lsh":
             cluster = LocalitySensitiveHashCluster(lsh_m_sigs, lsh_kmer, lsh_sig_samples,
@@ -305,7 +308,10 @@ def Fountain_Base4_Pipeline(pf, **kwargs):
 
     outerECCStrands = kwargs.get("outerECCStrands", 75)
     if outerECCStrands > 0:
-        fountainOuter = _make_fountain_outer(blockSizeInBytes, strandSizeInBytes, **kwargs)
+        fountainOuter = _make_fountain_outer(blockSizeInBytes, strandSizeInBytes,
+                                             outerECCStrands=outerECCStrands,
+                                             fountain_seed=kwargs.get("fountain_seed", 42),
+                                             outerECCdivisor=kwargs.get("outerECCdivisor"))
         out_pipeline = (fountainOuter,)
     else:
         out_pipeline = (BaseOuterCodec(int(math.ceil(blockSizeInBytes / strandSizeInBytes))),)
@@ -396,7 +402,10 @@ def Fountain_Hedges_Pipeline(pf, **kwargs):
 
     outerECCStrands = kwargs.get("outerECCStrands", 75)
     if outerECCStrands > 0:
-        fountainOuter = _make_fountain_outer(blockSizeInBytes, strandSizeInBytes, **kwargs)
+        fountainOuter = _make_fountain_outer(blockSizeInBytes, strandSizeInBytes,
+                                             outerECCStrands=outerECCStrands,
+                                             fountain_seed=kwargs.get("fountain_seed", 42),
+                                             outerECCdivisor=kwargs.get("outerECCdivisor"))
         out_pipeline = (fountainOuter,)
     else:
         out_pipeline = (BaseOuterCodec(int(math.ceil(blockSizeInBytes / strandSizeInBytes))),)

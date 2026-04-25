@@ -61,6 +61,7 @@ class SimpleMajorityVote(BaseCodec,CWConsolidate):
                         distance+=1
                 if distance<min_distance:
                     min_strand=s
+                    min_distance=distance
             new_strand=copy.copy(min_strand)
             strand_array.append(new_strand)
    
