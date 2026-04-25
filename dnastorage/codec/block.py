@@ -17,6 +17,10 @@ class ReedSolomonOuterPipeline(BaseOuterCodec):
         self._rs = get_reed_solomon(c_exp=c_exp)
         self._parity_packets=parity_packets
         assert(packet_divisor+parity_packets<=self._rs.field_charac)
+    def _decode_header(self, buff):
+        remaining = super()._decode_header(buff)
+        self._parity_packets = self._total_sub_packets - self._num_data_sub_packets
+        return remaining
     def _encode(self,packets):
         parity_packets=[]
         #initialize parity_packets
